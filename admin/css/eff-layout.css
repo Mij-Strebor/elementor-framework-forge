@@ -64,7 +64,7 @@
 	color:       var(--eff-clr-muted);
 	white-space: nowrap;
 	letter-spacing: 0.02em;
-	text-transform: uppercase;
+	text-transform: none;
 }
 
 /* ==========================================================================
@@ -315,10 +315,12 @@
 	min-height:      300px;
 }
 
-.eff-placeholder__icon svg {
-	width:  48px;
-	height: 48px;
-	color:  var(--eff-clr-muted);
+.eff-placeholder__banner {
+	max-width:  420px;
+	width:      100%;
+	height:     auto;
+	opacity:    1; /* override parent opacity via isolation */
+	border-radius: var(--sp-2);
 }
 
 .eff-placeholder__text {
@@ -451,4 +453,40 @@
 .eff-edit-space::-webkit-scrollbar-thumb {
 	background:    var(--eff-clr-border);
 	border-radius: 4px;
+}
+
+/* ==========================================================================
+   10. MOBILE RESTRICTION
+   ========================================================================== */
+
+/* Hidden by default on desktop */
+.eff-mobile-block {
+	display: none;
+}
+
+@media (max-width: 1023px) {
+	/* Show restriction message */
+	.eff-mobile-block {
+		display:         flex;
+		align-items:     center;
+		justify-content: center;
+		min-height:      100vh;
+		padding:         var(--sp-9);
+		background:      #3d2f1f;
+		color:           #f4c542;
+		text-align:      center;
+		font-family:     Inter, sans-serif;
+		font-size:       1rem;
+		line-height:     1.5;
+	}
+
+	.eff-mobile-block__message {
+		max-width: 360px;
+		margin:    0;
+	}
+
+	/* Hide the full application */
+	.eff-app {
+		display: none;
+	}
 }

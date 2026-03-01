@@ -33,6 +33,13 @@ function eff_icon( string $name ): string {
 	return '';
 }
 ?>
+<!-- Mobile restriction overlay — shown below 1024px -->
+<div class="eff-mobile-block" aria-live="polite">
+	<p class="eff-mobile-block__message">
+		<?php esc_html_e( 'Elementor Framework Forge requires a desktop browser. Please open this page on a device with a screen width of at least 1024px.', 'elementor-framework-forge' ); ?>
+	</p>
+</div>
+
 <div class="eff-app" data-eff-theme="<?php echo esc_attr( $theme ); ?>" id="eff-app">
 
 	<!-- ================================================================
@@ -222,9 +229,12 @@ function eff_icon( string $name ): string {
 
 			<!-- Placeholder — shown when no category is selected -->
 			<div class="eff-placeholder" id="eff-placeholder">
-				<span class="eff-placeholder__icon" aria-hidden="true">
-					<?php echo eff_icon( 'variables' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
-				</span>
+				<img
+					class="eff-placeholder__banner"
+					src="<?php echo esc_url( EFF_PLUGIN_URL . 'assets/images/banner-jimr-forge.webp' ); ?>"
+					alt="Elementor Framework Forge"
+					aria-hidden="true"
+				/>
 				<p class="eff-placeholder__text">
 					<?php esc_html_e( 'Select a category from the left panel', 'elementor-framework-forge' ); ?>
 				</p>
