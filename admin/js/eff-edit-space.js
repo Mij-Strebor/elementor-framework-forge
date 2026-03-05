@@ -26,7 +26,7 @@
 		/** @type {HTMLElement|null} */
 		_content: null,
 		/** @type {HTMLElement|null} */
-		_editSpace: null,
+		_workspace: null,
 
 		/**
 		 * Initialize the edit space.
@@ -34,7 +34,7 @@
 		init: function () {
 			this._placeholder = document.getElementById('eff-placeholder');
 			this._content     = document.getElementById('eff-edit-content');
-			this._editSpace   = document.getElementById('eff-edit-space');
+			this._workspace   = document.getElementById('eff-workspace');
 		},
 
 		/**
@@ -48,8 +48,8 @@
 			}
 
 			// Fade background image to watermark opacity
-			if (this._editSpace) {
-				this._editSpace.setAttribute('data-active', 'true');
+			if (this._workspace) {
+				this._workspace.setAttribute('data-active', 'true');
 			}
 
 			// Hide placeholder, show content
@@ -64,8 +64,8 @@
 		 * Reset to placeholder state (restores background image to full opacity).
 		 */
 		reset: function () {
-			if (this._editSpace) {
-				this._editSpace.removeAttribute('data-active');
+			if (this._workspace) {
+				this._workspace.removeAttribute('data-active');
 			}
 
 			if (this._content) {

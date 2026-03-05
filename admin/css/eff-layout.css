@@ -59,9 +59,9 @@
 }
 
 .eff-brand-name {
-	font-size:   var(--fs-sm);
-	font-weight: var(--fw-semibold);
-	color:       var(--eff-clr-muted);
+	font-size:   var(--fs-md);      /* 16px */
+	font-weight: var(--fw-bold);    /* 700 */
+	color:       var(--eff-clr-primary);
 	white-space: nowrap;
 	letter-spacing: 0.02em;
 	text-transform: none;
@@ -72,10 +72,30 @@
    ========================================================================== */
 
 .eff-workspace {
-	display:  flex;
-	flex:     1;
-	overflow: hidden; /* Each panel scrolls internally */
-	min-height: 0;    /* Required for flex children to scroll */
+	display:   flex;
+	flex:      1;
+	overflow:  hidden; /* Each panel scrolls internally */
+	min-height: 0;     /* Required for flex children to scroll */
+	position:  relative; /* Stacking context for ::before background image */
+}
+
+/* Background image — on workspace so panel collapse slides without resizing it.
+   Left/right panels have solid backgrounds that cover their areas; only the
+   transparent edit space reveals this image. */
+.eff-workspace::before {
+	content:    '';
+	position:   absolute;
+	inset:      0;
+	background: url('../../assets/images/banner-jimr-forge.png') center / cover no-repeat;
+	opacity:    1;
+	transition: opacity 0.6s ease;
+	pointer-events: none;
+	z-index:    0;
+}
+
+/* Fade to faint watermark once user activates the edit space */
+.eff-workspace[data-active="true"]::before {
+	opacity: 0.04;
 }
 
 /* ==========================================================================
@@ -311,30 +331,13 @@
 	display:    flex;
 	flex-direction: column;
 	overflow-y: auto;
-	background: var(--eff-bg-page);
+	background: transparent; /* Image lives on .eff-workspace::before */
 	min-width:  0; /* Prevent flex blowout */
 	padding:    var(--sp-9);
-	position:   relative; /* Required for ::before background layer */
+	position:   relative;
 }
 
-/* Background image — full-area branding, opacity transitions on activation */
-.eff-edit-space::before {
-	content:    '';
-	position:   absolute;
-	inset:      0;
-	background: url('../../assets/images/banner-jimr-forge.png') center / contain no-repeat;
-	opacity:    0.13;
-	transition: opacity 0.5s ease;
-	pointer-events: none;
-	z-index:    0;
-}
-
-/* Fade to faint watermark when a category is active */
-.eff-edit-space[data-active="true"]::before {
-	opacity: 0.04;
-}
-
-/* Ensure content layers sit above the background */
+/* Ensure content layers sit above the workspace background image */
 .eff-placeholder,
 .eff-edit-content {
 	position: relative;

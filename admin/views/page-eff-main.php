@@ -102,7 +102,7 @@ function eff_icon( string $name ): string {
 	<!-- ================================================================
 	     MAIN WORKSPACE (Left + Center + Right)
 	     ================================================================ -->
-	<div class="eff-workspace">
+	<div class="eff-workspace" id="eff-workspace">
 
 		<!-- ============================================================
 		     LEFT NAVIGATION PANEL
