@@ -29,15 +29,16 @@
 	// -----------------------------------------------------------------------
 
 	EFF.state = {
-		hasUnsavedChanges: false,
-		currentSelection:  null,
-		currentFile:       null,
-		theme:             (typeof EFFData !== 'undefined' ? EFFData.theme : 'light') || 'light',
-		variables:         [],
-		classes:           [],
-		components:        [],
-		config:            {},
-		usageCounts:       {}, // { '--varname': count } — populated by fetchUsageCounts()
+		hasUnsavedChanges:        false, // EFF file has unsaved changes (drives Save Changes button).
+		hasPendingElementorCommit: false, // EFF data not yet committed to Elementor (drives Commit button).
+		currentSelection:         null,
+		currentFile:              null,
+		theme:                    (typeof EFFData !== 'undefined' ? EFFData.theme : 'light') || 'light',
+		variables:                [],
+		classes:                  [],
+		components:               [],
+		config:                   {},
+		usageCounts:              {}, // { '--varname': count } — populated by fetchUsageCounts()
 	};
 
 	// -----------------------------------------------------------------------
@@ -55,6 +56,18 @@
 			EFF.state.hasUnsavedChanges = isDirty;
 			if (EFF.PanelRight) {
 				EFF.PanelRight.updateSaveChangesBtn();
+			}
+		},
+
+		/**
+		 * Set or clear the pending Elementor commit flag and update the Commit button.
+		 *
+		 * @param {boolean} hasPending
+		 */
+		setPendingCommit: function (hasPending) {
+			EFF.state.hasPendingElementorCommit = hasPending;
+			if (EFF.PanelRight) {
+				EFF.PanelRight.updateCommitBtn();
 			}
 		},
 
@@ -167,6 +180,11 @@
 		// 4. Edit space (center content)
 		if (EFF.EditSpace) {
 			EFF.EditSpace.init();
+		}
+
+		// 4b. Colors module (Phase 2) — intercepts EditSpace for Colors subgroup.
+		if (EFF.Colors) {
+			EFF.Colors.init();
 		}
 
 		// 5. Top bar (buttons + tooltips — needs Modal to be ready)

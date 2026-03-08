@@ -1,0 +1,573 @@
+/**
+ * EFF Colors CSS — Phase 2 Colors Edit Space Styles
+ *
+ * Styles the Colors subgroup edit space: filter bar, category blocks,
+ * color variable rows (swatch + name + value + format + expand),
+ * inline expand panel (color picker, tint/shade generator, preview bars),
+ * and category action buttons.
+ *
+ * Depends on: eff-theme.css (design tokens), eff-layout.css (base layout)
+ *
+ * @package ElementorFrameworkForge
+ * @version 2.0.0
+ */
+
+/* ==========================================================================
+   1. COLORS CONTAINER
+   ========================================================================== */
+
+.eff-colors-view {
+	display:        flex;
+	flex-direction: column;
+	height:         100%;
+	overflow-y:     auto;
+}
+
+/* ==========================================================================
+   2. FILTER BAR
+   ========================================================================== */
+
+.eff-colors-filter-bar {
+	display:         flex;
+	align-items:     center;
+	gap:             var(--sp-2);
+	padding:         var(--sp-3) var(--sp-4);
+	border-bottom:   1px solid var(--eff-clr-border);
+	background:      var(--eff-bg-card);
+	position:        sticky;
+	top:             0;
+	z-index:         10;
+	flex-shrink:     0;
+}
+
+.eff-colors-search {
+	flex:            1;
+	padding:         var(--sp-1) var(--sp-3);
+	background:      var(--eff-bg-field);
+	border:          1px solid var(--eff-clr-border);
+	border-radius:   var(--eff-border-radius-sm);
+	font-size:       var(--fs-sm);
+	color:           var(--eff-clr-secondary);
+	box-shadow:      var(--eff-field-shadow);
+	min-width:       0;
+}
+
+.eff-colors-search::placeholder {
+	color: var(--eff-clr-muted);
+}
+
+.eff-colors-filter-btn {
+	display:         inline-flex;
+	align-items:     center;
+	justify-content: center;
+	padding:         var(--sp-1) var(--sp-2);
+	background:      transparent;
+	border:          1px solid var(--eff-clr-border);
+	border-radius:   var(--eff-border-radius-sm);
+	font-size:       var(--fs-xs);
+	color:           var(--eff-clr-muted);
+	cursor:          pointer;
+	transition:      background-color var(--eff-transition), color var(--eff-transition);
+	white-space:     nowrap;
+}
+
+.eff-colors-filter-btn:hover {
+	background:  var(--eff-icon-btn-hover-bg);
+	color:       var(--eff-clr-secondary);
+}
+
+/* ==========================================================================
+   3. CATEGORY BLOCK
+   ========================================================================== */
+
+.eff-category-block {
+	background:    var(--eff-bg-card);
+	border-bottom: 1px solid var(--eff-clr-border);
+}
+
+.eff-category-block:last-child {
+	border-bottom: none;
+}
+
+/* ==========================================================================
+   4. CATEGORY HEADER
+   ========================================================================== */
+
+.eff-category-header {
+	display:         flex;
+	align-items:     center;
+	gap:             var(--sp-2);
+	padding:         var(--sp-2) var(--sp-4);
+	border-bottom:   1px solid var(--eff-clr-border);
+	background:      var(--eff-bg-panel);
+	min-height:      40px;
+}
+
+.eff-category-name {
+	flex:            1;
+	font-size:       var(--fs-sm);
+	font-weight:     var(--fw-semibold);
+	color:           var(--eff-clr-primary);
+}
+
+/* Inline rename input — shown only when renaming */
+.eff-category-name-input {
+	flex:            1;
+	padding:         2px var(--sp-2);
+	background:      var(--eff-bg-field);
+	border:          1px solid var(--eff-clr-accent);
+	border-radius:   var(--eff-border-radius-sm);
+	font-size:       var(--fs-sm);
+	font-weight:     var(--fw-semibold);
+	color:           var(--eff-clr-primary);
+	box-shadow:      var(--eff-field-shadow);
+}
+
+.eff-category-count {
+	font-size:       var(--fs-xs);
+	color:           var(--eff-clr-muted);
+	padding:         2px var(--sp-2);
+	background:      var(--eff-clr-bg-hover);
+	border-radius:   100px;
+	white-space:     nowrap;
+}
+
+/* 8-button action group */
+.eff-category-actions {
+	display:         flex;
+	align-items:     center;
+	gap:             2px;
+	flex-shrink:     0;
+}
+
+/* Shared icon button style (used in category header and throughout) */
+.eff-icon-btn {
+	display:         inline-flex;
+	align-items:     center;
+	justify-content: center;
+	width:           28px;
+	height:          28px;
+	padding:         0;
+	background:      transparent;
+	border:          none;
+	border-radius:   var(--eff-border-radius-sm);
+	color:           var(--eff-clr-muted);
+	cursor:          pointer;
+	transition:      background-color var(--eff-transition), color var(--eff-transition);
+	flex-shrink:     0;
+}
+
+.eff-icon-btn:hover {
+	background: var(--eff-icon-btn-hover-bg);
+	color:      var(--eff-clr-secondary);
+}
+
+.eff-icon-btn:disabled,
+.eff-icon-btn[disabled] {
+	opacity: 0.4;
+	cursor:  not-allowed;
+}
+
+/* Collapse/expand chevron — rotated when collapsed */
+.eff-category-collapse-btn svg {
+	transition: transform var(--eff-transition-md);
+}
+
+.eff-category-block[data-collapsed="true"] .eff-category-collapse-btn svg {
+	transform: rotate(-90deg);
+}
+
+/* Danger variant — shown for delete button on hover */
+.eff-icon-btn--danger:hover {
+	background: var(--eff-clr-error-bg);
+	color:      var(--eff-clr-error);
+}
+
+/* ==========================================================================
+   5. COLOR VARIABLE LIST (column headings + rows)
+   ========================================================================== */
+
+.eff-color-list-header {
+	display:       grid;
+	grid-template-columns: 8px 24px 1fr 180px 90px 32px;
+	gap:           var(--sp-2);
+	align-items:   center;
+	padding:       var(--sp-1) var(--sp-4);
+	font-size:     var(--fs-xs);
+	color:         var(--eff-clr-muted);
+	font-weight:   var(--fw-medium);
+	border-bottom: 1px solid var(--eff-clr-border);
+	background:    var(--eff-bg-panel);
+}
+
+.eff-color-list {
+	display:        flex;
+	flex-direction: column;
+}
+
+.eff-category-block[data-collapsed="true"] .eff-color-list,
+.eff-category-block[data-collapsed="true"] .eff-color-list-header,
+.eff-category-block[data-collapsed="true"] .eff-color-add-row {
+	display: none;
+}
+
+/* Single color variable row */
+.eff-color-row {
+	display:       grid;
+	grid-template-columns: 8px 24px 1fr 180px 90px 32px;
+	gap:           var(--sp-2);
+	align-items:   center;
+	padding:       var(--sp-2) var(--sp-4);
+	border-bottom: 1px solid var(--eff-clr-border);
+	min-height:    40px;
+	transition:    background-color var(--eff-transition);
+}
+
+.eff-color-row:last-of-type {
+	border-bottom: none;
+}
+
+.eff-color-row:hover {
+	background: var(--eff-clr-bg-hover);
+}
+
+/* Phase 2e: status dot (8px circle in first column) */
+.eff-status-dot {
+	width:         8px;
+	height:        8px;
+	border-radius: 50%;
+	flex-shrink:   0;
+	background:    var(--eff-clr-muted);
+}
+
+/* Color swatch (second column) */
+.eff-color-swatch {
+	width:         24px;
+	height:        24px;
+	border-radius: var(--eff-border-radius-sm);
+	box-shadow:    var(--eff-swatch-shadow);
+	cursor:        pointer;
+	flex-shrink:   0;
+	border:        1px solid rgba(0, 0, 0, 0.08);
+	transition:    transform var(--eff-transition);
+}
+
+.eff-color-swatch:hover {
+	transform: scale(1.1);
+}
+
+/* Name field (third column — flex-fill) */
+.eff-color-name-field {
+	min-width: 0;
+	overflow:  hidden;
+}
+
+.eff-color-name-code {
+	font-family:   monospace, monospace;
+	font-size:     var(--fs-xs);
+	color:         var(--eff-clr-secondary);
+	overflow:      hidden;
+	text-overflow: ellipsis;
+	white-space:   nowrap;
+	display:       block;
+}
+
+/* Editable name input (Phase 2c) */
+.eff-color-name-input {
+	width:         100%;
+	padding:       2px var(--sp-2);
+	background:    var(--eff-bg-field);
+	border:        1px solid var(--eff-clr-border);
+	border-radius: var(--eff-border-radius-sm);
+	font-size:     var(--fs-xs);
+	color:         var(--eff-clr-secondary);
+	box-shadow:    var(--eff-field-shadow);
+	font-family:   monospace, monospace;
+	min-width:     0;
+}
+
+.eff-color-name-input:focus {
+	border-color: var(--eff-clr-accent);
+}
+
+/* Value field (fourth column — ~180px) */
+.eff-color-value-input {
+	width:         100%;
+	padding:       2px var(--sp-2);
+	background:    var(--eff-bg-field);
+	border:        1px solid var(--eff-clr-border);
+	border-radius: var(--eff-border-radius-sm);
+	font-size:     var(--fs-xs);
+	color:         var(--eff-clr-secondary);
+	box-shadow:    var(--eff-field-shadow);
+	font-family:   monospace, monospace;
+	min-width:     0;
+}
+
+.eff-color-value-input:focus {
+	border-color: var(--eff-clr-accent);
+}
+
+/* Format selector (fifth column — ~90px) */
+.eff-color-format-sel {
+	width:         100%;
+	padding:       2px var(--sp-1);
+	background:    var(--eff-bg-field);
+	border:        1px solid var(--eff-clr-border);
+	border-radius: var(--eff-border-radius-sm);
+	font-size:     var(--fs-xs);
+	color:         var(--eff-clr-muted);
+	cursor:        pointer;
+}
+
+/* Expand chevron (sixth column — 32px icon button) */
+.eff-color-expand-btn {
+	width:   32px;
+	height:  32px;
+	padding: 0;
+}
+
+.eff-color-expand-btn svg {
+	transition: transform var(--eff-transition-md);
+}
+
+.eff-color-row[data-expanded="true"] .eff-color-expand-btn svg {
+	transform: rotate(180deg);
+}
+
+/* ==========================================================================
+   6. ADD VARIABLE ROW (footer button per category)
+   ========================================================================== */
+
+.eff-color-add-row {
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	gap:             var(--sp-2);
+	padding:         var(--sp-2) var(--sp-4);
+	background:      transparent;
+	border:          none;
+	border-top:      1px dashed var(--eff-clr-border);
+	width:           100%;
+	cursor:          pointer;
+	font-size:       var(--fs-xs);
+	color:           var(--eff-clr-muted);
+	transition:      background-color var(--eff-transition), color var(--eff-transition);
+	text-align:      center;
+}
+
+.eff-color-add-row:hover {
+	background: var(--eff-clr-bg-hover);
+	color:      var(--eff-clr-secondary);
+}
+
+/* ==========================================================================
+   7. EXPAND PANEL (inline color editor below a row)
+   ========================================================================== */
+
+.eff-expand-panel {
+	display:       flex;
+	flex-direction: row;
+	gap:           0;
+	background:    var(--eff-bg-panel);
+	border-top:    1px solid var(--eff-clr-border);
+	border-bottom: 1px solid var(--eff-clr-border);
+	overflow:      hidden;
+}
+
+/* Each zone is a flex column */
+.eff-expand-zone {
+	display:        flex;
+	flex-direction: column;
+	gap:            var(--sp-2);
+	padding:        var(--sp-3) var(--sp-4);
+	flex:           1;
+}
+
+.eff-expand-zone + .eff-expand-zone {
+	border-left: 1px solid var(--eff-clr-border);
+}
+
+.eff-expand-zone-label {
+	font-size:   var(--fs-xs);
+	font-weight: var(--fw-semibold);
+	color:       var(--eff-clr-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	margin-bottom: var(--sp-1);
+}
+
+/* Zone 1 — Generator controls */
+.eff-expand-zone--generator {
+	flex:      0 0 260px;
+	max-width: 260px;
+}
+
+.eff-gen-row {
+	display:     flex;
+	align-items: center;
+	gap:         var(--sp-2);
+}
+
+.eff-gen-row label {
+	flex:      0 0 120px;
+	font-size: var(--fs-xs);
+	color:     var(--eff-clr-secondary);
+}
+
+.eff-gen-row select {
+	flex:          1;
+	padding:       2px var(--sp-1);
+	background:    var(--eff-bg-field);
+	border:        1px solid var(--eff-clr-border);
+	border-radius: var(--eff-border-radius-sm);
+	font-size:     var(--fs-xs);
+	color:         var(--eff-clr-secondary);
+}
+
+.eff-gen-generate-btn {
+	align-self: flex-end;
+	padding:    var(--sp-1) var(--sp-3);
+}
+
+/* Zone 2 — Preview bars */
+.eff-expand-zone--preview {
+	flex:     1;
+	min-width: 0;
+}
+
+.eff-swatch-preview-row {
+	display:     flex;
+	flex-wrap:   wrap;
+	gap:         var(--sp-1);
+	align-items: flex-end;
+}
+
+.eff-preview-swatch {
+	display:        flex;
+	flex-direction: column;
+	align-items:    center;
+	gap:            2px;
+}
+
+.eff-preview-swatch-color {
+	width:         28px;
+	height:        28px;
+	border-radius: var(--eff-border-radius-sm);
+	box-shadow:    var(--eff-swatch-shadow);
+	border:        1px solid rgba(0, 0, 0, 0.08);
+}
+
+.eff-preview-swatch-label {
+	font-size:  10px;
+	color:      var(--eff-clr-muted);
+	text-align: center;
+	max-width:  36px;
+	overflow:   hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+/* Zone 3 — Color picker */
+.eff-expand-zone--picker {
+	flex:      0 0 220px;
+	max-width: 220px;
+}
+
+.eff-picker-row {
+	display:     flex;
+	align-items: center;
+	gap:         var(--sp-2);
+}
+
+/* Native <input type="color"> — shown as a large colored square */
+.eff-native-picker {
+	width:         48px;
+	height:        48px;
+	padding:       2px;
+	border:        1px solid var(--eff-clr-border);
+	border-radius: var(--eff-border-radius-sm);
+	cursor:        pointer;
+	background:    none;
+	flex-shrink:   0;
+}
+
+/* Webkit: remove default color picker padding */
+.eff-native-picker::-webkit-color-swatch-wrapper {
+	padding: 0;
+}
+.eff-native-picker::-webkit-color-swatch {
+	border:        none;
+	border-radius: 3px;
+}
+
+.eff-hex-input {
+	flex:          1;
+	padding:       4px var(--sp-2);
+	background:    var(--eff-bg-field);
+	border:        1px solid var(--eff-clr-border);
+	border-radius: var(--eff-border-radius-sm);
+	font-size:     var(--fs-xs);
+	font-family:   monospace, monospace;
+	color:         var(--eff-clr-secondary);
+	box-shadow:    var(--eff-field-shadow);
+	min-width:     0;
+}
+
+.eff-alpha-row {
+	display:     flex;
+	align-items: center;
+	gap:         var(--sp-2);
+}
+
+.eff-alpha-row label {
+	font-size: var(--fs-xs);
+	color:     var(--eff-clr-muted);
+	flex-shrink: 0;
+}
+
+.eff-alpha-slider {
+	flex:           1;
+	accent-color:   var(--eff-clr-accent);
+	cursor:         pointer;
+}
+
+.eff-alpha-value {
+	font-size:  var(--fs-xs);
+	color:      var(--eff-clr-muted);
+	min-width:  32px;
+	text-align: right;
+}
+
+/* ==========================================================================
+   8. EMPTY STATE
+   ========================================================================== */
+
+.eff-colors-empty {
+	padding:    var(--sp-6) var(--sp-4);
+	text-align: center;
+	color:      var(--eff-clr-muted);
+	font-size:  var(--fs-sm);
+}
+
+/* ==========================================================================
+   9. SECONDARY BUTTON VARIANT (.eff-btn--secondary)
+   ========================================================================== */
+
+.eff-app .eff-btn--secondary {
+	background:   transparent;
+	color:        var(--eff-clr-secondary);
+	border:       1px solid var(--eff-clr-border);
+	box-shadow:   var(--eff-shadow-sm);
+}
+
+.eff-app .eff-btn--secondary:hover:not(:disabled) {
+	background:   var(--eff-icon-btn-hover-bg);
+	border-color: var(--eff-clr-accent);
+	color:        var(--eff-clr-primary);
+}
+
+.eff-app .eff-btn--secondary:disabled {
+	opacity: 0.5;
+	cursor:  not-allowed;
+}

@@ -26,6 +26,8 @@
 		_saveBtn: null,
 		/** @type {HTMLElement|null} */
 		_saveChangesBtn: null,
+		/** @type {HTMLElement|null} */
+		_commitBtn: null,
 
 		/**
 		 * Initialize the right panel.
@@ -35,10 +37,12 @@
 			this._loadBtn        = document.getElementById('eff-btn-load');
 			this._saveBtn        = document.getElementById('eff-btn-save');
 			this._saveChangesBtn = document.getElementById('eff-btn-save-changes');
+			this._commitBtn      = document.getElementById('eff-btn-commit');
 
 			this._bindLoadBtn();
 			this._bindSaveBtn();
 			this._bindSaveChangesBtn();
+			this._bindCommitBtn();
 		},
 
 		// ------------------------------------------------------------------
@@ -205,6 +209,120 @@
 
 			this._saveChangesBtn.disabled         = !isDirty;
 			this._saveChangesBtn.setAttribute('aria-disabled', String(!isDirty));
+		},
+
+		// ------------------------------------------------------------------
+		// COMMIT TO ELEMENTOR (Phase 2)
+		// ------------------------------------------------------------------
+
+		/**
+		 * Bind the Commit to Elementor button.
+		 */
+		_bindCommitBtn: function () {
+			if (!this._commitBtn) {
+				return;
+			}
+
+			this._commitBtn.addEventListener('click', function () {
+				if (!EFF.state.hasPendingElementorCommit) { return; }
+				this._openCommitConfirmation();
+			}.bind(this));
+		},
+
+		/**
+		 * Open a confirmation modal before committing.
+		 *
+		 * After user confirms, sends all EFF variables to the commit endpoint.
+		 */
+		_openCommitConfirmation: function () {
+			var self = this;
+
+			EFF.Modal.open({
+				title: 'Commit to Elementor',
+				body:  '<p style="margin-bottom:8px">This will write your EFF color variable values directly to the Elementor kit CSS file.</p>'
+					+ '<p style="margin-bottom:8px"><strong>This operation modifies Elementor\'s files.</strong> Elementor CSS will be regenerated automatically.</p>'
+					+ '<p>Are you sure you want to continue?</p>',
+				footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
+					+ '<button class="eff-btn eff-btn--secondary" id="eff-commit-cancel">Cancel</button>'
+					+ '<button class="eff-btn" id="eff-commit-confirm">Commit</button>'
+					+ '</div>',
+			});
+
+			// Bind modal action buttons.
+			document.addEventListener('click', function commitHandler(e) {
+				if (e.target.id === 'eff-commit-cancel') {
+					EFF.Modal.close();
+					document.removeEventListener('click', commitHandler);
+				} else if (e.target.id === 'eff-commit-confirm') {
+					EFF.Modal.close();
+					document.removeEventListener('click', commitHandler);
+					self._executeCommit();
+				}
+			});
+		},
+
+		/**
+		 * Execute the commit AJAX call.
+		 *
+		 * Sends all current variables to eff_commit_to_elementor, then updates
+		 * variable statuses to 'synced' and clears the pending commit flag.
+		 */
+		_executeCommit: function () {
+			if (!EFF.state.currentFile) {
+				alert('No file loaded. Please load a file before committing.');
+				return;
+			}
+
+			var variables = EFF.state.variables.map(function (v) {
+				return { name: v.name, value: v.value };
+			});
+
+			EFF.App.ajax('eff_commit_to_elementor', {
+				filename:  EFF.state.currentFile,
+				variables: JSON.stringify(variables),
+			}).then(function (res) {
+				if (res.success) {
+					var committed = res.data.committed || [];
+					var skipped   = res.data.skipped || [];
+
+					// Update variable statuses to 'synced' for committed vars.
+					for (var i = 0; i < EFF.state.variables.length; i++) {
+						if (committed.indexOf(EFF.state.variables[i].name) !== -1) {
+							EFF.state.variables[i].status = 'synced';
+						}
+					}
+
+					EFF.App.setPendingCommit(false);
+
+					var msg = committed.length + ' variable(s) committed.';
+					if (skipped.length > 0) {
+						msg += ' ' + skipped.length + ' variable(s) not found in Elementor kit (check names).';
+					}
+					alert(msg);
+
+					// Re-render current view to show updated status dots.
+					if (EFF.Colors && EFF.state.currentSelection && EFF.state.currentSelection.subgroup === 'Colors') {
+						EFF.Colors.loadColors(EFF.state.currentSelection);
+					}
+				} else {
+					alert('Commit error: ' + ((res.data && res.data.message) || 'Unknown error.'));
+				}
+			}).catch(function () {
+				alert('Network error during commit.');
+			});
+		},
+
+		/**
+		 * Update the Commit to Elementor button enabled/disabled state.
+		 *
+		 * Called from EFF.App.setPendingCommit().
+		 */
+		updateCommitBtn: function () {
+			if (!this._commitBtn) { return; }
+
+			var hasPending = EFF.state.hasPendingElementorCommit;
+			this._commitBtn.disabled = !hasPending;
+			this._commitBtn.setAttribute('aria-disabled', String(!hasPending));
 		},
 
 		// ------------------------------------------------------------------

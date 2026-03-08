@@ -407,6 +407,18 @@
 	margin-top:  var(--sp-1);
 }
 
+/* Phase 2 — Commit to Elementor button */
+.eff-panel-right__commit {
+	padding-top:    var(--sp-3);
+	padding-bottom: var(--sp-3);
+	border-bottom:  1px solid var(--eff-clr-border);
+}
+
+.eff-panel-right__commit .eff-btn {
+	width:           100%;
+	justify-content: center;
+}
+
 /* Counts section — anchored to bottom */
 .eff-panel-right__counts {
 	display:        flex;

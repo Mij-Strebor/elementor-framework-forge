@@ -159,6 +159,18 @@
 
 	/* Modal overlay */
 	--eff-overlay-bg: rgba(61, 47, 31, 0.45);
+
+	/* Phase 2 — Colors */
+	--eff-clr-bg-hover:   rgba(61, 47, 31, 0.04);  /* Row hover / expand panel background */
+	--eff-swatch-shadow:  inset 0 1px 3px rgba(61, 47, 31, 0.25);  /* Recessed swatch */
+	--eff-field-shadow:   inset 0 1px 3px rgba(61, 47, 31, 0.20);  /* Recessed value field */
+	/* Status dot colors */
+	--eff-status-synced:   #059669;
+	--eff-status-modified: #f59e0b;
+	--eff-status-conflict: #dc2626;
+	--eff-status-orphaned: #94a3b8;
+	--eff-status-new:      #3b82f6;
+	--eff-status-deleted:  #dc2626;
 }
 
 /* ==========================================================================
@@ -221,6 +233,18 @@
 
 	/* Modal overlay */
 	--eff-overlay-bg: rgba(0, 0, 0, 0.65);
+
+	/* Phase 2 — Colors */
+	--eff-clr-bg-hover:   rgba(240, 230, 216, 0.05);
+	--eff-swatch-shadow:  inset 0 1px 3px rgba(0, 0, 0, 0.40);
+	--eff-field-shadow:   inset 0 1px 3px rgba(0, 0, 0, 0.35);
+	/* Status dot colors — slightly brighter for dark bg */
+	--eff-status-synced:   #10b981;
+	--eff-status-modified: #f59e0b;
+	--eff-status-conflict: #ef4444;
+	--eff-status-orphaned: #6b7280;
+	--eff-status-new:      #60a5fa;
+	--eff-status-deleted:  #ef4444;
 }
 
 /* ==========================================================================

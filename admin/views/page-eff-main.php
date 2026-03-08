@@ -285,6 +285,18 @@ function eff_icon( string $name ): string {
 				</div>
 			</div><!-- .eff-panel-right__files -->
 
+			<!-- Phase 2 — Commit to Elementor -->
+			<div class="eff-panel-right__commit">
+				<button class="eff-btn eff-btn--secondary"
+				        id="eff-btn-commit"
+				        disabled
+				        aria-disabled="true"
+				        aria-label="<?php esc_attr_e( 'Commit EFF color values to Elementor kit', 'elementor-framework-forge' ); ?>"
+				        title="<?php esc_attr_e( 'Write EFF variable values back to the Elementor kit CSS', 'elementor-framework-forge' ); ?>">
+					<?php esc_html_e( 'Commit to Elementor', 'elementor-framework-forge' ); ?>
+				</button>
+			</div>
+
 			<!-- Counts -->
 			<div class="eff-panel-right__counts" aria-label="<?php esc_attr_e( 'Asset counts', 'elementor-framework-forge' ); ?>">
 

@@ -67,6 +67,14 @@ class EFF_Admin {
 			$this->asset_version( 'admin/css/eff-layout.css' )
 		);
 
+		// Colors CSS: Phase 2 — category blocks, color rows, expand panel.
+		wp_enqueue_style(
+			'eff-colors',
+			EFF_PLUGIN_URL . 'admin/css/eff-colors.css',
+			array( 'eff-layout' ),
+			$this->asset_version( 'admin/css/eff-colors.css' )
+		);
+
 		// JavaScript modules — loaded in dependency order, all in footer.
 		$js_modules = array(
 			'eff-theme'       => 'admin/js/eff-theme.js',
@@ -75,6 +83,7 @@ class EFF_Admin {
 			'eff-panel-right' => 'admin/js/eff-panel-right.js',
 			'eff-panel-top'   => 'admin/js/eff-panel-top.js',
 			'eff-edit-space'  => 'admin/js/eff-edit-space.js',
+			'eff-colors'      => 'admin/js/eff-colors.js',  // Phase 2 — must load before eff-app.
 			'eff-app'         => 'admin/js/eff-app.js',
 		);
 
