@@ -281,11 +281,11 @@
 						EFF.PanelLeft.refresh();
 						EFF.Modal.close();
 					} else {
-						alert('Error saving config: ' + (res.data.message || 'Unknown error.'));
+						EFF.Modal.open({ title: 'Save error', body: '<p>' + (res.data.message || 'Unknown error.') + '</p>' });
 					}
 				})
 				.catch(function () {
-					alert('Network error while saving config.');
+					EFF.Modal.open({ title: 'Save error', body: '<p>Network error while saving config.</p>' });
 				});
 		},
 
@@ -376,15 +376,18 @@
 
 						vars.forEach(function (v) {
 							if (!existingNames.includes(v.name)) {
+							var lc = (v.value || '').trim().toLowerCase();
+							var isColor = lc.charAt(0) === '#' || lc.indexOf('rgb(') === 0 || lc.indexOf('rgba(') === 0 || lc.indexOf('hsl(') === 0 || lc.indexOf('hsla(') === 0;
 								EFF.state.variables.push({
 									id:         '',
 									name:       v.name,
 									value:      v.value,
 									source:     'elementor-parsed',
-									type:       'unknown',
+									type:        isColor ? 'color' : 'unknown',
 									group:      'Variables',
-									subgroup:   '',
-									category:   '',
+									subgroup:    isColor ? 'Colors' : '',
+									category:    isColor ? 'Uncategorized' : '',
+								category_id: '',
 									modified:   false,
 									created_at: new Date().toISOString(),
 									updated_at: new Date().toISOString(),

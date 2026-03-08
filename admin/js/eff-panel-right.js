@@ -113,11 +113,11 @@
 						// Scan widget usage for loaded variables (async, non-blocking)
 						EFF.App.fetchUsageCounts();
 					} else {
-						alert('Load error: ' + (res.data.message || 'Unknown error.'));
+						EFF.Modal.open({ title: 'Load error', body: '<p>' + (res.data.message || 'Unknown error.') + '</p>' });
 					}
 				}.bind(this))
 				.catch(function () {
-					alert('Network error while loading file.');
+					EFF.Modal.open({ title: 'Load error', body: '<p>Network error while loading file.</p>' });
 				});
 		},
 
@@ -133,7 +133,7 @@
 			this._saveBtn.addEventListener('click', function () {
 				var filename = this._getFilename();
 				if (!filename) {
-					alert('Please enter a filename before saving.');
+					EFF.Modal.open({ title: 'Filename required', body: '<p>Please enter a filename before saving.</p>' });
 					if (this._filenameInput) {
 						this._filenameInput.focus();
 					}
@@ -169,11 +169,11 @@
 						}
 						EFF.App.setDirty(false);
 					} else {
-						alert('Save error: ' + (res.data.message || 'Unknown error.'));
+						EFF.Modal.open({ title: 'Save error', body: '<p>' + (res.data.message || 'Unknown error.') + '</p>' });
 					}
 				}.bind(this))
 				.catch(function () {
-					alert('Network error while saving file.');
+					EFF.Modal.open({ title: 'Save error', body: '<p>Network error while saving file.</p>' });
 				});
 		},
 
@@ -269,8 +269,7 @@
 		 */
 		_executeCommit: function () {
 			if (!EFF.state.currentFile) {
-				alert('No file loaded. Please load a file before committing.');
-				return;
+				EFF.Modal.open({ title: 'No file loaded', body: '<p>Please load a file before committing.</p>' }); return;
 			}
 
 			var variables = EFF.state.variables.map(function (v) {
@@ -298,17 +297,17 @@
 					if (skipped.length > 0) {
 						msg += ' ' + skipped.length + ' variable(s) not found in Elementor kit (check names).';
 					}
-					alert(msg);
+					EFF.Modal.open({ title: 'Commit complete', body: '<p>' + msg + '</p>' });
 
 					// Re-render current view to show updated status dots.
 					if (EFF.Colors && EFF.state.currentSelection && EFF.state.currentSelection.subgroup === 'Colors') {
 						EFF.Colors.loadColors(EFF.state.currentSelection);
 					}
 				} else {
-					alert('Commit error: ' + ((res.data && res.data.message) || 'Unknown error.'));
+					EFF.Modal.open({ title: 'Commit error', body: '<p>' + ((res.data && res.data.message) || 'Unknown error.') + '</p>' });
 				}
 			}).catch(function () {
-				alert('Network error during commit.');
+				EFF.Modal.open({ title: 'Commit error', body: '<p>Network error during commit.</p>' });
 			});
 		},
 

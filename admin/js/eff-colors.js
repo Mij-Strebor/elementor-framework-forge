@@ -149,6 +149,25 @@
 
 			var html = '<div class="eff-colors-view">';
 
+			// Compute initial toggle state: show expand-all if all are collapsed.
+			var _anyExpanded = false;
+			for (var _ti = 0; _ti < categories.length; _ti++) {
+				var _tc = categories[_ti];
+				var _tv = self._getVarsForCategory(_tc);
+				var _tcCollapsed;
+				if (_collapsedCategoryIds.hasOwnProperty(_tc.id)) {
+					_tcCollapsed = _collapsedCategoryIds[_tc.id];
+				} else if (_focusedCategoryId) {
+					_tcCollapsed = (_tc.id !== _focusedCategoryId);
+				} else {
+					_tcCollapsed = (_tv.length === 0);
+				}
+				if (!_tcCollapsed) { _anyExpanded = true; break; }
+			}
+			var _toggleState = _anyExpanded ? 'expanded' : 'collapsed';
+			var _toggleSVG   = _anyExpanded ? self._collapseAllSVG() : self._expandAllSVG();
+			var _toggleTitle = _anyExpanded ? 'Collapse all categories' : 'Expand all categories';
+
 			// ------- FILTER BAR -------
 			// Top row: search + back (close) + expand/collapse toggle.
 			// Bottom row: + Category button at left.
@@ -161,16 +180,15 @@
 				+ self._closeSVG()
 				+ '</button>'
 				+ '<button class="eff-icon-btn" id="eff-colors-collapse-toggle"'
-				+ ' title="Collapse all categories" aria-label="Collapse all categories"'
-				+ ' data-toggle-state="expanded">'
-				+ self._collapseAllSVG()
+				+ ' title="' + _toggleTitle + '" aria-label="' + _toggleTitle + '"'
+				+ ' data-toggle-state="' + _toggleState + '">'
+				+ _toggleSVG
 				+ '</button>'
 				+ '</div>'
 				+ '<div class="eff-filter-bar-bottom">'
 				+ '<button class="eff-icon-btn eff-colors-add-cat-btn" id="eff-colors-add-category"'
 				+ ' title="Add a new category" aria-label="Add category">'
 				+ self._plusCircleSVG()
-				+ ' <span>Category</span>'
 				+ '</button>'
 				+ '</div>'
 				+ '</div>'; // .eff-colors-filter-bar
@@ -1235,11 +1253,16 @@
 		_moveCategoryUp: function (catId) {
 			var self = this;
 
-			var cats = (EFF.state.config && EFF.state.config.categories)
+			var hasCats = EFF.state.config && EFF.state.config.categories && EFF.state.config.categories.length > 0;
+			var cats = hasCats
 				? EFF.state.config.categories.slice().sort(function (a, b) {
 					return (a.order || 0) - (b.order || 0);
 				})
-				: [];
+				: self._getDefaultCategories();
+			if (!hasCats) {
+				if (!EFF.state.config) { EFF.state.config = {}; }
+				EFF.state.config.categories = cats.map(function (c, i) { return { id: c.id, name: c.name, order: i, locked: !!c.locked }; });
+			}
 
 			var idx = -1;
 			for (var i = 0; i < cats.length; i++) {
@@ -1263,11 +1286,16 @@
 		_moveCategoryDown: function (catId) {
 			var self = this;
 
-			var cats = (EFF.state.config && EFF.state.config.categories)
+			var hasCats = EFF.state.config && EFF.state.config.categories && EFF.state.config.categories.length > 0;
+			var cats = hasCats
 				? EFF.state.config.categories.slice().sort(function (a, b) {
 					return (a.order || 0) - (b.order || 0);
 				})
-				: [];
+				: self._getDefaultCategories();
+			if (!hasCats) {
+				if (!EFF.state.config) { EFF.state.config = {}; }
+				EFF.state.config.categories = cats.map(function (c, i) { return { id: c.id, name: c.name, order: i, locked: !!c.locked }; });
+			}
 
 			var idx = -1;
 			for (var i = 0; i < cats.length; i++) {

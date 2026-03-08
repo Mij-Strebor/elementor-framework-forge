@@ -191,7 +191,9 @@
 				});
 				this._populateList('eff-nav-colors', sortedCats);
 			} else if (config.groups && config.groups.Variables) {
-				this._populateList('eff-nav-colors', config.groups.Variables.Colors || []);
+				var colorItems = (config.groups.Variables.Colors || []).slice();
+			if (colorItems.indexOf('Uncategorized') === -1) { colorItems.push('Uncategorized'); }
+			this._populateList('eff-nav-colors', colorItems);
 			} else {
 				this._populateList('eff-nav-colors', ['Branding', 'Backgrounds', 'Neutral', 'Status', 'Uncategorized']);
 			}
