@@ -426,7 +426,7 @@
 
 .eff-app .eff-field-label {
 	display:     block;
-	font-size:   var(--fs-xs);
+	font-size:   var(--fs-lg);
 	font-weight: var(--fw-semibold);
 	color:       var(--eff-clr-muted);
 	margin-bottom: var(--sp-1);

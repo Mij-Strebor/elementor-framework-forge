@@ -111,7 +111,20 @@
 			if (!content) { return; }
 
 			// Store the focused category from the nav click.
-			_focusedCategoryId = (selection && selection.categoryId) ? selection.categoryId : null;
+			if (selection && selection.categoryId) {
+				_focusedCategoryId = selection.categoryId;
+			} else if (selection && selection.category) {
+				var _cats = (EFF.state.config && EFF.state.config.categories) || [];
+				_focusedCategoryId = null;
+				for (var _ci = 0; _ci < _cats.length; _ci++) {
+					if (_cats[_ci].name === selection.category) {
+						_focusedCategoryId = _cats[_ci].id;
+						break;
+					}
+				}
+			} else {
+				_focusedCategoryId = null;
+			}
 
 			if (workspace) {
 				workspace.setAttribute('data-active', 'true');
@@ -169,16 +182,16 @@
 			var _toggleTitle = _anyExpanded ? 'Collapse all categories' : 'Expand all categories';
 
 			// ------- FILTER BAR -------
-			// Single row: search (narrow) | add-category | spacer | close | collapse-toggle
+			// Single row: add-category | spacer | search (flex-grow, right) | close | collapse-toggle
 			html += '<div class="eff-colors-filter-bar">'
 				+ '<div class="eff-filter-bar-top">'
-				+ '<input type="text" class="eff-colors-search" id="eff-colors-search"'
-				+ ' placeholder="Search\u2026" aria-label="Search color variables">'
 				+ '<button class="eff-icon-btn eff-colors-add-cat-btn" id="eff-colors-add-category"'
 				+ ' title="Add a new category" aria-label="Add category">'
 				+ self._plusCircleSVG()
 				+ '</button>'
 				+ '<span style="flex:1"></span>'
+				+ '<input type="text" class="eff-colors-search" id="eff-colors-search"'
+				+ ' placeholder="Search\u2026" aria-label="Search color variables">'
 				+ '<button class="eff-icon-btn eff-colors-back-btn" id="eff-colors-back"'
 				+ ' title="Close colors view" aria-label="Close colors view">'
 				+ self._closeSVG()
@@ -271,7 +284,8 @@
 				+ ' value="' + self._esc(cat.name) + '"'
 				+ ' data-original="' + self._esc(cat.name) + '"'
 				+ ' aria-label="Category name"'
-				+ (cat.locked ? ' readonly' : '') + '>'
+				+ ' readonly'
+				+ (cat.locked ? ' data-locked="true"' : '') + '>'
 
 				// Variable count badge.
 				+ '<span class="eff-category-count">' + count + '</span>'
@@ -368,6 +382,7 @@
 				+ '<input type="text" class="eff-color-name-input"'
 				+ ' value="' + this._esc(v.name) + '"'
 				+ ' data-original="' + this._esc(v.name) + '"'
+				+ ' readonly'
 				+ ' aria-label="Variable name"'
 				+ ' spellcheck="false">'
 				+ '</div>'
@@ -633,6 +648,33 @@
 				if (!genBtn) { return; }
 				var varId = genBtn.getAttribute('data-var-id');
 				if (varId !== null) { self._generateChildren(varId, genBtn.closest('.eff-expand-panel')); }
+			});
+
+			// ---- Name input: double-click to start editing ----
+			container.addEventListener('dblclick', function (e) {
+				var nameInput = e.target.closest('.eff-color-name-input');
+				if (!nameInput) { return; }
+				nameInput.removeAttribute('readonly');
+				nameInput.select();
+			});
+
+			// ---- Category name input: double-click to start editing ----
+			container.addEventListener('dblclick', function (e) {
+				var catInput = e.target.closest('.eff-category-name-input');
+				if (!catInput) { return; }
+				if (catInput.getAttribute('data-locked') === 'true') { return; }
+				catInput.removeAttribute('readonly');
+				catInput.select();
+			});
+
+			// ---- Restore readonly on focusout (both name input types) ----
+			container.addEventListener('focusout', function (e) {
+				var nameInput = e.target.closest('.eff-color-name-input');
+				if (nameInput) { nameInput.setAttribute('readonly', ''); return; }
+				var catInput = e.target.closest('.eff-category-name-input');
+				if (catInput && catInput.getAttribute('data-locked') !== 'true') {
+					catInput.setAttribute('readonly', '');
+				}
 			});
 
 			// ---- Category name input: save on blur and Enter ----

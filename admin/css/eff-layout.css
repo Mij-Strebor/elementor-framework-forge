@@ -180,7 +180,7 @@
 	border:      none;
 	cursor:      pointer;
 	color:       var(--eff-clr-primary);
-	font-size:   var(--fs-sm);
+	font-size:   var(--fs-lg);
 	font-weight: var(--fw-semibold);
 	text-align:  left;
 	transition:  background var(--eff-transition);
@@ -417,6 +417,13 @@
 .eff-panel-right__commit .eff-btn {
 	width:           100%;
 	justify-content: center;
+}
+
+/* Commit button: gold/accent when enabled */
+.eff-panel-right__commit .eff-btn:not(:disabled) {
+	background:   var(--eff-clr-accent);
+	border-color: var(--eff-clr-accent);
+	color:        var(--eff-clr-on-accent, #3d2f1f);
 }
 
 /* Counts section — anchored to bottom */

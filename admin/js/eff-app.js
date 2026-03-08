@@ -190,6 +190,8 @@
 		// 5. Top bar (buttons + tooltips — needs Modal to be ready)
 		if (EFF.PanelTop) {
 			EFF.PanelTop.init();
+			// Auto-sync from Elementor on page load.
+			EFF.PanelTop._syncFromElementor();
 		}
 
 		// 6. Load project config, then init left panel
