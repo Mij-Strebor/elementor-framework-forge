@@ -257,13 +257,14 @@
 	cursor:  not-allowed;
 }
 
-/* Collapse chevron — rotated when category is collapsed */
+/* Collapse chevron — down when collapsed, up when expanded */
 .eff-category-collapse-btn svg {
 	transition: transform var(--eff-transition-md);
+	transform: rotate(180deg); /* expanded: chevron points up */
 }
 
 .eff-category-block[data-collapsed="true"] .eff-category-collapse-btn svg {
-	transform: rotate(-90deg);
+	transform: rotate(0deg); /* collapsed: chevron points down */
 }
 
 /* Danger variant (delete button on hover) */

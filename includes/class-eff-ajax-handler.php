@@ -131,8 +131,14 @@ class EFF_Ajax_Handler {
 		$css_file = $parser->find_kit_css_file();
 
 		if ( ! $css_file ) {
+			$upload_dir  = wp_upload_dir();
+			$css_dir     = $upload_dir['basedir'] . '/elementor/css/';
+			$kit_id      = (int) get_option( 'elementor_active_kit', 0 );
+			$expected    = $kit_id ? $css_dir . 'post-' . $kit_id . '.css' : $css_dir . 'post-?.css';
 			wp_send_json_error( array(
-				'message' => __( 'Elementor kit CSS file not found. Regenerate CSS from Elementor → Tools → Regenerate Files.', 'elementor-framework-forge' ),
+				'message'       => __( 'Elementor kit CSS file not found.', 'elementor-framework-forge' ),
+				'hint'          => __( 'Open any page in Elementor editor and click Update/Save to regenerate kit CSS.', 'elementor-framework-forge' ),
+				'expected_file' => $expected,
 			) );
 		}
 

@@ -393,6 +393,7 @@
 						});
 
 						EFF.App.refreshCounts();
+						if (EFF.PanelLeft) { EFF.PanelLeft.refresh(); }
 						if (count > 0) {
 							EFF.App.setDirty(true);
 						}
@@ -408,7 +409,7 @@
 					} else {
 						EFF.Modal.open({
 							title: 'Sync failed',
-							body:  '<p>' + (res.data.message || 'Could not read Elementor CSS file.') + '</p>',
+							body:  (function () { var b = '<p>' + (res.data.message || 'Could not read Elementor CSS file.') + '</p>'; if (res.data.hint) { b += '<p class="eff-text-muted" style="font-size:12px">' + res.data.hint + '</p>'; } if (res.data.expected_file) { b += '<p class="eff-text-muted" style="font-size:12px">Expected: ' + res.data.expected_file + '</p>'; } return b; }()),
 						});
 					}
 				})

@@ -150,11 +150,10 @@
 			var html = '<div class="eff-colors-view">';
 
 			// ------- FILTER BAR -------
-			// Top row: COLORS title + search + back (close) + expand/collapse toggle.
+			// Top row: search + back (close) + expand/collapse toggle.
 			// Bottom row: + Category button at left.
 			html += '<div class="eff-colors-filter-bar">'
 				+ '<div class="eff-filter-bar-top">'
-				+ '<span class="eff-colors-view-title">COLORS</span>'
 				+ '<input type="text" class="eff-colors-search" id="eff-colors-search"'
 				+ ' placeholder="Search variables\u2026" aria-label="Search color variables">'
 				+ '<button class="eff-icon-btn eff-colors-back-btn" id="eff-colors-back"'
@@ -181,7 +180,7 @@
 				html += '<p class="eff-colors-empty">No categories found. Click "+ Category" to add one.</p>';
 			} else {
 				for (var i = 0; i < categories.length; i++) {
-					html += self._buildCategoryBlock(categories[i]);
+					html += self._buildCategoryBlock(categories[i], i, categories.length);
 				}
 			}
 
@@ -222,7 +221,7 @@
 		 * @param {{ id: string, name: string, locked: boolean, order: number }} cat
 		 * @returns {string}
 		 */
-		_buildCategoryBlock: function (cat) {
+		_buildCategoryBlock: function (cat, catIndex, catTotal) {
 			var self  = this;
 			var vars  = self._getVarsForCategory(cat);
 			var count = vars.length;
@@ -264,8 +263,8 @@
 
 				+ '<div class="eff-category-actions" role="toolbar" aria-label="Category actions">'
 				+ self._catBtn('duplicate', 'Duplicate category', self._duplicateSVG(), '')
-				+ self._catBtn('move-up',   'Move category up',   self._arrowUpSVG(),   '')
-				+ self._catBtn('move-down', 'Move category down', self._arrowDownSVG(), '')
+				+ self._catBtn('move-up',   'Move category up',   self._arrowUpSVG(),   '', catIndex === 0)
+				+ self._catBtn('move-down', 'Move category down', self._arrowDownSVG(), '', catIndex === catTotal - 1)
 				+ (cat.locked ? '' : self._catBtn('delete', 'Delete category', self._trashSVG(), 'eff-icon-btn--danger'))
 				+ self._catBtn('collapse', 'Collapse/expand category', self._chevronSVG(), 'eff-category-collapse-btn')
 				+ '</div>' // .eff-category-actions
@@ -319,11 +318,13 @@
 		 * @param {string} extraClass Additional CSS class
 		 * @returns {string}
 		 */
-		_catBtn: function (action, label, icon, extraClass) {
+		_catBtn: function (action, label, icon, extraClass, disabled) {
 			return '<button class="eff-icon-btn ' + (extraClass || '') + '"'
 				+ ' data-action="' + action + '"'
 				+ ' aria-label="' + this._esc(label) + '"'
-				+ ' title="' + this._esc(label) + '">'
+				+ ' title="' + this._esc(label) + '"'
+				+ (disabled ? ' disabled' : '')
+				+ '>'
 				+ icon
 				+ '</button>';
 		},
@@ -1234,11 +1235,6 @@
 		_moveCategoryUp: function (catId) {
 			var self = this;
 
-			if (!EFF.state.currentFile) {
-				self._noFileModal();
-				return;
-			}
-
 			var cats = (EFF.state.config && EFF.state.config.categories)
 				? EFF.state.config.categories.slice().sort(function (a, b) {
 					return (a.order || 0) - (b.order || 0);
@@ -1266,11 +1262,6 @@
 		 */
 		_moveCategoryDown: function (catId) {
 			var self = this;
-
-			if (!EFF.state.currentFile) {
-				self._noFileModal();
-				return;
-			}
 
 			var cats = (EFF.state.config && EFF.state.config.categories)
 				? EFF.state.config.categories.slice().sort(function (a, b) {
@@ -1363,15 +1354,30 @@
 		},
 
 		/**
-		 * Send eff_reorder_categories and update local state.
+		 * Reorder categories locally and persist via AJAX if a file is loaded.
 		 *
 		 * @param {string[]} orderedIds Category IDs in desired order.
 		 */
 		_ajaxReorderCategories: function (orderedIds) {
 			var self = this;
 
+			// Apply reorder to local state immediately (works without a file).
+			if (EFF.state.config && EFF.state.config.categories) {
+				var cats = EFF.state.config.categories;
+				for (var i = 0; i < orderedIds.length; i++) {
+					for (var j = 0; j < cats.length; j++) {
+						if (cats[j].id === orderedIds[i]) {
+							cats[j].order = i;
+							break;
+						}
+					}
+				}
+			}
+			self._rerenderView();
+
 			if (!EFF.state.currentFile) { return; }
 
+			if (EFF.App) { EFF.App.setDirty(true); }
 			EFF.App.ajax('eff_reorder_categories', {
 				filename:    EFF.state.currentFile,
 				ordered_ids: JSON.stringify(orderedIds),
@@ -1379,7 +1385,6 @@
 				if (res.success && res.data) {
 					if (!EFF.state.config) { EFF.state.config = {}; }
 					EFF.state.config.categories = res.data.categories;
-					if (EFF.App) { EFF.App.setDirty(true); }
 					self._rerenderView();
 				}
 			}).catch(function () {});
