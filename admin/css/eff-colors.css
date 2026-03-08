@@ -122,11 +122,13 @@
 
 .eff-category-block {
 	background:    var(--eff-bg-card);
-	border-bottom: 1px solid var(--eff-clr-border);
+	margin-bottom: 14px;
+	border-radius: var(--eff-border-radius-sm);
+	overflow:      hidden;
 }
 
 .eff-category-block:last-child {
-	border-bottom: none;
+	margin-bottom: 0;
 }
 
 /* ==========================================================================
@@ -136,8 +138,6 @@
 .eff-category-header {
 	display:        flex;
 	flex-direction: column;
-	border-bottom:  1px solid var(--eff-clr-border);
-	background:     var(--eff-bg-panel);
 }
 
 /* Top row: name + count left / action buttons right */
@@ -183,15 +183,6 @@
 
 .eff-category-name-input:not([readonly]) {
 	cursor: text;
-}
-
-.eff-category-name-input:not([readonly]):hover {
-	border-color: var(--eff-clr-border);
-}
-
-.eff-category-name-input:not([readonly]):focus {
-	border-color: var(--eff-clr-accent);
-	background:   var(--eff-bg-field);
 }
 
 /* Variable count badge (next to name) */
@@ -302,7 +293,6 @@
 	color:         var(--eff-clr-muted);
 	font-weight:   var(--fw-medium);
 	border-bottom: 1px solid var(--eff-clr-border);
-	background:    var(--eff-bg-panel);
 }
 
 .eff-color-list {
@@ -316,8 +306,7 @@
 	grid-template-columns: 8px 120px 1fr 180px 90px 32px;
 	gap:           var(--sp-2);
 	align-items:   center;
-	padding:       2px var(--sp-4);
-	min-height:    0;
+	padding:       8px var(--sp-4);
 	transition:    background-color var(--eff-transition);
 }
 
@@ -371,20 +360,10 @@
 	transition:    border-color var(--eff-transition), background-color var(--eff-transition);
 }
 
-/* Only show field styles when actively editing (readonly removed by dblclick) */
+/* Only show cursor change when actively editing (readonly removed by dblclick) */
 .eff-color-name-input:not([readonly]) {
 	cursor:      text;
 	user-select: auto;
-}
-
-.eff-color-name-input:not([readonly]):hover {
-	border-color: var(--eff-clr-border);
-}
-
-.eff-color-name-input:not([readonly]):focus {
-	border-color: var(--eff-clr-accent);
-	background:   var(--eff-bg-field);
-	box-shadow:   var(--eff-field-shadow);
 }
 
 /* Value field (fourth column ~180px) */
@@ -405,16 +384,22 @@
 	border-color: var(--eff-clr-accent);
 }
 
-/* Format selector (fifth column ~90px) */
+/* Format selector (fifth column ~90px) — ghost until hovered/focused */
 .eff-color-format-sel {
 	width:         100%;
 	padding:       2px var(--sp-1);
-	background:    var(--eff-bg-field);
-	border:        1px solid var(--eff-clr-border);
+	background:    transparent;
+	border:        1px solid transparent;
 	border-radius: var(--eff-border-radius-sm);
 	font-size:     var(--fs-xs);
 	color:         var(--eff-clr-muted);
 	cursor:        pointer;
+}
+
+.eff-color-format-sel:hover,
+.eff-color-format-sel:focus {
+	background:    var(--eff-bg-field);
+	border-color:  var(--eff-clr-border);
 }
 
 /* Expand chevron (sixth column — 32px) */

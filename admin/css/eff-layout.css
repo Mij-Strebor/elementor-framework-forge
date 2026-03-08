@@ -419,11 +419,16 @@
 	justify-content: center;
 }
 
-/* Commit button: gold/accent when enabled */
-.eff-panel-right__commit .eff-btn:not(:disabled) {
+/* Commit button: always gold/accent */
+.eff-panel-right__commit .eff-btn {
 	background:   var(--eff-clr-accent);
 	border-color: var(--eff-clr-accent);
 	color:        var(--eff-clr-on-accent, #3d2f1f);
+}
+
+.eff-panel-right__commit .eff-btn:disabled {
+	opacity: 0.5;
+	cursor:  not-allowed;
 }
 
 /* Counts section — anchored to bottom */

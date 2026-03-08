@@ -351,7 +351,8 @@
 		// SYNC FROM ELEMENTOR
 		// ------------------------------------------------------------------
 
-		_syncFromElementor: function () {
+		_syncFromElementor: function (options) {
+			var silent = options && options.silent;
 			var btn = document.getElementById('eff-btn-sync');
 			if (btn) {
 				btn.style.opacity = '0.5';
@@ -397,19 +398,21 @@
 
 						EFF.App.refreshCounts();
 						if (EFF.PanelLeft) { EFF.PanelLeft.refresh(); }
-						if (count > 0) {
+						if (count > 0 && !silent) {
 							EFF.App.setDirty(true);
 						}
 
 						// Scan widget usage for the synced variables (async, non-blocking)
 						EFF.App.fetchUsageCounts();
 
-						EFF.Modal.open({
-							title: 'Sync complete',
-							body:  '<p>' + message + '</p>'
-								+ (source ? '<p class="eff-text-muted" style="font-size:12px">Source: ' + source + '</p>' : ''),
-						});
-					} else {
+						if (!silent) {
+							EFF.Modal.open({
+								title: 'Sync complete',
+								body:  '<p>' + message + '</p>'
+									+ (source ? '<p class="eff-text-muted" style="font-size:12px">Source: ' + source + '</p>' : ''),
+							});
+						}
+					} else if (!silent) {
 						EFF.Modal.open({
 							title: 'Sync failed',
 							body:  (function () { var b = '<p>' + (res.data.message || 'Could not read Elementor CSS file.') + '</p>'; if (res.data.hint) { b += '<p class="eff-text-muted" style="font-size:12px">' + res.data.hint + '</p>'; } if (res.data.expected_file) { b += '<p class="eff-text-muted" style="font-size:12px">Expected: ' + res.data.expected_file + '</p>'; } return b; }()),
@@ -421,10 +424,12 @@
 						btn.style.opacity = '';
 						btn.disabled      = false;
 					}
-					EFF.Modal.open({
-						title: 'Sync error',
-						body:  '<p>Network error while syncing from Elementor.</p>',
-					});
+					if (!silent) {
+						EFF.Modal.open({
+							title: 'Sync error',
+							body:  '<p>Network error while syncing from Elementor.</p>',
+						});
+					}
 				});
 		},
 

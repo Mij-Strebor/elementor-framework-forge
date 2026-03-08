@@ -114,7 +114,7 @@
 			if (selection && selection.categoryId) {
 				_focusedCategoryId = selection.categoryId;
 			} else if (selection && selection.category) {
-				var _cats = (EFF.state.config && EFF.state.config.categories) || [];
+				var _cats = (EFF.state.config && EFF.state.config.categories) || this._getDefaultCategories();
 				_focusedCategoryId = null;
 				for (var _ci = 0; _ci < _cats.length; _ci++) {
 					if (_cats[_ci].name === selection.category) {
@@ -619,12 +619,12 @@
 					case 'delete':    if (catId) { self._deleteCategory(catId); } break;
 
 					case 'collapse':
-						if (block && catId) {
+						if (block) {
 							var isCollapsed = block.getAttribute('data-collapsed') === 'true';
 							var newCollapsed = !isCollapsed;
 							block.setAttribute('data-collapsed', String(newCollapsed));
 							// Track for re-renders.
-							_collapsedCategoryIds[catId] = newCollapsed;
+							if (catId) { _collapsedCategoryIds[catId] = newCollapsed; }
 						}
 						break;
 
@@ -650,22 +650,31 @@
 				if (varId !== null) { self._generateChildren(varId, genBtn.closest('.eff-expand-panel')); }
 			});
 
-			// ---- Name input: double-click to start editing ----
-			container.addEventListener('dblclick', function (e) {
-				var nameInput = e.target.closest('.eff-color-name-input');
-				if (!nameInput) { return; }
-				nameInput.removeAttribute('readonly');
-				nameInput.select();
+			// ---- Name / Category name input: double-click to start editing ----
+			// On single mousedown: prevent focus (keep input non-interactive).
+			// On double mousedown (< 300ms): activate editing and select text.
+			container.addEventListener('mousedown', function (e) {
+				var input = e.target.closest('.eff-color-name-input, .eff-category-name-input');
+				if (!input) { return; }
+				if (!input.hasAttribute('readonly')) { return; } // already editing
+				if (input.getAttribute('data-locked') === 'true') { return; }
+
+				var now  = Date.now();
+				var last = input._effLastMousedown || 0;
+				input._effLastMousedown = now;
+
+				if (now - last < 300) {
+					// Double-click: activate editing
+					input.removeAttribute('readonly');
+					// Allow focus to happen (don't prevent default),
+					// then select all text
+					setTimeout(function () { input.focus(); input.select(); }, 0);
+				} else {
+					// Single click: block focus on readonly input
+					e.preventDefault();
+				}
 			});
 
-			// ---- Category name input: double-click to start editing ----
-			container.addEventListener('dblclick', function (e) {
-				var catInput = e.target.closest('.eff-category-name-input');
-				if (!catInput) { return; }
-				if (catInput.getAttribute('data-locked') === 'true') { return; }
-				catInput.removeAttribute('readonly');
-				catInput.select();
-			});
 
 			// ---- Restore readonly on focusout (both name input types) ----
 			container.addEventListener('focusout', function (e) {
@@ -1011,29 +1020,33 @@
 			if (!v) { return; }
 
 			var converted = self._convertColor(v.value || '', newFormat);
-			var updateData = {
-				id:     v.id,
-				format: newFormat,
-			};
-			if (converted !== null) {
-				updateData.value = converted;
-			}
 
-			self._ajaxSaveColor(updateData, function (data) {
-				if (EFF.App) { EFF.App.setDirty(true); }
-				// Update the value input and swatch in the DOM if conversion occurred.
-				if (converted !== null) {
-					var content = document.getElementById('eff-edit-content');
-					if (content) {
-						var row = content.querySelector('.eff-color-row[data-var-id="' + self._esc(varId) + '"]');
-						if (row) {
-							var valInput = row.querySelector('.eff-color-value-input');
-							if (valInput) { valInput.value = converted; valInput.setAttribute('data-original', converted); }
-							var swatch = row.querySelector('.eff-color-swatch');
-							if (swatch) { swatch.style.background = converted; }
-						}
+			// Update state immediately (client-side, no file required).
+			v.format = newFormat;
+			if (converted !== null) { v.value = converted; }
+
+			// Update DOM immediately.
+			if (converted !== null) {
+				var content = document.getElementById('eff-edit-content');
+				if (content) {
+					var row = content.querySelector('.eff-color-row[data-var-id="' + self._esc(varId) + '"]');
+					if (row) {
+						var valInput = row.querySelector('.eff-color-value-input');
+						if (valInput) { valInput.value = converted; valInput.setAttribute('data-original', converted); }
+						var swatch = row.querySelector('.eff-color-swatch');
+						if (swatch) { swatch.style.background = converted; }
 					}
 				}
+			}
+
+			if (EFF.App) { EFF.App.setDirty(true); }
+
+			// Persist via AJAX if a file is loaded (include name for PHP fallback lookup).
+			var updateData = { id: v.id, name: v.name, format: newFormat };
+			if (converted !== null) { updateData.value = converted; }
+
+			self._ajaxSaveColor(updateData, function () {
+				if (EFF.App) { EFF.App.setPendingCommit(true); }
 			});
 		},
 
