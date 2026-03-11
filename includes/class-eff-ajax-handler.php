@@ -507,12 +507,12 @@ class EFF_Ajax_Handler {
 	/**
 	 * Generate tint/shade/transparency child variables for a parent color variable.
 	 *
-	 * POST params: filename, parent_id, tints (0|3|9), shades (0|3|9), transparencies (0–10)
+	 * POST params: filename, parent_id, tints (0–10), shades (0–10), transparencies (0|1)
 	 *
-	 * Child variable naming (spec §15.7):
-	 *   Tints:          --name-plus-NNN  (e.g., --primary-plus-300)
-	 *   Shades:         --name-minus-NNN (e.g., --primary-minus-300)
-	 *   Transparencies: --name-NNN       (e.g., --primary-050)
+	 * Child variable naming (spec §15.7 — EFF-Spec-Colors):
+	 *   Tints:          --name-{step*10}     (e.g., --primary-10, --primary-20)
+	 *   Shades:         --name-plus-{step*10} (e.g., --primary-plus-10; '+' encoded as '-plus-')
+	 *   Transparencies: --name{step*10}       (e.g., --primary10, --primary20; 9 fixed steps)
 	 */
 	public function ajax_eff_generate_children(): void {
 		$this->verify_request();
@@ -521,12 +521,11 @@ class EFF_Ajax_Handler {
 		$parent_id        = isset( $_POST['parent_id'] ) ? sanitize_text_field( wp_unslash( $_POST['parent_id'] ) ) : '';
 		$tint_steps       = isset( $_POST['tints'] ) ? (int) $_POST['tints'] : 0;
 		$shade_steps      = isset( $_POST['shades'] ) ? (int) $_POST['shades'] : 0;
-		$trans_steps      = isset( $_POST['transparencies'] ) ? (int) $_POST['transparencies'] : 0;
+		$trans_on         = isset( $_POST['transparencies'] ) && $_POST['transparencies'] !== '0' && $_POST['transparencies'] !== '';
 
-		// Validate step values.
-		$tint_steps  = in_array( $tint_steps, array( 0, 3, 9 ), true ) ? $tint_steps : 0;
-		$shade_steps = in_array( $shade_steps, array( 0, 3, 9 ), true ) ? $shade_steps : 0;
-		$trans_steps = max( 0, min( 10, $trans_steps ) );
+		// Validate step values: 0–10 for tints/shades.
+		$tint_steps  = max( 0, min( 10, $tint_steps ) );
+		$shade_steps = max( 0, min( 10, $shade_steps ) );
 
 		if ( empty( $parent_id ) ) {
 			wp_send_json_error( array( 'message' => __( 'Parent variable ID is required.', 'elementor-framework-forge' ) ) );
@@ -565,15 +564,15 @@ class EFF_Ajax_Handler {
 
 		$new_ids = array();
 
-		// Generate tints: +100 per step at 3-step = 300,600,900; at 9-step = 100…900.
+		// Generate tints: each step i of N shifts lightness equally toward 100% (white).
+		// Naming: --name-{i*10} e.g. --primary-10, --primary-20 … --primary-30 for N=3.
 		if ( $tint_steps > 0 ) {
-			$steps = ( $tint_steps === 3 ) ? array( 300, 600, 900 ) : range( 100, 900, 100 );
-			foreach ( $steps as $step ) {
-				// +900 = L + 45%, clamped to 95% max.
-				$tint_l   = min( 95.0, $l + ( $step / 900.0 ) * 45.0 );
+			for ( $i = 1; $i <= $tint_steps; $i++ ) {
+				$tint_l   = $l + ( 100.0 - $l ) * ( $i / $tint_steps );
+				$tint_l   = min( 98.0, $tint_l );
 				$tint_hex = $this->hsl_to_hex( $h, $s, $tint_l );
 				$new_ids[] = $store->add_variable( array(
-					'name'        => '--' . $base_name . '-plus-' . $step,
+					'name'        => '--' . $base_name . '-' . ( $i * 10 ),
 					'value'       => $tint_hex,
 					'type'        => 'color',
 					'subgroup'    => $parent['subgroup'] ?? 'Colors',
@@ -587,15 +586,15 @@ class EFF_Ajax_Handler {
 			}
 		}
 
-		// Generate shades: -100 per step at 3-step = 300,600,900; at 9-step = 100…900.
+		// Generate shades: each step i of N shifts lightness equally toward 0% (black).
+		// Naming: --name-plus-{i*10} ('+' encoded as '-plus-') e.g. --primary-plus-10.
 		if ( $shade_steps > 0 ) {
-			$steps = ( $shade_steps === 3 ) ? array( 300, 600, 900 ) : range( 100, 900, 100 );
-			foreach ( $steps as $step ) {
-				// -900 = L - 45%, clamped to 5% min.
-				$shade_l   = max( 5.0, $l - ( $step / 900.0 ) * 45.0 );
+			for ( $i = 1; $i <= $shade_steps; $i++ ) {
+				$shade_l   = $l - $l * ( $i / $shade_steps );
+				$shade_l   = max( 2.0, $shade_l );
 				$shade_hex = $this->hsl_to_hex( $h, $s, $shade_l );
 				$new_ids[] = $store->add_variable( array(
-					'name'        => '--' . $base_name . '-minus-' . $step,
+					'name'        => '--' . $base_name . '-plus-' . ( $i * 10 ),
 					'value'       => $shade_hex,
 					'type'        => 'color',
 					'subgroup'    => $parent['subgroup'] ?? 'Colors',
@@ -609,17 +608,15 @@ class EFF_Ajax_Handler {
 			}
 		}
 
-		// Generate transparencies: --name-NNN where NNN is the alpha step × 10.
-		// trans_steps specifies how many steps; NNN goes from 010 to 100 in even increments.
-		if ( $trans_steps > 0 ) {
-			$step_size = (int) floor( 100 / $trans_steps );
-			for ( $i = 1; $i <= $trans_steps; $i++ ) {
-				$alpha_pct  = min( 100, $i * $step_size );
+		// Generate transparencies: 9 fixed steps, alpha = step/10 (0.1 to 0.9).
+		// Naming: --name{step*10} (no separator) e.g. --primary10, --primary20 … --primary90.
+		if ( $trans_on ) {
+			for ( $i = 1; $i <= 9; $i++ ) {
+				$alpha_pct  = $i * 10;
 				$alpha_hex  = strtoupper( dechex( (int) round( $alpha_pct / 100 * 255 ) ) );
 				$alpha_hex  = str_pad( $alpha_hex, 2, '0', STR_PAD_LEFT );
-				$trans_name = sprintf( '%03d', $alpha_pct );
 				$new_ids[] = $store->add_variable( array(
-					'name'        => '--' . $base_name . '-' . $trans_name,
+					'name'        => '--' . $base_name . ( $i * 10 ),
 					'value'       => '#' . $hex . $alpha_hex,
 					'type'        => 'color',
 					'subgroup'    => $parent['subgroup'] ?? 'Colors',

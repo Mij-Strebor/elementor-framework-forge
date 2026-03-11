@@ -1,0 +1,60 @@
+{
+    "meta": {
+        "exported_at_utc": "2026-03-09T22:18:35+00:00",
+        "site_url": "http://localhost:10107",
+        "kit_id": 8,
+        "export_name": "Blueprint Variables and Classes",
+        "format": "wsq_el_v4_design_system_v2"
+    },
+    "data": {
+        "_elementor_global_variables": {
+            "data": {
+                "e-gv-8d618d5": {
+                    "type": "global-color-variable",
+                    "label": "Primary",
+                    "value": {
+                        "$$type": "color",
+                        "value": "#26cbad"
+                    },
+                    "order": 1
+                },
+                "e-gv-2b14f20": {
+                    "label": "Secondary",
+                    "value": {
+                        "$$type": "color",
+                        "value": "#00AA00"
+                    },
+                    "type": "global-color-variable",
+                    "order": 2,
+                    "created_at": "2026-03-08 01:20:12",
+                    "updated_at": "2026-03-08 01:20:12"
+                },
+                "e-gv-13c202f": {
+                    "label": "Text",
+                    "value": {
+                        "$$type": "color",
+                        "value": "#AA0000"
+                    },
+                    "type": "global-color-variable",
+                    "order": 3,
+                    "created_at": "2026-03-08 01:20:12",
+                    "updated_at": "2026-03-08 01:20:12"
+                },
+                "e-gv-a1bae72": {
+                    "label": "Accent",
+                    "value": {
+                        "$$type": "color",
+                        "value": "#0000AA"
+                    },
+                    "type": "global-color-variable",
+                    "order": 4,
+                    "created_at": "2026-03-08 01:20:12",
+                    "updated_at": "2026-03-08 01:20:12"
+                }
+            },
+            "watermark": 2,
+            "version": 2
+        },
+        "_elementor_global_classes": ""
+    }
+}

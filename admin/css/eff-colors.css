@@ -121,14 +121,48 @@
    ========================================================================== */
 
 .eff-category-block {
-	background:    var(--eff-bg-card);
+	position:      relative;
 	margin-bottom: 14px;
 	border-radius: 12px;
-	overflow:      hidden;
+	overflow:      visible; /* lets the add button sit on the curved edge */
 }
 
 .eff-category-block:last-child {
 	margin-bottom: 0;
+}
+
+/* Inner wrapper clips content to rounded corners; outer block stays overflow:visible */
+.eff-category-inner {
+	background:     var(--eff-bg-card);
+	border-radius:  12px;
+	overflow:       hidden;
+	padding-top:    16px;
+	padding-bottom: 16px;
+}
+
+/* Add-variable button: center of plus icon sits on the bottom-left curved edge */
+.eff-cat-add-btn-wrap {
+	position: absolute;
+	bottom:   -16px;
+	left:     -16px;
+	z-index:  2;
+}
+
+/* Add button: circular pill, clearly visible on the panel border */
+.eff-cat-add-btn-wrap .eff-icon-btn {
+	width:         32px;
+	height:        32px;
+	border-radius: 50%;
+	background:    var(--eff-bg-card);
+	color:         var(--eff-clr-accent);
+	box-shadow:    0 2px 8px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.14);
+	border:        2px solid var(--eff-clr-accent);
+}
+
+.eff-cat-add-btn-wrap .eff-icon-btn:hover {
+	background: var(--eff-clr-accent);
+	color:      var(--eff-clr-on-accent, #3d2f1f);
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28), 0 1px 4px rgba(0, 0, 0, 0.18);
 }
 
 /* ==========================================================================
@@ -171,23 +205,23 @@
 	padding:     0 var(--sp-4) var(--sp-1);
 }
 
-/* Category name — plain text, no surrounding box at any time */
+/* Category name span — looks like a heading, no box whatsoever */
 .eff-category-name-input {
-	padding:     2px var(--sp-2);
-	background:  transparent;
-	border:      none;
-	font-size:   24px;
-	font-weight: 700;
-	color:       var(--eff-clr-primary);
-	min-width:   0;
-	flex:        1;
-	cursor:      default;
-	outline:     none;
-	box-shadow:  none;
+	padding:       2px var(--sp-2);
+	font-size:     24px;
+	font-weight:   700;
+	color:         var(--eff-clr-primary);
+	cursor:        default;
+	outline:       none;
+	white-space:   nowrap;
+	overflow:      hidden;
+	text-overflow: ellipsis;
+	min-width:     0;
 }
 
-.eff-category-name-input:not([readonly]) {
-	cursor: text;
+.eff-category-name-input[contenteditable="true"] {
+	cursor:  text;
+	outline: none;
 }
 
 /* Variable count badge (next to name) */
@@ -220,13 +254,6 @@
 
 .eff-add-var-btn:hover {
 	color: var(--eff-clr-accent);
-}
-
-/* Add-variable footer row inside .eff-color-list */
-.eff-cat-list-footer {
-	display:     flex;
-	align-items: center;
-	padding:     var(--sp-1) var(--sp-4);
 }
 
 /* ==========================================================================
@@ -280,7 +307,8 @@
    6. COLLAPSE STATE — hide list and add-var button when collapsed
    ========================================================================== */
 
-.eff-category-block[data-collapsed="true"] .eff-color-list {
+.eff-category-block[data-collapsed="true"] .eff-color-list,
+.eff-category-block[data-collapsed="true"] .eff-cat-add-btn-wrap {
 	display: none;
 }
 
@@ -290,10 +318,10 @@
 
 .eff-color-list-header {
 	display:               grid;
-	grid-template-columns: 8px 1fr 1fr 1fr 1fr 32px;
-	gap:           var(--sp-2);
+	grid-template-columns: 8px 15% 1fr 28% 12% 56px 28px;
+	column-gap:    16px;
 	align-items:   center;
-	padding:       var(--sp-1) var(--sp-4);
+	padding:       var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-4);
 	font-size:     var(--fs-xs);
 	color:         var(--eff-clr-muted);
 	font-weight:   var(--fw-medium);
@@ -305,13 +333,13 @@
 	flex-direction: column;
 }
 
-/* Single color variable row — no dividers (category is a single entity) */
+/* Single color variable row */
 .eff-color-row {
 	display:               grid;
-	grid-template-columns: 8px 1fr 1fr 1fr 1fr 32px;
-	gap:           var(--sp-2);
-	align-items:   stretch;
-	padding:       8px var(--sp-4);
+	grid-template-columns: 8px 15% 1fr 28% 12% 56px 28px;
+	column-gap:    16px;
+	align-items:   center;
+	padding:       6px var(--sp-3) 6px var(--sp-4);
 	transition:    background-color var(--eff-transition);
 }
 
@@ -325,7 +353,6 @@
 	height:        8px;
 	border-radius: 50%;
 	flex-shrink:   0;
-	align-self:    center;
 	background:    var(--eff-clr-muted);
 }
 
@@ -333,130 +360,105 @@
 .eff-color-swatch {
 	display:       block;
 	width:         100%;
-	height:        36px;
+	height:        32px;
 	border-radius: var(--eff-border-radius-sm);
-	box-shadow:    0 0 6px rgba(0, 0, 0, 0.12);
+	box-shadow:    0 3px 8px rgba(100, 100, 100, 0.30), 0 1px 4px rgba(100, 100, 100, 0.16);
 	cursor:        pointer;
 	border:        1px solid rgba(0, 0, 0, 0.08);
-	transition:    transform var(--eff-transition);
 }
 
-.eff-color-swatch:hover {
-	transform: scale(1.1);
-}
-
-/* Name field (third column) */
-.eff-color-name-field {
-	display:       flex;
-	align-items:   center;
-	background:    var(--eff-bg-field);
-	border:        1px solid var(--eff-clr-border);
-	border-radius: var(--eff-border-radius-sm);
-	box-shadow:    inset 0 0 6px rgba(0, 0, 0, 0.10), 0 0 6px rgba(0, 0, 0, 0.12);
-	overflow:      hidden;
-	min-width:     0;
-}
-
-/* Name input — ghost style until double-clicked (readonly by default) */
+/* Variable name — bare input, ghost style, single-click to edit */
 .eff-color-name-input {
 	width:         100%;
 	padding:       2px var(--sp-2);
 	background:    transparent;
 	border:        none;
-	border-radius: var(--eff-border-radius-sm);
 	font-size:     var(--fs-xs);
 	color:         var(--eff-clr-secondary);
 	font-family:   monospace, monospace;
 	min-width:     0;
 	cursor:        default;
 	outline:       none;
-	transition:    border-color var(--eff-transition), background-color var(--eff-transition);
+	border-radius: var(--eff-border-radius-sm);
+	box-shadow:
+		inset 0 3px 6px rgba(100, 100, 100, 0.22),
+		inset 0 1px 3px rgba(100, 100, 100, 0.14),
+		0 3px 6px rgba(100, 100, 100, 0.18),
+		0 1px 3px rgba(100, 100, 100, 0.10);
 }
 
-/* Only show cursor change when actively editing (readonly removed by dblclick) */
 .eff-color-name-input:not([readonly]) {
 	cursor:      text;
 	user-select: auto;
 }
 
-/* Value field container (with inner + outer shadow) */
-.eff-color-value-field {
-	display:       flex;
-	align-items:   center;
-	background:    var(--eff-bg-field);
-	border:        1px solid var(--eff-clr-border);
-	border-radius: var(--eff-border-radius-sm);
-	box-shadow:    inset 0 0 6px rgba(0, 0, 0, 0.10), 0 0 6px rgba(0, 0, 0, 0.12);
-	overflow:      hidden;
-	min-width:     0;
+.eff-color-name-input:focus {
+	outline: none;
 }
 
-/* Value field (fourth column ~180px) */
+/* Color value — bare input, always editable */
 .eff-color-value-input {
 	width:         100%;
 	padding:       2px var(--sp-2);
 	background:    transparent;
 	border:        none;
-	border-radius: var(--eff-border-radius-sm);
 	font-size:     var(--fs-xs);
 	color:         var(--eff-clr-secondary);
 	font-family:   monospace, monospace;
 	min-width:     0;
+	outline:       none;
+	border-radius: var(--eff-border-radius-sm);
+	box-shadow:
+		inset 0 3px 6px rgba(100, 100, 100, 0.22),
+		inset 0 1px 3px rgba(100, 100, 100, 0.14),
+		0 3px 6px rgba(100, 100, 100, 0.18),
+		0 1px 3px rgba(100, 100, 100, 0.10);
 }
 
 .eff-color-value-input:focus {
-	outline: none; /* focus shown on wrapper via :focus-within */
+	outline: none;
 }
 
-/* Format field container (with inner + outer shadow) */
-.eff-color-format-field {
-	display:       flex;
-	align-items:   center;
-	background:    var(--eff-bg-field);
-	border:        1px solid var(--eff-clr-border);
-	border-radius: var(--eff-border-radius-sm);
-	box-shadow:    inset 0 0 6px rgba(0, 0, 0, 0.10), 0 0 6px rgba(0, 0, 0, 0.12);
-	overflow:      hidden;
-	min-width:     0;
-}
-
-/* Format selector (fifth column ~90px) — ghost until hovered/focused */
+/* Format selector — same shadow/border treatment as name + value inputs */
 .eff-color-format-sel {
-	width:         100%;
-	padding:       2px var(--sp-1);
-	background:    transparent;
-	border:        none;
-	border-radius: var(--eff-border-radius-sm);
-	font-size:     var(--fs-xs);
-	color:         var(--eff-clr-muted);
-	cursor:        pointer;
+	width:              100%;
+	padding:            2px 20px 2px var(--sp-1);
+	background-color:   transparent;
+	background-image:   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+	background-repeat:  no-repeat;
+	background-position: right 6px center;
+	background-size:    10px 6px;
+	border:             1px solid rgba(100, 100, 100, 0.28);
+	font-size:          var(--fs-xs);
+	color:              var(--eff-clr-muted);
+	cursor:             pointer;
+	outline:            none;
+	border-radius:      var(--eff-border-radius-sm);
+	-webkit-appearance: none;
+	appearance:         none;
+	box-shadow:
+		inset 0 3px 6px rgba(100, 100, 100, 0.22),
+		inset 0 1px 3px rgba(100, 100, 100, 0.14),
+		0 3px 6px rgba(100, 100, 100, 0.18),
+		0 1px 3px rgba(100, 100, 100, 0.10);
 }
 
-.eff-color-format-sel:hover,
 .eff-color-format-sel:focus {
-	background:    var(--eff-bg-field);
-	border-color:  var(--eff-clr-border);
+	outline: none;
 }
 
-/* Expand chevron (sixth column — 32px) */
+/* Row move buttons (sixth column — 56px: two 28px icon buttons) */
+.eff-row-move-btns {
+	display:     flex;
+	align-items: center;
+	gap:         2px;
+}
+
+/* Expand chevron (seventh column — 28px, matches category collapse btn) */
 .eff-color-expand-btn {
-	width:      32px;
-	height:     32px;
-	padding:    0;
-	align-self: center;
-}
-
-/* Focus-within: highlight field containers when their input/select is focused */
-.eff-color-name-field:focus-within {
-	border-color: var(--eff-clr-accent);
-}
-
-.eff-color-value-field:focus-within {
-	border-color: var(--eff-clr-accent);
-}
-
-.eff-color-format-field:focus-within {
-	border-color: var(--eff-clr-accent);
+	width:   28px;
+	height:  28px;
+	padding: 0;
 }
 
 .eff-color-expand-btn svg {
@@ -468,181 +470,312 @@
 }
 
 /* ==========================================================================
-   8. EXPAND PANEL (inline color editor below a row)
+   8. EXPAND MODAL (floating card — triggered by row chevron/swatch click)
    ========================================================================== */
 
-.eff-expand-panel {
-	display:        flex;
-	flex-direction: row;
-	gap:            0;
-	background:     var(--eff-bg-panel);
-	border-top:     1px solid var(--eff-clr-border);
-	border-bottom:  1px solid var(--eff-clr-border);
-	overflow:       hidden;
+/* Full-viewport click-catcher */
+.eff-expand-backdrop {
+	position:        fixed;
+	inset:           0;
+	background:      rgba(0, 0, 0, 0.50);
+	backdrop-filter: blur(2px);
+	z-index:         990;
+	cursor:          default;
 }
 
-/* Each zone is a flex column */
-.eff-expand-zone {
+/*
+ * Modal card.
+ * transform-origin is set by JS to the clicked row's centre so the scale
+ * animation makes the card grow OUT of the row (open) and shrink BACK into
+ * it (close).
+ *
+ * Closed (no .is-open): scale(0.04) — a near-point at the row
+ * Open   (.is-open):    scale(1.0)  — full size, centred in viewport
+ *
+ * Two separate transition sets:
+ *   default  = closing  (fast ease-in, snaps back to row)
+ *   .is-open = opening  (slow spring, flows out of the row)
+ */
+.eff-expand-modal {
+	position:      fixed;
+	z-index:       991;
+	left:          50%;
+	top:           50%;
+	width:         min(92vw, 860px);
+	transform:     translate(-50%, -50%) scale(0.04);
+	opacity:       0;
+	/* Always solid white — no alpha, regardless of page theme */
+	background:    #ffffff;
+	color:         #1a1a1a;
+	/* Force light-mode tokens inside the modal */
+	--eff-bg-card:       #ffffff;
+	--eff-bg-panel:      #f5f5f5;
+	--eff-bg-field:      #f0f0f1;
+	--eff-clr-primary:   #1a1a1a;
+	--eff-clr-secondary: #374151;
+	--eff-clr-muted:     #6b7280;
+	--eff-clr-border:    #e5e7eb;
+	border-radius: 16px;
+	box-shadow:    0 32px 80px rgba(0, 0, 0, 0.40), 0 8px 24px rgba(0, 0, 0, 0.20);
+	overflow:      hidden;
+	/* Closing transition */
+	transition:    opacity 0.28s ease-in,
+	               transform 0.38s cubic-bezier(0.55, 0, 1, 0.45);
+}
+
+.eff-expand-modal.is-open {
+	transform:  translate(-50%, -50%) scale(1);
+	opacity:    1;
+	/* Opening transition — slow spring, flows out of the row */
+	transition: opacity 0.28s ease-out,
+	            transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/*
+ * Modal header — identical grid to .eff-color-row so every column aligns.
+ * Columns: status-dot | swatch | name | value | format | (empty) | close-btn
+ */
+.eff-modal-header {
+	display:               grid;
+	grid-template-columns: 8px 15% 1fr 28% 12% 56px 28px;
+	column-gap:            16px;
+	align-items:           center;
+	padding:               var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+	border-bottom:         2px solid var(--eff-clr-border);
+	background:            var(--eff-bg-panel);
+	min-height:            52px;
+}
+
+/* Close button (rightmost column in header) */
+.eff-modal-close-btn {
+	display:         inline-flex;
+	align-items:     center;
+	justify-content: center;
+	width:           28px;
+	height:          28px;
+	background:      transparent;
+	border:          none;
+	border-radius:   var(--eff-border-radius-sm);
+	color:           var(--eff-clr-muted);
+	cursor:          pointer;
+	font-size:       20px;
+	line-height:     1;
+	transition:      background-color var(--eff-transition), color var(--eff-transition);
+}
+
+.eff-modal-close-btn:hover {
+	background: var(--eff-icon-btn-hover-bg);
+	color:      var(--eff-clr-primary);
+}
+
+/*
+ * Toggle track override — inside the always-light expand modal the default
+ * track colour (--eff-clr-border: #e5e7eb) is invisible on white.
+ */
+.eff-expand-modal .eff-toggle-track {
+	background: #9ca3af;
+}
+
+/* Modal body — stacked tints / shades / transparencies rows */
+.eff-modal-body {
 	display:        flex;
 	flex-direction: column;
-	gap:            var(--sp-2);
-	padding:        var(--sp-3) var(--sp-4);
-	flex:           1;
+	padding:        var(--sp-1) 0;
 }
 
-.eff-expand-zone + .eff-expand-zone {
-	border-left: 1px solid var(--eff-clr-border);
+/* Each generator row: label | fixed-width control | palette strip */
+.eff-modal-gen-row {
+	display:       flex;
+	align-items:   center;
+	gap:           var(--sp-4);
+	padding:       var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-5);
+	border-bottom: 1px solid var(--eff-clr-border);
 }
 
-.eff-expand-zone-label {
+.eff-modal-gen-row:last-child {
+	border-bottom: none;
+}
+
+.eff-modal-gen-label {
+	min-width:      130px;
+	flex-shrink:    0;
+	white-space:    nowrap;
 	font-size:      var(--fs-xs);
 	font-weight:    var(--fw-semibold);
 	color:          var(--eff-clr-muted);
 	text-transform: uppercase;
-	letter-spacing: 0.05em;
-	margin-bottom:  var(--sp-1);
+	letter-spacing: 0.06em;
+	user-select:    none;
 }
 
-/* Zone 1 — Generator controls */
-.eff-expand-zone--generator {
-	flex:      0 0 260px;
-	max-width: 260px;
+/*
+ * Fixed-width control wrapper — ensures all three palette strips start at
+ * the same horizontal position whether the control is a number input or toggle.
+ */
+.eff-modal-gen-ctrl {
+	width:       72px;
+	flex-shrink: 0;
+	display:     flex;
+	align-items: center;
 }
 
-.eff-gen-row {
+.eff-modal-gen-ctrl .eff-gen-num {
+	width: 100%;
+}
+
+/* Toggle inside the ctrl cell — just the track, no text label */
+.eff-modal-gen-ctrl .eff-toggle-label {
+	gap: 0;
+}
+
+/* Horizontal palette strip — fills remaining row width */
+.eff-palette-strip {
+	display:       flex;
+	gap:           2px;
+	height:        36px;
+	border-radius: var(--eff-border-radius-sm);
+	overflow:      hidden;
+	flex:          1;
+	min-width:     0;
+}
+
+/* Hide strip when no swatches (steps = 0 or transparencies off) */
+.eff-palette-strip:empty {
+	display: none;
+}
+
+.eff-palette-swatch {
+	flex:     1;
+	height:   100%;
+	border:   none;
+	display:  block;
+	cursor:   default;
+	min-width: 0;
+}
+
+/* Empty-state placeholder when steps = 0 */
+.eff-palette-empty {
+	font-size:   var(--fs-xs);
+	color:       var(--eff-clr-muted);
+	line-height: 36px;
+	flex:        1;
+}
+
+/* Number input (shared — gen rows in modal) */
+.eff-gen-num {
+	width:         64px;
+	padding:       3px var(--sp-1);
+	background:    var(--eff-bg-field);
+	border:        1px solid var(--eff-clr-border);
+	border-radius: var(--eff-border-radius-sm);
+	font-size:     var(--fs-xs);
+	color:         var(--eff-clr-secondary);
+	text-align:    center;
+}
+
+.eff-gen-num:focus {
+	outline:        2px solid var(--eff-clr-accent);
+	outline-offset: -2px;
+}
+
+/* On/Off toggle */
+.eff-toggle-label {
 	display:     flex;
 	align-items: center;
 	gap:         var(--sp-2);
+	cursor:      pointer;
+	user-select: none;
 }
 
-.eff-gen-row label {
-	flex:      0 0 120px;
+.eff-toggle-label input[type="checkbox"] {
+	position: absolute;
+	opacity:  0;
+	width:    0;
+	height:   0;
+}
+
+.eff-toggle-track {
+	display:       inline-block;
+	width:         36px;
+	height:        20px;
+	background:    var(--eff-clr-border);
+	border-radius: 10px;
+	position:      relative;
+	transition:    background-color var(--eff-transition);
+	flex-shrink:   0;
+}
+
+.eff-toggle-track::after {
+	content:       '';
+	display:       block;
+	width:         14px;
+	height:        14px;
+	background:    #fff;
+	border-radius: 50%;
+	position:      absolute;
+	top:           3px;
+	left:          3px;
+	transition:    left var(--eff-transition);
+	box-shadow:    0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.eff-toggle-label input[type="checkbox"]:checked + .eff-toggle-track {
+	background: var(--eff-clr-accent);
+}
+
+.eff-toggle-label input[type="checkbox"]:checked + .eff-toggle-track::after {
+	left: 19px;
+}
+
+.eff-toggle-state-label {
 	font-size: var(--fs-xs);
 	color:     var(--eff-clr-secondary);
 }
 
-.eff-gen-row select {
-	flex:          1;
-	padding:       2px var(--sp-1);
-	background:    var(--eff-bg-field);
-	border:        1px solid var(--eff-clr-border);
-	border-radius: var(--eff-border-radius-sm);
-	font-size:     var(--fs-xs);
-	color:         var(--eff-clr-secondary);
+/* Move-to-category select (inside expand modal gen row) */
+.eff-cat-move-select {
+	width:              100%;
+	padding:            3px 20px 3px var(--sp-2);
+	background-color:   var(--eff-bg-field);
+	background-image:   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+	background-repeat:  no-repeat;
+	background-position: right 6px center;
+	background-size:    10px 6px;
+	border:             1px solid var(--eff-clr-border);
+	border-radius:      var(--eff-border-radius-sm);
+	font-size:          var(--fs-xs);
+	color:              var(--eff-clr-secondary);
+	-webkit-appearance: none;
+	appearance:         none;
+	cursor:             pointer;
 }
 
-.eff-gen-generate-btn {
-	align-self: flex-end;
-	padding:    var(--sp-1) var(--sp-3);
+.eff-cat-move-select:focus {
+	outline:        2px solid var(--eff-clr-accent);
+	outline-offset: -2px;
 }
 
-/* Zone 2 — Preview bars */
-.eff-expand-zone--preview {
-	flex:      1;
-	min-width: 0;
+/* Inline field error — floating tooltip (appended to body by JS) */
+.eff-inline-error {
+	position:    fixed;
+	z-index:     9999;
+	padding:     4px 8px;
+	background:  #fee2e2;
+	color:       #dc2626;
+	font-size:   11px;
+	border:      1px solid #fca5a5;
+	border-radius: 4px;
+	box-shadow:  0 2px 8px rgba(0, 0, 0, 0.20);
+	max-width:   280px;
+	word-wrap:   break-word;
+	line-height: 1.4;
+	pointer-events: none;
+	animation:   eff-error-in 0.15s ease;
 }
 
-.eff-swatch-preview-row {
-	display:     flex;
-	flex-wrap:   wrap;
-	gap:         var(--sp-1);
-	align-items: flex-end;
-}
-
-.eff-preview-swatch {
-	display:        flex;
-	flex-direction: column;
-	align-items:    center;
-	gap:            2px;
-}
-
-.eff-preview-swatch-color {
-	width:         28px;
-	height:        28px;
-	border-radius: var(--eff-border-radius-sm);
-	box-shadow:    var(--eff-swatch-shadow);
-	border:        1px solid rgba(0, 0, 0, 0.08);
-}
-
-.eff-preview-swatch-label {
-	font-size:     10px;
-	color:         var(--eff-clr-muted);
-	text-align:    center;
-	max-width:     36px;
-	overflow:      hidden;
-	text-overflow: ellipsis;
-	white-space:   nowrap;
-}
-
-/* Zone 3 — Color picker */
-.eff-expand-zone--picker {
-	flex:      0 0 220px;
-	max-width: 220px;
-}
-
-.eff-picker-row {
-	display:     flex;
-	align-items: center;
-	gap:         var(--sp-2);
-}
-
-/* Native <input type="color"> */
-.eff-native-picker {
-	width:         48px;
-	height:        48px;
-	padding:       2px;
-	border:        1px solid var(--eff-clr-border);
-	border-radius: var(--eff-border-radius-sm);
-	cursor:        pointer;
-	background:    none;
-	flex-shrink:   0;
-}
-
-.eff-native-picker::-webkit-color-swatch-wrapper {
-	padding: 0;
-}
-
-.eff-native-picker::-webkit-color-swatch {
-	border:        none;
-	border-radius: 3px;
-}
-
-.eff-hex-input {
-	flex:          1;
-	padding:       4px var(--sp-2);
-	background:    var(--eff-bg-field);
-	border:        1px solid var(--eff-clr-border);
-	border-radius: var(--eff-border-radius-sm);
-	font-size:     var(--fs-xs);
-	font-family:   monospace, monospace;
-	color:         var(--eff-clr-secondary);
-	box-shadow:    var(--eff-field-shadow);
-	min-width:     0;
-}
-
-.eff-alpha-row {
-	display:     flex;
-	align-items: center;
-	gap:         var(--sp-2);
-}
-
-.eff-alpha-row label {
-	font-size:   var(--fs-xs);
-	color:       var(--eff-clr-muted);
-	flex-shrink: 0;
-}
-
-.eff-alpha-slider {
-	flex:         1;
-	accent-color: var(--eff-clr-accent);
-	cursor:       pointer;
-}
-
-.eff-alpha-value {
-	font-size:  var(--fs-xs);
-	color:      var(--eff-clr-muted);
-	min-width:  32px;
-	text-align: right;
+@keyframes eff-error-in {
+	from { opacity: 0; transform: translateY(-4px); }
+	to   { opacity: 1; transform: translateY(0); }
 }
 
 /* ==========================================================================
@@ -656,7 +789,20 @@
 }
 
 /* ==========================================================================
-   10. SECONDARY / DANGER BUTTON VARIANTS
+   10. RESPONSIVE — reduce column gap on narrow screens
+   ========================================================================== */
+
+@media (max-width: 600px) {
+	.eff-color-list-header,
+	.eff-color-row {
+		grid-template-columns: 8px 12% 1fr 24% 0 40px 28px;
+		column-gap: 6px;
+		padding-right: var(--sp-2);
+	}
+}
+
+/* ==========================================================================
+   11. SECONDARY / DANGER BUTTON VARIANTS
    ========================================================================== */
 
 .eff-app .eff-btn--secondary {
@@ -688,7 +834,7 @@
 	color:      #fff;
 }
 
-/* Commit button: force gold/accent — overrides .eff-btn--secondary transparent bg */
+/* Commit button: force gold/accent — overrides .eff-btn--secondary */
 .eff-app .eff-panel-right__commit .eff-btn {
 	background:   var(--eff-clr-accent);
 	border-color: var(--eff-clr-accent);
