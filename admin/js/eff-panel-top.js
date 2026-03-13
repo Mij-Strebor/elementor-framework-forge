@@ -212,8 +212,18 @@
 			var groups  = (config && config.groups && config.groups.Variables) || {};
 			var colors  = (groups.Colors  || ['Branding', 'Backgrounds', 'Neutral', 'Status']).join('\n');
 			var numbers = (groups.Numbers || ['Spacing', 'Gaps', 'Grids', 'Radius']).join('\n');
+			var projName = EFF.state.projectName || '';
 
-			var body = '<p style="font-size:13px;color:var(--eff-clr-muted);margin-bottom:16px">'
+			var body = '<div style="margin-bottom:20px">'
+				+ '<label class="eff-field-label" for="eff-proj-name">Project name</label>'
+				+ '<input type="text" class="eff-field-input" id="eff-proj-name"'
+				+ ' placeholder="e.g., My Brand" autocomplete="off" spellcheck="false"'
+				+ ' value="' + this._escapeHtml(projName) + '" style="width:100%">'
+				+ '<p style="font-size:12px;color:var(--eff-clr-muted);margin-top:4px">'
+				+ 'Used as the project file name: <em>project-name.eff.json</em></p>'
+				+ '</div>'
+
+				+ '<p style="font-size:13px;color:var(--eff-clr-muted);margin-bottom:16px">'
 				+ 'Edit subgroups below. One name per line. At least one subgroup required per section.</p>'
 
 				+ '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
@@ -253,18 +263,21 @@
 		 * @private
 		 */
 		_saveProjectConfig: function () {
-			var colorsEl  = document.getElementById('eff-proj-colors');
-			var numbersEl = document.getElementById('eff-proj-numbers');
+			var colorsEl   = document.getElementById('eff-proj-colors');
+			var numbersEl  = document.getElementById('eff-proj-numbers');
+			var projNameEl = document.getElementById('eff-proj-name');
 
-			var colors  = colorsEl  ? this._parseLines(colorsEl.value)  : [];
-			var numbers = numbersEl ? this._parseLines(numbersEl.value) : [];
+			var colors   = colorsEl   ? this._parseLines(colorsEl.value)           : [];
+			var numbers  = numbersEl  ? this._parseLines(numbersEl.value)           : [];
+			var projName = projNameEl ? projNameEl.value.trim()                     : '';
 
 			// Enforce minimum one subgroup per section
 			if (!colors.length)  { colors  = ['Colors']; }
 			if (!numbers.length) { numbers = ['Numbers']; }
 
 			var config = {
-				version: '1.0',
+				version:     '1.0',
+				projectName: projName,
 				groups: {
 					Variables: {
 						Colors:  colors,
@@ -277,7 +290,17 @@
 			EFF.App.ajax('eff_save_config', { config: JSON.stringify(config) })
 				.then(function (res) {
 					if (res.success) {
-						EFF.state.config = config;
+						EFF.state.config      = config;
+						EFF.state.projectName = projName;
+						// Reflect project name in the right panel filename input (always).
+						if (projName && EFF.PanelRight && EFF.PanelRight._filenameInput) {
+							var slugged  = projName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+							EFF.PanelRight._filenameInput.value = slugged + '.eff.json';
+							// Update currentFile if no real file is loaded yet.
+							if (!EFF.state.currentFile || EFF.state.currentFile === 'eff-temp.eff.json') {
+								EFF.state.currentFile = slugged + '.eff.json';
+							}
+						}
 						EFF.PanelLeft.refresh();
 						EFF.Modal.close();
 					} else {

@@ -27,22 +27,39 @@
 		/** @type {HTMLElement|null} */
 		_saveChangesBtn: null,
 		/** @type {HTMLElement|null} */
+		_unsyncedIndicator: null,
+		/** @type {HTMLElement|null} */
 		_commitBtn: null,
 
 		/**
 		 * Initialize the right panel.
 		 */
 		init: function () {
-			this._filenameInput  = document.getElementById('eff-filename');
-			this._loadBtn        = document.getElementById('eff-btn-load');
-			this._saveBtn        = document.getElementById('eff-btn-save');
-			this._saveChangesBtn = document.getElementById('eff-btn-save-changes');
-			this._commitBtn      = document.getElementById('eff-btn-commit');
+			this._filenameInput     = document.getElementById('eff-filename');
+			this._loadBtn           = document.getElementById('eff-btn-load');
+			this._saveBtn           = document.getElementById('eff-btn-save');
+			this._saveChangesBtn    = document.getElementById('eff-btn-save-changes');
+			this._unsyncedIndicator = document.getElementById('eff-unsynced-indicator');
+			this._commitBtn         = document.getElementById('eff-btn-commit');
 
 			this._bindLoadBtn();
 			this._bindSaveBtn();
 			this._bindSaveChangesBtn();
 			this._bindCommitBtn();
+			this._bindFilenameInput();
+		},
+
+		// ------------------------------------------------------------------
+		// FILENAME INPUT — keep EFF.state.projectName in sync
+		// ------------------------------------------------------------------
+
+		_bindFilenameInput: function () {
+			if (!this._filenameInput) { return; }
+			this._filenameInput.addEventListener('input', function () {
+				var val = this._filenameInput.value.trim();
+				// Strip .eff.json to get the human-readable project name.
+				EFF.state.projectName = val.replace(/\.eff\.json$/i, '');
+			}.bind(this));
 		},
 
 		// ------------------------------------------------------------------
@@ -312,16 +329,20 @@
 		},
 
 		/**
-		 * Update the Commit to Elementor button enabled/disabled state.
+		 * Show or hide the "Unsynced changes" indicator.
 		 *
-		 * Called from EFF.App.setPendingCommit().
+		 * Called from EFF.App.setPendingCommit(). When there are pending commits
+		 * the indicator is shown; when cleared it is hidden.
 		 */
 		updateCommitBtn: function () {
-			if (!this._commitBtn) { return; }
+			if (!this._unsyncedIndicator) { return; }
 
 			var hasPending = EFF.state.hasPendingElementorCommit;
-			this._commitBtn.disabled = !hasPending;
-			this._commitBtn.setAttribute('aria-disabled', String(!hasPending));
+			if (hasPending) {
+				this._unsyncedIndicator.removeAttribute('hidden');
+			} else {
+				this._unsyncedIndicator.setAttribute('hidden', '');
+			}
 		},
 
 		// ------------------------------------------------------------------

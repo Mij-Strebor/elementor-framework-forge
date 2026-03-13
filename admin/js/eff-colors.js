@@ -53,6 +53,15 @@
 	 */
 	var _collapsedCategoryIds = {};
 
+	var _drag = {
+		active:      false,
+		varId:       null,
+		ghost:       null,
+		indicator:   null,
+		startY:      0,
+		scrollTimer: null
+	};
+
 	/**
 	 * The category ID to scroll to and expand after rendering, or null.
 	 * Set by loadColors() from selection.categoryId (nav item click).
@@ -124,6 +133,11 @@
 				}
 			} else {
 				_focusedCategoryId = null;
+			}
+			// When navigating via left panel, reset manual collapse state
+			// so the focused category always expands (overrides any prior user toggle).
+			if (_focusedCategoryId) {
+				_collapsedCategoryIds = {};
 			}
 
 			if (workspace) {
@@ -327,13 +341,13 @@
 
 			html += '</div>'; // .eff-category-inner
 
-			// Add-variable button: positioned absolutely on the bottom-left curved edge.
+			// Add-variable button: absolutely positioned circle on bottom-left edge of panel.
 			html += '<div class="eff-cat-add-btn-wrap">'
 				+ '<button class="eff-icon-btn eff-add-var-btn" data-action="add-var"'
 				+ ' data-cat-id="' + self._esc(cat.id) + '"'
-				+ ' aria-label="Add variable to ' + self._esc(cat.name) + '"'
-				+ ' title="Add variable">'
-				+ self._plusCircleSVG()
+				+ ' aria-label="Add Color to ' + self._esc(cat.name) + '"'
+				+ ' title="Add Color">'
+				+ self._plusSVG()
 				+ '</button>'
 				+ '</div>';
 
@@ -378,6 +392,11 @@
 				+ (isExpanded ? ' data-expanded="true"' : '')
 				+ ' data-var-id="' + this._esc(rowKey) + '">'
 
+				// Drag handle (col 1: 24px).
+				+ '<div class="eff-drag-handle" data-action="drag-handle" draggable="false">'
+				+ this._sixDotSVG()
+				+ '</div>'
+
 				// Status dot (Phase 2e).
 				+ '<span class="eff-status-dot"'
 				+ ' style="background:' + statusColor + '"'
@@ -415,18 +434,6 @@
 				+ ' data-eff-tooltip="Color format">'
 				+ this._formatOptions(v.format || 'HEX')
 				+ '</select>'
-
-				// Move within category (col 6: 56px = two 28px buttons).
-				+ '<div class="eff-row-move-btns">'
-				+ '<button class="eff-icon-btn" data-action="move-var-up"'
-				+ ' aria-label="Move variable up" title="Move up">'
-				+ this._arrowUpSVG()
-				+ '</button>'
-				+ '<button class="eff-icon-btn" data-action="move-var-down"'
-				+ ' aria-label="Move variable down" title="Move down">'
-				+ this._arrowDownSVG()
-				+ '</button>'
-				+ '</div>'
 
 				// Expand button (col 7: 28px).
 				+ '<button class="eff-icon-btn eff-color-expand-btn"'
@@ -485,7 +492,9 @@
 			var statusColor = self._statusColor(v.status || 'synced');
 
 			var html = '<div class="eff-modal-header">'
-				// Status dot (col 1) — matches color row col 1
+				// Empty drag-handle placeholder (col 1) — keeps grid alignment with .eff-color-row
+				+ '<span></span>'
+				// Status dot (col 2) — matches color row col 2
 				+ '<span class="eff-status-dot" style="background:' + statusColor + '"'
 				+ ' title="Status: ' + self._esc(v.status || 'synced') + '"></span>'
 				// Swatch (col 2)
@@ -695,6 +704,7 @@
 			// to falsely trigger on single clicks.
 			if (container._effEventsBound) { return; }
 			container._effEventsBound = true;
+			self._initDrag(container);
 
 			// ---- Delegated click events on category blocks ----
 			container.addEventListener('click', function (e) {
@@ -725,20 +735,6 @@
 							if (catId) { _collapsedCategoryIds[catId] = newCollapsed; }
 						}
 						break;
-
-					case 'move-var-up': {
-						var mvRow   = btn.closest('.eff-color-row');
-						var mvVarId = mvRow ? mvRow.getAttribute('data-var-id') : null;
-						if (mvVarId !== null && catId !== null) { self._moveVarUp(mvVarId, catId, container); }
-						break;
-					}
-
-					case 'move-var-down': {
-						var mdRow   = btn.closest('.eff-color-row');
-						var mdVarId = mdRow ? mdRow.getAttribute('data-var-id') : null;
-						if (mdVarId !== null && catId !== null) { self._moveVarDown(mdVarId, catId, container); }
-						break;
-					}
 
 					case 'expand':
 						var row   = btn.closest('.eff-color-row');
@@ -1383,63 +1379,14 @@
 			var self = this;
 
 			if (!EFF.state.currentFile) {
-				// Prompt user to create a project file first, then retry.
-				EFF.Modal.open({
-					title: 'Save project file first',
-					body:  '<p style="margin-bottom:10px">Colors are loaded from Elementor but no project file exists yet. Enter a filename to create one, then the new color will be added.</p>'
-						+ '<input type="text" class="eff-field-input" id="eff-modal-savefile-name"'
-						+ ' placeholder="e.g., my-project.eff.json" autocomplete="off" style="width:100%">',
-					footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
-						+ '<button class="eff-btn eff-btn--secondary" id="eff-modal-savefile-cancel">Cancel</button>'
-						+ '<button class="eff-btn" id="eff-modal-savefile-ok">Create file &amp; add color</button>'
-						+ '</div>',
-				});
-
-				setTimeout(function () {
-					var inp = document.getElementById('eff-modal-savefile-name');
-					if (inp) { inp.focus(); }
-				}, 50);
-
-				function handleSaveClick(e) {
-					if (e.target.id === 'eff-modal-savefile-cancel') {
-						EFF.Modal.close();
-						document.removeEventListener('click', handleSaveClick);
-					} else if (e.target.id === 'eff-modal-savefile-ok') {
-						var inp      = document.getElementById('eff-modal-savefile-name');
-						var filename = inp ? inp.value.trim() : '';
-						EFF.Modal.close();
-						document.removeEventListener('click', handleSaveClick);
-
-						if (!filename) { return; }
-						if (filename.indexOf('.eff.json') === -1) { filename = filename + '.eff.json'; }
-
-						var saveData = {
-							version:   '1.0',
-							config:    EFF.state.config  || {},
-							variables: EFF.state.variables || [],
-						};
-
-						EFF.App.ajax('eff_save_file', {
-							filename: filename,
-							data:     JSON.stringify(saveData),
-						}).then(function (res) {
-							if (res.success && res.data) {
-								EFF.state.currentFile = res.data.filename || filename;
-								if (EFF.App) { EFF.App.setDirty(false); }
-								self._addVariable(catId); // Retry now that file is set.
-							} else {
-								var msg = (res.data && res.data.message) ? res.data.message : 'Could not create file.';
-								EFF.Modal.open({ title: 'Error', body: '<p>' + msg + '</p>' });
-							}
-						}).catch(function () {
-							EFF.Modal.open({ title: 'Connection error', body: '<p>Could not create the project file. Please try again.</p>' });
-						});
-					}
+				// No project file yet — auto-create a temp file so the user can start
+				// working immediately without being prompted for a filename.
+				EFF.state.currentFile = 'eff-temp.eff.json';
+				if (EFF.PanelRight && EFF.PanelRight._filenameInput) {
+					EFF.PanelRight._filenameInput.value = 'eff-temp.eff.json';
 				}
-
-				document.addEventListener('click', handleSaveClick);
-				return;
 			}
+
 
 			var cats = (EFF.state.config && EFF.state.config.categories) || [];
 			var cat  = null;
@@ -1898,110 +1845,246 @@
 		// -----------------------------------------------------------------------
 
 		/**
-		 * Move a variable up within its category.
+		 * Returns the 6-dot drag handle SVG icon.
 		 *
-		 * @param {string}      varId     Row key.
-		 * @param {string}      catId     Category ID.
-		 * @param {HTMLElement} container Content container.
+		 * @returns {string}
 		 */
-		_moveVarUp: function (varId, catId, container) {
-			var self = this;
-			var cats = (EFF.state.config && EFF.state.config.categories) || self._getDefaultCategories();
-			var cat  = null;
-			for (var ci = 0; ci < cats.length; ci++) {
-				if (cats[ci].id === catId) { cat = cats[ci]; break; }
-			}
-			if (!cat) { return; }
-
-			var vars = self._getVarsForCategory(cat); // sorted by order
-			var idx  = -1;
-			for (var i = 0; i < vars.length; i++) {
-				if (self._rowKey(vars[i]) === varId) { idx = i; break; }
-			}
-			if (idx <= 0) { return; }
-
-			var above   = vars[idx - 1];
-			var current = vars[idx];
-			var aOrd    = (above.order !== undefined && above.order !== null)   ? above.order   : (idx - 1);
-			var cOrd    = (current.order !== undefined && current.order !== null) ? current.order : idx;
-			// If orders are equal, assign positional values.
-			if (aOrd === cOrd) { aOrd = idx - 1; cOrd = idx; }
-
-			above.order   = cOrd;
-			current.order = aOrd;
-
-			self._rerenderView();
-
-			if (!EFF.state.currentFile || !above.id || !current.id) { return; }
-			if (EFF.App) { EFF.App.setDirty(true); }
-
-			var p1 = EFF.App.ajax('eff_save_color', {
-				filename: EFF.state.currentFile,
-				variable: JSON.stringify({ id: above.id,   order: above.order }),
-			});
-			var p2 = EFF.App.ajax('eff_save_color', {
-				filename: EFF.state.currentFile,
-				variable: JSON.stringify({ id: current.id, order: current.order }),
-			});
-			Promise.all([p1, p2]).then(function (results) {
-				var last = results[results.length - 1];
-				if (last && last.success && last.data && last.data.data) {
-					EFF.state.variables = last.data.data.variables;
-				}
-			}).catch(function () {});
+		_sixDotSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="20" viewBox="0 0 14 20" fill="currentColor" aria-hidden="true">'
+				+ '<circle cx="4" cy="4" r="2"/><circle cx="10" cy="4" r="2"/>'
+				+ '<circle cx="4" cy="10" r="2"/><circle cx="10" cy="10" r="2"/>'
+				+ '<circle cx="4" cy="16" r="2"/><circle cx="10" cy="16" r="2"/>'
+				+ '</svg>';
 		},
 
 		/**
-		 * Move a variable down within its category.
+		 * Initialize mouse-based drag-and-drop for color variable rows.
 		 *
-		 * @param {string}      varId     Row key.
-		 * @param {string}      catId     Category ID.
-		 * @param {HTMLElement} container Content container.
+		 * @param {HTMLElement} container The color list container.
 		 */
-		_moveVarDown: function (varId, catId, container) {
+		_initDrag: function (container) {
 			var self = this;
+
+			container.addEventListener('mousedown', function (e) {
+				var handle = e.target.closest('.eff-drag-handle');
+				if (!handle) { return; }
+				e.preventDefault();
+
+				var row = handle.closest('.eff-color-row');
+				if (!row) { return; }
+
+				_drag.varId = row.getAttribute('data-var-id');
+				if (!_drag.varId) { return; }
+
+				_drag.active = true;
+				_drag.startY = e.clientY;
+
+				// Create ghost — clone of the row, fixed position.
+				var ghost = row.cloneNode(true);
+				ghost.style.position      = 'fixed';
+				ghost.style.width         = row.offsetWidth + 'px';
+				ghost.style.height        = row.offsetHeight + 'px';
+				ghost.style.top           = (row.getBoundingClientRect().top) + 'px';
+				ghost.style.left          = (row.getBoundingClientRect().left) + 'px';
+				ghost.style.opacity       = '0.88';
+				ghost.style.zIndex        = '9999';
+				ghost.style.pointerEvents = 'none';
+				ghost.style.boxShadow     = '0 8px 24px rgba(0,0,0,0.28)';
+				ghost.style.borderRadius  = '4px';
+				ghost.className += ' eff-drag-ghost';
+				document.body.appendChild(ghost);
+				_drag.ghost = ghost;
+
+				// Create drop indicator — 2px accent-color horizontal line.
+				var indicator = document.createElement('div');
+				indicator.className = 'eff-drop-indicator';
+				indicator.style.display = 'none';
+				// --eff-clr-accent is scoped to [data-eff-theme], not :root/body.
+				// Read it from the .eff-app element so body-appended elements get the right color.
+				var _appEl = document.getElementById('eff-app');
+				var _accent = _appEl ? getComputedStyle(_appEl).getPropertyValue('--eff-clr-accent').trim() : '';
+				if (!_accent) { _accent = '#f4c542'; }
+				indicator.style.background = 'linear-gradient(to right, transparent, ' + _accent + ' 15%, ' + _accent + ' 85%, transparent)';
+				indicator.style.boxShadow = '0 0 6px ' + _accent;
+				document.body.appendChild(indicator);
+				_drag.indicator = indicator;
+
+				// Mark original row as being dragged.
+				row.classList.add('eff-row-dragging');
+			});
+
+			document.addEventListener('mousemove', function (e) {
+				if (!_drag.active || !_drag.ghost) { return; }
+				e.preventDefault();
+
+				var dy = e.clientY - _drag.startY;
+				_drag.ghost.style.top = (parseFloat(_drag.ghost.style.top) + dy) + 'px';
+				_drag.startY = e.clientY;
+
+				// Auto-scroll when near viewport edges.
+				var scrollZone = 80;
+				if (e.clientY < scrollZone) {
+					clearInterval(_drag.scrollTimer);
+					_drag.scrollTimer = setInterval(function () { window.scrollBy(0, -8); }, 20);
+				} else if (e.clientY > window.innerHeight - scrollZone) {
+					clearInterval(_drag.scrollTimer);
+					_drag.scrollTimer = setInterval(function () { window.scrollBy(0, 8); }, 20);
+				} else {
+					clearInterval(_drag.scrollTimer);
+					_drag.scrollTimer = null;
+				}
+
+				// Find the row we're hovering over.
+				_drag.ghost.style.display = 'none';
+				var el = document.elementFromPoint(e.clientX, e.clientY);
+				_drag.ghost.style.display = '';
+
+				var targetRow = el ? el.closest('.eff-color-row') : null;
+
+				if (targetRow && targetRow.getAttribute('data-var-id') !== _drag.varId) {
+					var rect = targetRow.getBoundingClientRect();
+					var midY = rect.top + rect.height / 2;
+					var insertBefore = e.clientY < midY;
+
+					_drag.indicator.style.display = 'block';
+					_drag.indicator.style.top     = (insertBefore ? rect.top : rect.bottom) - 1 + 'px';
+					_drag.indicator.style.left    = rect.left + 'px';
+					_drag.indicator.style.width   = rect.width + 'px';
+					_drag.indicator._targetVarId    = targetRow.getAttribute('data-var-id');
+					_drag.indicator._insertBefore   = insertBefore;
+					_drag.indicator._targetCatBlock = targetRow.closest('.eff-category-block');
+				} else {
+					_drag.indicator.style.display = 'none';
+					_drag.indicator._targetVarId  = null;
+				}
+			});
+
+			document.addEventListener('mouseup', function (e) {
+				if (!_drag.active) { return; }
+
+				clearInterval(_drag.scrollTimer);
+				_drag.scrollTimer = null;
+
+				var targetVarId    = _drag.indicator ? _drag.indicator._targetVarId : null;
+				var insertBefore   = _drag.indicator ? _drag.indicator._insertBefore : true;
+				var targetCatBlock = _drag.indicator ? _drag.indicator._targetCatBlock : null;
+
+				// Clean up ghost and indicator.
+				if (_drag.ghost)     { _drag.ghost.parentNode && _drag.ghost.parentNode.removeChild(_drag.ghost); }
+				if (_drag.indicator) { _drag.indicator.parentNode && _drag.indicator.parentNode.removeChild(_drag.indicator); }
+
+				// Remove dragging style.
+				var draggingRow = container.querySelector('.eff-color-row.eff-row-dragging');
+				if (draggingRow) { draggingRow.classList.remove('eff-row-dragging'); }
+
+				_drag.ghost     = null;
+				_drag.indicator = null;
+				_drag.active    = false;
+
+				if (!targetVarId || !_drag.varId) {
+					_drag.varId = null;
+					return;
+				}
+
+				var draggedVarId = _drag.varId;
+				_drag.varId = null;
+
+				self._dropVariable(draggedVarId, targetVarId, insertBefore, targetCatBlock);
+			});
+		},
+
+		/**
+		 * Commit a drag-and-drop reorder: update state, re-render, and persist.
+		 *
+		 * @param {string}           draggedId      Row key of the dragged variable.
+		 * @param {string}           targetId       Row key of the drop target.
+		 * @param {boolean}          insertBefore   Insert before (true) or after (false) target.
+		 * @param {HTMLElement|null} targetCatBlock .eff-category-block element at drop point.
+		 */
+		_dropVariable: function (draggedId, targetId, insertBefore, targetCatBlock) {
+			var self = this;
+
+			if (!EFF.state.currentFile) { return; }
+
+			// Find the dragged and target variable objects.
+			var dragged = null;
+			var target  = null;
+			for (var i = 0; i < EFF.state.variables.length; i++) {
+				if (self._rowKey(EFF.state.variables[i]) === draggedId) { dragged = EFF.state.variables[i]; }
+				if (self._rowKey(EFF.state.variables[i]) === targetId)  { target  = EFF.state.variables[i]; }
+			}
+			if (!dragged || !target) { return; }
+
+			// Determine target category from the targetCatBlock element.
+			var newCatId   = targetCatBlock ? targetCatBlock.getAttribute('data-category-id') : dragged.category_id;
+			var newCatName = dragged.category;
+
+			// Find category name from config.
 			var cats = (EFF.state.config && EFF.state.config.categories) || self._getDefaultCategories();
-			var cat  = null;
 			for (var ci = 0; ci < cats.length; ci++) {
-				if (cats[ci].id === catId) { cat = cats[ci]; break; }
+				if (cats[ci].id === newCatId) { newCatName = cats[ci].name; break; }
 			}
-			if (!cat) { return; }
 
-			var vars = self._getVarsForCategory(cat); // sorted by order
-			var idx  = -1;
-			for (var i = 0; i < vars.length; i++) {
-				if (self._rowKey(vars[i]) === varId) { idx = i; break; }
+			// Get the target category object.
+			var targetCatObj = null;
+			for (var cj = 0; cj < cats.length; cj++) {
+				if (cats[cj].id === newCatId) { targetCatObj = cats[cj]; break; }
 			}
-			if (idx < 0 || idx >= vars.length - 1) { return; }
+			if (!targetCatObj) { return; }
 
-			var below   = vars[idx + 1];
-			var current = vars[idx];
-			var bOrd    = (below.order !== undefined && below.order !== null)     ? below.order   : (idx + 1);
-			var cOrd    = (current.order !== undefined && current.order !== null) ? current.order : idx;
-			if (bOrd === cOrd) { bOrd = idx + 1; cOrd = idx; }
+			var catVars = self._getVarsForCategory(targetCatObj);
+			// Remove dragged from the list (handles cross-category and same-cat).
+			catVars = catVars.filter(function (v) { return self._rowKey(v) !== draggedId; });
 
-			below.order   = cOrd;
-			current.order = bOrd;
+			// Find insertion index.
+			var insertIdx = catVars.length;
+			for (var vi = 0; vi < catVars.length; vi++) {
+				if (self._rowKey(catVars[vi]) === targetId) {
+					insertIdx = insertBefore ? vi : vi + 1;
+					break;
+				}
+			}
+			catVars.splice(insertIdx, 0, dragged);
+
+			// Reassign order values.
+			var saves = [];
+			for (var si = 0; si < catVars.length; si++) {
+				catVars[si].order = si;
+				// Update in EFF.state.variables.
+				for (var sj = 0; sj < EFF.state.variables.length; sj++) {
+					if (EFF.state.variables[sj] === catVars[si]) {
+						EFF.state.variables[sj].order       = si;
+						EFF.state.variables[sj].category    = newCatName;
+						EFF.state.variables[sj].category_id = newCatId;
+						break;
+					}
+				}
+				saves.push({ id: catVars[si].id, order: si, category: newCatName, category_id: newCatId });
+			}
+
+			// If dragged changed category, also update its category in state.
+			if (dragged.category_id !== newCatId) {
+				for (var dk = 0; dk < EFF.state.variables.length; dk++) {
+					if (self._rowKey(EFF.state.variables[dk]) === draggedId) {
+						EFF.state.variables[dk].category    = newCatName;
+						EFF.state.variables[dk].category_id = newCatId;
+						break;
+					}
+				}
+			}
 
 			self._rerenderView();
+			if (EFF.App) { EFF.App.setDirty(true); EFF.App.setPendingCommit(true); }
 
-			if (!EFF.state.currentFile || !below.id || !current.id) { return; }
-			if (EFF.App) { EFF.App.setDirty(true); }
-
-			var p1 = EFF.App.ajax('eff_save_color', {
-				filename: EFF.state.currentFile,
-				variable: JSON.stringify({ id: below.id,   order: below.order }),
-			});
-			var p2 = EFF.App.ajax('eff_save_color', {
-				filename: EFF.state.currentFile,
-				variable: JSON.stringify({ id: current.id, order: current.order }),
-			});
-			Promise.all([p1, p2]).then(function (results) {
-				var last = results[results.length - 1];
-				if (last && last.success && last.data && last.data.data) {
-					EFF.state.variables = last.data.data.variables;
-				}
-			}).catch(function () {});
+			// Persist each affected variable via AJAX (fire-and-forget).
+			for (var pi = 0; pi < saves.length; pi++) {
+				(function (saveItem) {
+					EFF.App.ajax('eff_save_color', {
+						filename: EFF.state.currentFile,
+						variable: JSON.stringify(saveItem),
+					}).catch(function () {});
+				}(saves[pi]));
+			}
 		},
 
 		/**
@@ -2233,9 +2316,11 @@
 			var content = document.getElementById('eff-edit-content');
 			if (!content || !EFF.state.currentSelection) { return; }
 
-			// Preserve collapse state across re-renders; don't override with focus.
+			// Call _renderAll directly to avoid resetting _collapsedCategoryIds.
+			// (loadColors would re-apply _focusedCategoryId from currentSelection
+			//  and wipe out the manual collapse overrides set by recent CRUD ops.)
 			_focusedCategoryId = null;
-			this.loadColors(EFF.state.currentSelection);
+			this._renderAll(EFF.state.currentSelection, content);
 		},
 
 		/**
@@ -2811,6 +2896,16 @@
 				+ '<circle cx="12" cy="12" r="10"></circle>'
 				+ '<line x1="12" y1="8" x2="12" y2="16"></line>'
 				+ '<line x1="8" y1="12" x2="16" y2="12"></line>'
+				+ '</svg>';
+		},
+
+		/** Plain plus sign — no surrounding circle (used for add-var button whose border IS the circle). */
+		_plusSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"'
+				+ ' fill="none" stroke="currentColor" stroke-width="2.5"'
+				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+				+ '<line x1="12" y1="5" x2="12" y2="19"></line>'
+				+ '<line x1="5" y1="12" x2="19" y2="12"></line>'
 				+ '</svg>';
 		},
 

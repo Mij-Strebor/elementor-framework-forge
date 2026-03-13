@@ -122,47 +122,58 @@
 
 .eff-category-block {
 	position:      relative;
-	margin-bottom: 14px;
+	margin-bottom: 32px;
 	border-radius: 12px;
-	overflow:      visible; /* lets the add button sit on the curved edge */
 }
 
 .eff-category-block:last-child {
-	margin-bottom: 0;
+	margin-bottom: 16px; /* Leave room for the add-btn circle below */
 }
 
-/* Inner wrapper clips content to rounded corners; outer block stays overflow:visible */
+/* Inner wrapper clips content to rounded corners */
 .eff-category-inner {
 	background:     var(--eff-bg-card);
 	border-radius:  12px;
 	overflow:       hidden;
 	padding-top:    16px;
-	padding-bottom: 16px;
+	padding-bottom: 12px;
 }
 
-/* Add-variable button: center of plus icon sits on the bottom-left curved edge */
+/* Add-variable button: circle with center on the bottom-left border of the panel.
+   Absolutely positioned so it straddles the bottom edge — half inside, half outside.
+   bottom: -14px puts the circle center exactly on the panel's bottom border.
+   left: 0 aligns the circle center ~14px from the panel left edge (rounded corner start). */
 .eff-cat-add-btn-wrap {
 	position: absolute;
-	bottom:   -16px;
-	left:     -16px;
+	bottom:   -14px;
+	left:     0;
 	z-index:  2;
 }
 
-/* Add button: circular pill, clearly visible on the panel border */
+/* Add button: prominent circle with primary-color border and plus sign */
 .eff-cat-add-btn-wrap .eff-icon-btn {
-	width:         32px;
-	height:        32px;
+	width:         28px;
+	height:        28px;
 	border-radius: 50%;
 	background:    var(--eff-bg-card);
-	color:         var(--eff-clr-accent);
-	box-shadow:    0 2px 8px rgba(0, 0, 0, 0.22), 0 1px 3px rgba(0, 0, 0, 0.14);
-	border:        2px solid var(--eff-clr-accent);
+	color:         var(--eff-clr-primary);
+	box-shadow:    none;
+	border:        2px solid var(--eff-clr-primary);
+	padding:       0;
+}
+
+.eff-cat-add-btn-wrap .eff-icon-btn svg {
+	width:  18px;
+	height: 18px;
 }
 
 .eff-cat-add-btn-wrap .eff-icon-btn:hover {
-	background: var(--eff-clr-accent);
-	color:      var(--eff-clr-on-accent, #3d2f1f);
-	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28), 0 1px 4px rgba(0, 0, 0, 0.18);
+	opacity:      1;
+	background:   var(--eff-clr-primary);
+	color:        var(--eff-clr-on-primary, #fff);
+	border-color: var(--eff-clr-primary);
+	box-shadow:   none;
+	transform:    none;
 }
 
 /* ==========================================================================
@@ -318,7 +329,7 @@
 
 .eff-color-list-header {
 	display:               grid;
-	grid-template-columns: 8px 15% 1fr 28% 12% 56px 28px;
+	grid-template-columns: 24px 8px 15% 1fr 28% 12% 28px;
 	column-gap:    16px;
 	align-items:   center;
 	padding:       var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-4);
@@ -336,7 +347,7 @@
 /* Single color variable row */
 .eff-color-row {
 	display:               grid;
-	grid-template-columns: 8px 15% 1fr 28% 12% 56px 28px;
+	grid-template-columns: 24px 8px 15% 1fr 28% 12% 28px;
 	column-gap:    16px;
 	align-items:   center;
 	padding:       6px var(--sp-3) 6px var(--sp-4);
@@ -367,11 +378,11 @@
 	border:        1px solid rgba(0, 0, 0, 0.08);
 }
 
-/* Variable name — bare input, ghost style, single-click to edit */
+/* Variable name — bare input, single-click to edit */
 .eff-color-name-input {
 	width:         100%;
 	padding:       2px var(--sp-2);
-	background:    transparent;
+	background:    var(--eff-bg-card);
 	border:        none;
 	font-size:     var(--fs-xs);
 	color:         var(--eff-clr-secondary);
@@ -400,7 +411,7 @@
 .eff-color-value-input {
 	width:         100%;
 	padding:       2px var(--sp-2);
-	background:    transparent;
+	background:    var(--eff-bg-card);
 	border:        none;
 	font-size:     var(--fs-xs);
 	color:         var(--eff-clr-secondary);
@@ -423,7 +434,7 @@
 .eff-color-format-sel {
 	width:              100%;
 	padding:            2px 20px 2px var(--sp-1);
-	background-color:   transparent;
+	background-color:   var(--eff-bg-card);
 	background-image:   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
 	background-repeat:  no-repeat;
 	background-position: right 6px center;
@@ -447,11 +458,44 @@
 	outline: none;
 }
 
-/* Row move buttons (sixth column — 56px: two 28px icon buttons) */
-.eff-row-move-btns {
-	display:     flex;
-	align-items: center;
-	gap:         2px;
+/* Drag handle (first column — 24px) */
+.eff-drag-handle {
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	cursor:          grab;
+	color:           var(--eff-clr-muted);
+	opacity:         0.45;
+	user-select:     none;
+	padding:         0 4px;
+}
+
+.eff-drag-handle:hover {
+	opacity: 0.85;
+	color:   var(--eff-clr-primary);
+}
+
+.eff-drag-handle:active {
+	cursor: grabbing;
+}
+
+.eff-row-dragging {
+	opacity: 0.3;
+}
+
+.eff-drag-ghost {
+	/* ghost is a fixed clone with inline styles; ensure it looks clean */
+	border-radius: 4px;
+}
+
+.eff-drop-indicator {
+	position:      fixed;
+	height:        4px;
+	background:    var(--eff-clr-accent); /* overridden inline by JS gradient */
+	z-index:       9998;
+	pointer-events: none;
+	border-radius: 2px;
+	box-shadow:    0 0 6px var(--eff-clr-accent);
 }
 
 /* Expand chevron (seventh column — 28px, matches category collapse btn) */
@@ -533,11 +577,11 @@
 
 /*
  * Modal header — identical grid to .eff-color-row so every column aligns.
- * Columns: status-dot | swatch | name | value | format | (empty) | close-btn
+ * Columns: drag-handle | status-dot | swatch | name | value | format | close-btn
  */
 .eff-modal-header {
 	display:               grid;
-	grid-template-columns: 8px 15% 1fr 28% 12% 56px 28px;
+	grid-template-columns: 24px 8px 15% 1fr 28% 12% 28px;
 	column-gap:            16px;
 	align-items:           center;
 	padding:               var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
@@ -795,7 +839,7 @@
 @media (max-width: 600px) {
 	.eff-color-list-header,
 	.eff-color-row {
-		grid-template-columns: 8px 12% 1fr 24% 0 40px 28px;
+		grid-template-columns: 24px 8px 12% 1fr 24% 0 28px;
 		column-gap: 6px;
 		padding-right: var(--sp-2);
 	}

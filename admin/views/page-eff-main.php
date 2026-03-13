@@ -253,7 +253,7 @@ function eff_icon( string $name ): string {
 			<!-- File Management -->
 			<div class="eff-panel-right__files">
 				<label class="eff-field-label" for="eff-filename">
-					<?php esc_html_e( 'Storage file', 'elementor-framework-forge' ); ?>
+					<?php esc_html_e( 'Project', 'elementor-framework-forge' ); ?>
 				</label>
 				<input type="text"
 				       class="eff-field-input"
@@ -285,15 +285,13 @@ function eff_icon( string $name ): string {
 				</div>
 			</div><!-- .eff-panel-right__files -->
 
-			<!-- Phase 2 — Commit to Elementor -->
-			<div class="eff-panel-right__commit">
-				<button class="eff-btn eff-btn--secondary"
-				        id="eff-btn-commit"
-				        disabled
-				        aria-disabled="true"
-				        aria-label="<?php esc_attr_e( 'Commit EFF color values to Elementor kit', 'elementor-framework-forge' ); ?>"
-				        title="<?php esc_attr_e( 'Write EFF variable values back to the Elementor kit CSS', 'elementor-framework-forge' ); ?>">
-					<?php esc_html_e( 'Commit to Elementor', 'elementor-framework-forge' ); ?>
+			<!-- Unsynced indicator — shown when EFF values differ from Elementor -->
+			<div class="eff-panel-right__unsynced" id="eff-unsynced-indicator" hidden>
+				<span class="eff-unsynced-dot" aria-hidden="true"></span>
+				<span class="eff-unsynced-label"><?php esc_html_e( 'Unsynced changes', 'elementor-framework-forge' ); ?></span>
+				<button class="eff-btn eff-btn--xs" id="eff-btn-commit"
+				        aria-label="<?php esc_attr_e( 'Commit EFF values to Elementor kit', 'elementor-framework-forge' ); ?>">
+					<?php esc_html_e( 'Commit', 'elementor-framework-forge' ); ?>
 				</button>
 			</div>
 

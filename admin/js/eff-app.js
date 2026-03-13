@@ -33,6 +33,7 @@
 		hasPendingElementorCommit: false, // EFF data not yet committed to Elementor (drives Commit button).
 		currentSelection:         null,
 		currentFile:              null,
+		projectName:              '',   // Human-readable project name (set via Manage Project modal).
 		theme:                    (typeof EFFData !== 'undefined' ? EFFData.theme : 'light') || 'light',
 		variables:                [],
 		classes:                  [],
@@ -61,6 +62,7 @@
 
 		/**
 		 * Set or clear the pending Elementor commit flag and update the Commit button.
+		 * Also highlights the Sync button with accent color when changes are pending.
 		 *
 		 * @param {boolean} hasPending
 		 */
@@ -68,6 +70,14 @@
 			EFF.state.hasPendingElementorCommit = hasPending;
 			if (EFF.PanelRight) {
 				EFF.PanelRight.updateCommitBtn();
+			}
+			var syncBtn = document.getElementById('eff-btn-sync');
+			if (syncBtn) {
+				if (hasPending) {
+					syncBtn.classList.add('eff-btn--accent');
+				} else {
+					syncBtn.classList.remove('eff-btn--accent');
+				}
 			}
 		},
 
@@ -148,6 +158,9 @@
 				.then(function (res) {
 					if (res.success && res.data.config) {
 						EFF.state.config = res.data.config;
+						if (res.data.config.projectName) {
+							EFF.state.projectName = res.data.config.projectName;
+						}
 					}
 				})
 				.catch(function () {
@@ -204,10 +217,29 @@
 		// 7. Initial counts (all zero until a file is loaded)
 		EFF.App.refreshCounts();
 
-		// 8. Warn on page unload with unsaved changes
+		// Scroll to top — prevents WP admin notices or footer content from
+		// pulling the page down on load (Local WP / certain WP setups scroll to notices).
+		window.scrollTo(0, 0);
+
+		// Title fade — fades the brand name as the user scrolls down, so the sticky
+		// top bar stays compact with just the action buttons visible.
+		(function () {
+			var brandName = document.querySelector('.eff-brand-name');
+			if (!brandName) { return; }
+			window.addEventListener('scroll', function () {
+				var y = window.scrollY || window.pageYOffset;
+				// Fade over the first 80px of scroll.
+				var opacity = Math.max(0, 1 - y / 80);
+				brandName.style.opacity = String(opacity);
+			}, { passive: true });
+		}());
+
+		// 8. Warn on page unload with unsaved or uncommitted changes
 		window.addEventListener('beforeunload', function (e) {
-			if (EFF.state.hasUnsavedChanges) {
-				var msg = 'You have unsaved changes. Leave anyway?';
+			if (EFF.state.hasUnsavedChanges || EFF.state.hasPendingElementorCommit) {
+				var msg = EFF.state.hasPendingElementorCommit
+					? 'You have unsynced changes not yet committed to Elementor. Leave anyway?'
+					: 'You have unsaved changes. Leave anyway?';
 				e.preventDefault();
 				e.returnValue = msg;
 				return msg;

@@ -37,11 +37,15 @@
 	justify-content: space-between;
 	height:          var(--eff-top-bar-height);
 	padding:         0 var(--sp-3);
-	background:      var(--eff-top-bar-bg);
+	background:      color-mix(in srgb, var(--eff-top-bar-bg) 88%, transparent);
+	backdrop-filter: blur(6px);
+	-webkit-backdrop-filter: blur(6px);
 	border-bottom:   1px solid var(--eff-top-bar-border);
 	flex-shrink:     0;
 	gap:             var(--sp-2);
-	z-index:         100;
+	position:        sticky;
+	top:             32px; /* Below WP admin bar */
+	z-index:         200;
 }
 
 .eff-top-bar__left,
@@ -407,28 +411,51 @@
 	margin-top:  var(--sp-1);
 }
 
-/* Phase 2 — Commit to Elementor button */
-.eff-panel-right__commit {
-	padding-top:    var(--sp-3);
-	padding-bottom: var(--sp-3);
+/* Unsynced indicator — shown when EFF values have not been committed to Elementor */
+.eff-panel-right__unsynced {
+	display:        flex;
+	align-items:    center;
+	gap:            var(--sp-2);
+	padding:        var(--sp-2) 0;
 	border-bottom:  1px solid var(--eff-clr-border);
 }
 
-.eff-panel-right__commit .eff-btn {
-	width:           100%;
-	justify-content: center;
+.eff-unsynced-dot {
+	display:       inline-block;
+	width:         8px;
+	height:        8px;
+	border-radius: 50%;
+	background:    var(--eff-clr-warning, #f59e0b);
+	flex-shrink:   0;
 }
 
-/* Commit button: always gold/accent */
-.eff-panel-right__commit .eff-btn {
-	background:   var(--eff-clr-accent);
-	border-color: var(--eff-clr-accent);
-	color:        var(--eff-clr-on-accent, #3d2f1f);
+.eff-unsynced-label {
+	flex:      1;
+	font-size: var(--fs-xs);
+	color:     var(--eff-clr-secondary);
 }
 
-.eff-panel-right__commit .eff-btn:disabled {
-	opacity: 0.5;
-	cursor:  not-allowed;
+/* .eff-btn--xs: compact inline button */
+.eff-btn--xs {
+	padding:    2px 8px;
+	font-size:  var(--fs-xs);
+	min-height: 0;
+	height:     auto;
+}
+
+.eff-panel-right__unsynced[hidden] {
+	display: none;
+}
+
+/* Sync button highlighted with accent color when uncommitted changes exist */
+.eff-btn--accent {
+	background:   var(--eff-clr-accent) !important;
+	color:        var(--eff-clr-on-accent, #3d2f1f) !important;
+	border-color: var(--eff-clr-accent) !important;
+	box-shadow:   0 0 0 2px color-mix(in srgb, var(--eff-clr-accent) 35%, transparent);
+}
+.eff-btn--accent:hover {
+	opacity: 0.9;
 }
 
 /* Counts section — anchored to bottom */

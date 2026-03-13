@@ -947,6 +947,12 @@ class EFF_Ajax_Handler {
 	 * Verify nonce and capability. Sends JSON error and dies on failure.
 	 */
 	private function verify_request(): void {
+		// Suppress PHP notice/warning output so they cannot corrupt JSON responses.
+		// Local development environments (e.g. Local WP) often have display_errors = On
+		// in their php.ini regardless of WP_DEBUG, which prepends HTML error output to
+		// the response body and causes JSON.parse failures in the browser.
+		ini_set( 'display_errors', '0' );
+
 		if ( ! check_ajax_referer( self::NONCE_ACTION, 'nonce', false ) ) {
 			wp_send_json_error(
 				array( 'message' => __( 'Security check failed.', 'elementor-framework-forge' ) ),
