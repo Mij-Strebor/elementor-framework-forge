@@ -428,7 +428,7 @@
 	display:     block;
 	font-size:   var(--fs-lg);
 	font-weight: var(--fw-semibold);
-	color:       rgb(61, 47, 31);
+	color:       var(--eff-clr-primary);
 	margin-bottom: var(--sp-1);
 	text-transform: capitalize;
 	letter-spacing: 0.05em;
@@ -600,4 +600,37 @@
 .eff-app[data-eff-theme="dark"] .eff-category-inner {
 	border:     1px solid var(--eff-clr-border);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+/* Primary button — gold background with light-cream text in dark mode is low contrast;
+   override to a dark warm brown text for readability. */
+[data-eff-theme="dark"] .eff-btn,
+.eff-app[data-eff-theme="dark"] .eff-btn {
+	color: #2a1a0e;
+}
+
+/* Drag handles — opacity:0.45 with muted gray is invisible in dark mode. */
+[data-eff-theme="dark"] .eff-drag-handle,
+[data-eff-theme="dark"] .eff-cat-drag-handle,
+.eff-app[data-eff-theme="dark"] .eff-drag-handle,
+.eff-app[data-eff-theme="dark"] .eff-cat-drag-handle {
+	color:   var(--eff-clr-secondary);
+	opacity: 0.7;
+}
+
+/* Variable name/value inputs — WP admin overrides input[type=text] backgrounds to
+   white/light; force dark backgrounds and readable text in dark mode. */
+[data-eff-theme="dark"] .eff-color-name-input,
+[data-eff-theme="dark"] .eff-var-value-input,
+.eff-app[data-eff-theme="dark"] .eff-color-name-input,
+.eff-app[data-eff-theme="dark"] .eff-var-value-input {
+	background: var(--eff-bg-card) !important;
+	color:      var(--eff-clr-primary) !important;
+}
+
+/* Color swatches — give a visible light border in dark mode so near-white
+   swatches (#FFF, #FAFAFA) don't disappear against a light input background. */
+[data-eff-theme="dark"] .eff-color-swatch,
+.eff-app[data-eff-theme="dark"] .eff-color-swatch {
+	border-color: rgba(255, 255, 255, 0.2);
 }
