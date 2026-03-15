@@ -402,7 +402,6 @@
 	font-size:     var(--fs-xs);
 	color:         var(--eff-clr-muted);
 	font-weight:   var(--fw-medium);
-	border-bottom: 1px solid var(--eff-clr-border);
 }
 
 .eff-color-list {

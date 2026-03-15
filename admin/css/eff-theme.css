@@ -594,10 +594,11 @@
 	color:      #f0e6d8;
 }
 
-/* Category panels — dark bg-card (#231c16) vs bg-page (#1a1510) has very
-   little contrast; a border and shadow make panels stand out in dark mode. */
+/* Category panels — lighten background and add border/shadow so panels
+   stand out clearly against the dark page background. */
 [data-eff-theme="dark"] .eff-category-inner,
 .eff-app[data-eff-theme="dark"] .eff-category-inner {
+	background: #3a2d20;
 	border:     1px solid var(--eff-clr-border);
 	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
