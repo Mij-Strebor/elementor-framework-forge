@@ -473,14 +473,14 @@
 	pointer-events:   none;
 	white-space:      nowrap;
 	opacity:          0;
-	transform:        translateY(4px);
+	transform:        translateX(4px);
 	transition:       opacity 0.12s ease, transform 0.12s ease;
 	box-shadow:       var(--eff-shadow-sm);
 }
 
 .eff-app .eff-tooltip.is-visible {
 	opacity:   1;
-	transform: translateY(0);
+	transform: translateX(0);
 }
 
 /* ==========================================================================
@@ -580,4 +580,24 @@
 	font-style:  italic;
 	padding:     var(--sp-2) var(--sp-4);
 	margin:      0;
+}
+
+/* ==========================================================================
+   13. DARK MODE COMPONENT OVERRIDES
+   ========================================================================== */
+
+/* Tooltip — in dark mode --eff-clr-primary is light cream, so we override
+   with a dark background to keep the tooltip readable. */
+[data-eff-theme="dark"] .eff-tooltip,
+.eff-app[data-eff-theme="dark"] .eff-tooltip {
+	background: #3d2f1f;
+	color:      #f0e6d8;
+}
+
+/* Category panels — dark bg-card (#231c16) vs bg-page (#1a1510) has very
+   little contrast; a border and shadow make panels stand out in dark mode. */
+[data-eff-theme="dark"] .eff-category-inner,
+.eff-app[data-eff-theme="dark"] .eff-category-inner {
+	border:     1px solid var(--eff-clr-border);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }

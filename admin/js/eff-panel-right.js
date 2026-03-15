@@ -127,6 +127,9 @@
 						EFF.App.setDirty(false);
 						EFF.Modal.close();
 
+						// Persist last loaded filename so auto-load can restore it on next open.
+						EFF.App.ajax('eff_save_settings', { settings: JSON.stringify({ last_file: filename }) });
+
 						// Scan widget usage for loaded variables (async, non-blocking)
 						EFF.App.fetchUsageCounts();
 					} else {
@@ -135,6 +138,39 @@
 				}.bind(this))
 				.catch(function () {
 					EFF.Modal.open({ title: 'Load error', body: '<p>Network error while loading file.</p>' });
+				});
+		},
+
+		/**
+		 * Silently load a file on startup (no dirty flag, no modal on failure).
+		 * Used for auto-loading the last opened file.
+		 *
+		 * @param {string} filename
+		 */
+		_autoLoadFile: function (filename) {
+			EFF.App.ajax('eff_load_file', { filename: filename })
+				.then(function (res) {
+					if (res.success) {
+						EFF.state.variables  = res.data.data.variables  || [];
+						EFF.state.classes    = res.data.data.classes    || [];
+						EFF.state.components = res.data.data.components || [];
+						EFF.state.config     = res.data.data.config     || {};
+						EFF.state.currentFile = res.data.filename;
+
+						if (this._filenameInput) {
+							this._filenameInput.value = res.data.filename;
+						}
+
+						EFF.App.refreshCounts();
+						if (EFF.PanelLeft) {
+							EFF.PanelLeft.refresh();
+						}
+						EFF.App.fetchUsageCounts();
+					}
+					// Silent on failure — user will see empty state as expected.
+				}.bind(this))
+				.catch(function () {
+					// Silent on network error at startup.
 				});
 		},
 
@@ -214,18 +250,28 @@
 		},
 
 		/**
-		 * Update the Save Changes button active/inactive state.
-		 * Called whenever EFF.state.hasUnsavedChanges changes.
+		 * Update the Save Changes button state.
+		 * Disabled when no unsaved changes exist.
+		 * Shows "Saving…" and stays disabled while per-variable saves are in-flight
+		 * (pendingSaveCount > 0) to prevent a full file save over stale state.
 		 */
 		updateSaveChangesBtn: function () {
 			if (!this._saveChangesBtn) {
 				return;
 			}
 
-			var isDirty = EFF.state.hasUnsavedChanges;
+			var isPending = EFF.state.pendingSaveCount > 0;
+			var isDirty   = EFF.state.hasUnsavedChanges;
 
-			this._saveChangesBtn.disabled         = !isDirty;
-			this._saveChangesBtn.setAttribute('aria-disabled', String(!isDirty));
+			if (isPending) {
+				this._saveChangesBtn.disabled         = true;
+				this._saveChangesBtn.setAttribute('aria-disabled', 'true');
+				this._saveChangesBtn.textContent      = 'Saving\u2026';
+			} else {
+				this._saveChangesBtn.disabled         = !isDirty;
+				this._saveChangesBtn.setAttribute('aria-disabled', String(!isDirty));
+				this._saveChangesBtn.textContent      = 'Save Changes';
+			}
 		},
 
 		// ------------------------------------------------------------------

@@ -282,7 +282,7 @@ class EFF_Data_Store {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Return the category list for Colors (or all subgroups).
+	 * Return the category list.
 	 *
 	 * @return array[]
 	 */
@@ -386,6 +386,158 @@ class EFF_Data_Store {
 
 		usort(
 			$this->data['config']['categories'],
+			static function ( array $a, array $b ): int {
+				return $a['order'] <=> $b['order'];
+			}
+		);
+
+		$this->dirty = true;
+		return true;
+	}
+
+	// -----------------------------------------------------------------------
+	// CATEGORY CRUD — Subgroup-aware (Fonts, Numbers)
+	//
+	// These five methods mirror the Colors CRUD above but route to the
+	// correct config key via subgroup_to_cat_key(). Pass the subgroup name
+	// ('Colors' | 'Fonts' | 'Numbers') from the AJAX layer.
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Map a subgroup name to its config key in $this->data['config'].
+	 *
+	 * 'Colors' maps to the legacy 'categories' key for backward compatibility.
+	 * Fonts and Numbers use dedicated keys added in Phase 3.
+	 *
+	 * @param string $subgroup 'Colors' | 'Fonts' | 'Numbers'
+	 * @return string Config key, e.g. 'categories', 'fontCategories'.
+	 */
+	private function subgroup_to_cat_key( string $subgroup ): string {
+		$map = array(
+			'Colors'  => 'categories',
+			'Fonts'   => 'fontCategories',
+			'Numbers' => 'numberCategories',
+		);
+		return $map[ $subgroup ] ?? 'categories';
+	}
+
+	/**
+	 * Return the category list for a subgroup.
+	 *
+	 * @param string $subgroup Subgroup name ('Colors'|'Fonts'|'Numbers').
+	 * @return array[]
+	 */
+	public function get_categories_for_subgroup( string $subgroup ): array {
+		$key = $this->subgroup_to_cat_key( $subgroup );
+		return $this->data['config'][ $key ] ?? array();
+	}
+
+	/**
+	 * Add a new category for a subgroup. Returns the generated ID.
+	 *
+	 * @param string $subgroup Subgroup name.
+	 * @param array  $cat      Category data (name, locked, order).
+	 * @return string UUID-style ID.
+	 */
+	public function add_category_for_subgroup( string $subgroup, array $cat ): string {
+		$key       = $this->subgroup_to_cat_key( $subgroup );
+		$id        = $this->generate_id();
+		$cat['id'] = $id;
+		$cat       = array_merge( $this->category_defaults(), $cat );
+
+		if ( ! isset( $this->data['config'][ $key ] ) ) {
+			$this->data['config'][ $key ] = array();
+		}
+
+		$this->data['config'][ $key ][] = $cat;
+		$this->dirty                    = true;
+
+		return $id;
+	}
+
+	/**
+	 * Update an existing category by ID for a subgroup.
+	 *
+	 * @param string $subgroup Subgroup name.
+	 * @param string $id       Category UUID.
+	 * @param array  $data     Fields to update.
+	 * @return bool True if found and updated.
+	 */
+	public function update_category_for_subgroup( string $subgroup, string $id, array $data ): bool {
+		$key = $this->subgroup_to_cat_key( $subgroup );
+
+		if ( ! isset( $this->data['config'][ $key ] ) ) {
+			return false;
+		}
+
+		foreach ( $this->data['config'][ $key ] as &$cat ) {
+			if ( $cat['id'] === $id ) {
+				unset( $data['locked'] ); // Never allow changing the locked flag.
+				$cat         = array_merge( $cat, $data );
+				$this->dirty = true;
+				return true;
+			}
+		}
+		unset( $cat );
+
+		return false;
+	}
+
+	/**
+	 * Delete a category by ID for a subgroup.
+	 *
+	 * Refuses to delete locked categories (e.g., Uncategorized).
+	 *
+	 * @param string $subgroup Subgroup name.
+	 * @param string $id       Category UUID.
+	 * @return bool True if found and deleted.
+	 */
+	public function delete_category_for_subgroup( string $subgroup, string $id ): bool {
+		$key = $this->subgroup_to_cat_key( $subgroup );
+
+		if ( ! isset( $this->data['config'][ $key ] ) ) {
+			return false;
+		}
+
+		foreach ( $this->data['config'][ $key ] as $k => $cat ) {
+			if ( $cat['id'] === $id ) {
+				if ( ! empty( $cat['locked'] ) ) {
+					return false; // Cannot delete locked categories.
+				}
+				array_splice( $this->data['config'][ $key ], $k, 1 );
+				$this->dirty = true;
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Reorder categories for a subgroup to match the given ordered list of IDs.
+	 *
+	 * @param string   $subgroup    Subgroup name.
+	 * @param string[] $ordered_ids Category IDs in the desired display order.
+	 * @return bool True on success.
+	 */
+	public function reorder_categories_for_subgroup( string $subgroup, array $ordered_ids ): bool {
+		$key = $this->subgroup_to_cat_key( $subgroup );
+
+		if ( ! isset( $this->data['config'][ $key ] ) ) {
+			return false;
+		}
+
+		$index = array_flip( $ordered_ids );
+
+		foreach ( $this->data['config'][ $key ] as &$cat ) {
+			if ( isset( $index[ $cat['id'] ] ) ) {
+				$cat['order'] = $index[ $cat['id'] ];
+			}
+		}
+		unset( $cat );
+
+		usort(
+			$this->data['config'][ $key ],
 			static function ( array $a, array $b ): int {
 				return $a['order'] <=> $b['order'];
 			}

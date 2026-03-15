@@ -27,8 +27,10 @@
 .eff-colors-view {
 	display:        flex;
 	flex-direction: column;
-	height:         100%;
-	overflow-y:     auto;
+	/* overflow-y intentionally not set here — #eff-edit-space (the parent scroll
+	   container) handles scrolling. Setting overflow-y:auto here would create a
+	   nested scroll context that prevents position:sticky on .eff-colors-filter-bar
+	   from working relative to #eff-edit-space. */
 }
 
 /* ==========================================================================
@@ -38,8 +40,10 @@
 .eff-colors-filter-bar {
 	display:       flex;
 	flex-direction: column;
-	border-bottom: 1px solid var(--eff-clr-border);
-	background:    var(--eff-bg-card);
+	border:        none;
+	border-radius: 12px;
+	margin-bottom: 32px;
+	background:    var(--eff-bg-panel);
 	position:      sticky;
 	top:           0;
 	z-index:       10;
@@ -52,6 +56,46 @@
 	align-items: center;
 	gap:         var(--sp-2);
 	padding:     var(--sp-2) var(--sp-4);
+}
+
+/* Set name label (replaces .eff-colors-view-title in the top row) */
+.eff-filter-bar-set-name {
+	font-size:      24px;
+	font-weight:    700;
+	color:          var(--eff-clr-primary);
+	text-transform: uppercase;
+	user-select:    none;
+	padding-left:   40px;
+}
+
+/* Add Category button: circle on the bottom-left border of the set header (mirrors .eff-cat-add-btn-wrap) */
+.eff-filter-bar-add-cat-wrap {
+	position: absolute;
+	bottom:   -14px;
+	left:     -4px;
+	z-index:  2;
+}
+
+.eff-filter-bar-add-cat-wrap .eff-icon-btn {
+	width:         28px;
+	height:        28px;
+	border-radius: 50%;
+	background:    var(--eff-bg-card);
+	color:         var(--eff-clr-primary);
+	border:        2px solid var(--eff-clr-primary);
+	padding:       0;
+}
+
+.eff-filter-bar-add-cat-wrap .eff-icon-btn svg {
+	width:  18px;
+	height: 18px;
+}
+
+.eff-filter-bar-add-cat-wrap .eff-icon-btn:hover {
+	opacity:      1;
+	background:   var(--eff-clr-primary);
+	color:        var(--eff-clr-on-primary, #fff);
+	border-color: var(--eff-clr-primary);
 }
 
 /* Bottom row: + Category button, left-aligned */
@@ -146,7 +190,7 @@
 .eff-cat-add-btn-wrap {
 	position: absolute;
 	bottom:   -14px;
-	left:     0;
+	left:     -4px;
 	z-index:  2;
 }
 
@@ -207,6 +251,28 @@
 	gap:         var(--sp-2);
 	flex:        1;
 	min-width:   0;
+}
+
+/* Category drag handle (six-dot, left side of category header) */
+.eff-cat-drag-handle {
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	cursor:          grab;
+	color:           var(--eff-clr-muted);
+	opacity:         0.45;
+	user-select:     none;
+	padding:         0 4px;
+	flex-shrink:     0;
+}
+
+.eff-cat-drag-handle:hover {
+	opacity: 0.85;
+	color:   var(--eff-clr-primary);
+}
+
+.eff-cat-drag-handle:active {
+	cursor: grabbing;
 }
 
 /* Bottom row: ⊕ add-variable button, left-aligned */
@@ -319,7 +385,7 @@
    ========================================================================== */
 
 .eff-category-block[data-collapsed="true"] .eff-color-list,
-.eff-category-block[data-collapsed="true"] .eff-cat-add-btn-wrap {
+.eff-category-block[data-collapsed="true"] .eff-color-list-header {
 	display: none;
 }
 
@@ -590,7 +656,7 @@
 	min-height:            52px;
 }
 
-/* Close button (rightmost column in header) — Issue 9: centered + bordered */
+/* Close button (rightmost column in header) */
 .eff-modal-close-btn {
 	display:         flex;
 	align-items:     center;
@@ -599,18 +665,31 @@
 	justify-self:    center;
 	width:           28px;
 	height:          28px;
-	font-size:       18px;
+	padding:         0;
+	font-size:       22px;
+	font-weight:     700;
 	line-height:     1;
-	background:      var(--eff-clr-bg-hover);
-	border:          1px solid var(--eff-clr-border);
+	background:      none;
+	border:          none;
 	border-radius:   4px;
 	cursor:          pointer;
 	flex-shrink:     0;
+	color:           var(--eff-clr-secondary, #6b5c4e);
+	opacity:         0.7;
 }
 
 .eff-modal-close-btn:hover {
-	background: var(--eff-icon-btn-hover-bg);
-	color:      var(--eff-clr-primary);
+	opacity: 1;
+	color:   var(--eff-clr-primary, #3d2f1f);
+}
+
+/* In the always-light expand modal (appended to body, outside .eff-app) */
+.eff-expand-modal .eff-modal-close-btn {
+	color: #6b5c4e;
+}
+
+.eff-expand-modal .eff-modal-close-btn:hover {
+	color: #3d2f1f;
 }
 
 /*
@@ -905,6 +984,48 @@
 /* ==========================================================================
    13. SORT BUTTONS (Issue 5)
    ========================================================================== */
+
+/* Chevron rotation: indicates collapsed vs expanded state */
+.eff-category-collapse-btn svg {
+	transition: transform 0.2s ease;
+}
+.eff-category-block[data-collapsed="true"] .eff-category-collapse-btn svg {
+	transform: rotate(-90deg);
+}
+
+/* Column sort buttons — appear inside .eff-color-list-header cells */
+.eff-col-sort-wrap {
+	display:         flex;
+	justify-content: flex-end;
+	align-items:     center;
+}
+
+.eff-col-sort-btn {
+	display:         inline-flex;
+	align-items:     center;
+	justify-content: center;
+	width:           18px;
+	height:          18px;
+	padding:         0;
+	background:      transparent;
+	border:          none;
+	border-radius:   var(--eff-border-radius-sm);
+	cursor:          pointer;
+	color:           var(--eff-clr-muted);
+	opacity:         0.4;
+	transition:      opacity var(--eff-transition), color var(--eff-transition);
+}
+
+.eff-col-sort-btn:hover {
+	opacity: 0.85;
+	color:   var(--eff-clr-secondary);
+}
+
+.eff-col-sort-btn[data-sort-dir="asc"],
+.eff-col-sort-btn[data-sort-dir="desc"] {
+	opacity: 0.9;
+	color:   var(--eff-clr-accent);
+}
 
 .eff-sort-btn {
 	display:         inline-flex;

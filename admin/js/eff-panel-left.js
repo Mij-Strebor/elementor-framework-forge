@@ -198,9 +198,26 @@
 				this._populateList('eff-nav-colors', ['Branding', 'Background', 'Neutral', 'Semantic', 'Uncategorized']);
 			}
 
-			var vars = (config.groups && config.groups.Variables) ? config.groups.Variables : {};
-			this._populateList('eff-nav-fonts',   vars.Fonts   || []);
+			// Phase 2: Fonts use config.fontCategories when available.
+		var vars = (config.groups && config.groups.Variables) ? config.groups.Variables : {};
+		if (config.fontCategories && config.fontCategories.length > 0) {
+			var sortedFontCats = config.fontCategories.slice().sort(function (a, b) {
+				return (a.order || 0) - (b.order || 0);
+			});
+			this._populateList('eff-nav-fonts', sortedFontCats);
+		} else {
+			this._populateList('eff-nav-fonts', vars.Fonts || []);
+		}
+
+		// Phase 2: Numbers use config.numberCategories when available.
+		if (config.numberCategories && config.numberCategories.length > 0) {
+			var sortedNumCats = config.numberCategories.slice().sort(function (a, b) {
+				return (a.order || 0) - (b.order || 0);
+			});
+			this._populateList('eff-nav-numbers', sortedNumCats);
+		} else {
 			this._populateList('eff-nav-numbers', vars.Numbers || []);
+		}
 		},
 
 		/**

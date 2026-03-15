@@ -79,5 +79,78 @@ When syncing from Elementor: child variables are not present in Elementor's comp
 
 ---
 
+## Amendment 2 — Session 4 Bug Fixes (2026-03-14)
+
+### A2.1 — Cross-category drag/drop into empty categories
+
+**File:** `admin/js/eff-colors.js`
+
+Variables can now be dragged into expanded categories that contain no variables. When the
+drag cursor enters an empty expanded category (detected via `elementFromPoint`), the drop
+indicator is displayed at the vertical midpoint of the `.eff-color-list` container. On
+drop, a sentinel value `__empty-cat__` triggers a special path in `_dropVariable()` that
+reassigns the dragged variable's `category`, `category_id`, and `order` to the target
+category without requiring a target variable row.
+
+The indicator-hide guard was updated to only hide when the cursor is not over any
+`.eff-category-block`, preventing premature hide when moving between the category header
+and the empty list area.
+
+### A2.2 — Commit to Elementor V4
+
+**File:** `includes/class-eff-ajax-handler.php`
+
+The commit action was rewritten to correctly target the user-defined `:root` block rather
+than blindly inserting at the last `}` position.
+
+- `do_action('elementor/css-file/clear-cache')` is no longer called. Calling it caused
+  Elementor to regenerate CSS from its database, overwriting EFF's writes.
+- A new private helper `find_user_root_close_pos()` scans all `:root` blocks, identifies
+  the user-variables block (the one containing no system prefixes such as `--e-global-`,
+  `--e-a-`, `--e-one-`, `--e-context-`, `--e-button-`, `--kit-`), and returns the
+  position of its closing `}`. If no user block is found, a new `:root` block is appended.
+
+### A2.3 — Expand modal close button
+
+**File:** `admin/css/eff-colors.css`
+
+The close button (`×`) on the Tints/Shades/Transparencies expand modal was restyled:
+- `background: none; border: none` — no fill or stroke
+- `font-size: 22px; font-weight: 700` — large, bold ×
+- `opacity: 0.7` default, `opacity: 1` on hover
+- Color inherits from `--eff-clr-secondary` (hardcoded fallback for expand modal since
+  it is appended to `document.body`, outside `.eff-app` where CSS variables are defined)
+
+### A2.4 — Manage Project modal — Colors category editor
+
+**File:** `admin/js/eff-panel-top.js`
+
+The Manage Project modal now includes a "Colors categories" section below the subgroup
+editors. Each row in `EFF.state.config.categories` is shown as an editable input with a
+Delete button. Locked categories (Uncategorized) show a "locked" badge and a disabled
+input. The "+ Add category" button appends a new editable row. On Save:
+- Category rows are read from the DOM into a `newCats` array
+- `Uncategorized` is guaranteed to be present and locked at the end
+- Config is saved via `eff_save_config`; `EFF.state.config.categories` is updated
+- Colors view is re-rendered if currently active
+
+### A2.5 — Tooltip system
+
+**File:** `admin/js/eff-panel-top.js`
+
+- `_bindTooltips()` now uses delegated `mouseover`/`mouseout`/`focusin`/`focusout`
+  listeners on `document`, replacing per-element `querySelector.forEach` binding.
+  This covers dynamically created elements (variable rows, category buttons) automatically.
+- `EFF.PanelTop._showTooltips` (default `true`) and `EFF.PanelTop._extendedTooltips`
+  (default `false`) control tooltip visibility and long-form text, respectively.
+- When `_extendedTooltips` is `true`, `_showTooltip()` prefers `data-eff-tooltip-long`
+  over `data-eff-tooltip` if the long attribute is present.
+- Both settings are persisted via `eff_save_settings` (`show_tooltips` / `extended_tooltips`).
+- The Preferences modal has two new checkboxes to toggle these settings live.
+- All top-bar buttons, right-panel buttons, and dynamic category/variable row buttons now
+  carry `data-eff-tooltip` attributes. Key buttons also carry `data-eff-tooltip-long`.
+
+---
+
 *End of EFF-Spec-Colors-Amendments.md*
 *© Jim Roberts / Jim R Forge — jimrforge.com*

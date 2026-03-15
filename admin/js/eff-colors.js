@@ -68,6 +68,12 @@
 	 */
 	var _focusedCategoryId = null;
 
+	/**
+	 * Per-category sort state. { catId: { field: 'name'|'value', dir: 'none'|'asc'|'desc' } }
+	 * Client-side display sort only — does not persist to server.
+	 */
+	var _catSortState = {};
+
 	// -----------------------------------------------------------------------
 	// MODULE
 	// -----------------------------------------------------------------------
@@ -203,28 +209,31 @@
 			var _toggleTitle = _anyExpanded ? 'Collapse all categories' : 'Expand all categories';
 
 			// ------- FILTER BAR -------
-			// Single row: add-category | spacer | search (flex-grow, right) | close | collapse-toggle
+			// Top row: COLORS title | spacer | search | close | collapse-toggle
+			// Add-category button: circle below filter bar (matches category add-var position)
 			html += '<div class="eff-colors-filter-bar">'
 				+ '<div class="eff-filter-bar-top">'
-				+ '<button class="eff-icon-btn eff-colors-add-cat-btn" id="eff-colors-add-category"'
-				+ ' title="Add a new category" aria-label="Add category">'
-				+ self._plusCircleSVG()
-				+ '</button>'
+				+ '<span class="eff-filter-bar-set-name">Colors</span>'
 				+ '<span style="flex:1"></span>'
 				+ '<input type="text" class="eff-colors-search" id="eff-colors-search"'
 				+ ' placeholder="Search\u2026" aria-label="Search color variables">'
-				+ '<button class="eff-sort-btn" data-sort="colors-asc" title="Sort colors A\u2192Z">A\u2191</button>'
-				+ '<button class="eff-sort-btn" data-sort="colors-desc" title="Sort colors Z\u2192A">A\u2193</button>'
-				+ '<button class="eff-sort-btn" data-sort="cats-asc" title="Sort categories A\u2192Z">C\u2191</button>'
-				+ '<button class="eff-sort-btn" data-sort="cats-desc" title="Sort categories Z\u2192A">C\u2193</button>'
 				+ '<button class="eff-icon-btn eff-colors-back-btn" id="eff-colors-back"'
-				+ ' title="Close colors view" aria-label="Close colors view">'
+				+ ' title="Close colors view" aria-label="Close colors view"'
+				+ ' data-eff-tooltip="Close Colors view">'
 				+ self._closeSVG()
 				+ '</button>'
 				+ '<button class="eff-icon-btn" id="eff-colors-collapse-toggle"'
 				+ ' title="' + _toggleTitle + '" aria-label="' + _toggleTitle + '"'
+				+ ' data-eff-tooltip="' + _toggleTitle + '"'
 				+ ' data-toggle-state="' + _toggleState + '">'
 				+ _toggleSVG
+				+ '</button>'
+				+ '</div>'
+				+ '<div class="eff-filter-bar-add-cat-wrap">'
+				+ '<button class="eff-icon-btn eff-colors-add-cat-btn" id="eff-colors-add-category"'
+				+ ' data-eff-tooltip="Add category"'
+				+ ' aria-label="Add category">'
+				+ self._plusSVG()
 				+ '</button>'
 				+ '</div>'
 				+ '</div>'; // .eff-colors-filter-bar
@@ -301,10 +310,16 @@
 				// overflow:visible so the add button can sit on the bottom edge.
 				+ '<div class="eff-category-inner">';
 
-			// --- Header: name span + count + actions ---
+			// --- Header: drag-handle + name span + count + sort buttons + actions ---
 			html += '<div class="eff-category-header">'
 				+ '<div class="eff-cat-header-top">'
 				+ '<div class="eff-cat-header-left">'
+
+				// Drag handle — six-dot grip for category drag-and-drop.
+				+ '<span class="eff-cat-drag-handle" data-action="cat-drag-handle" aria-hidden="true"'
+				+ ' data-eff-tooltip="Drag to reorder">'
+				+ self._sixDotSVG()
+				+ '</span>'
 
 				// Category name as plain span — no surrounding box.
 				// Double-click activates contenteditable.
@@ -324,14 +339,35 @@
 
 				+ '<div class="eff-category-actions" role="toolbar" aria-label="Category actions">'
 				+ self._catBtn('duplicate', 'Duplicate category', self._duplicateSVG(), '')
-				+ self._catBtn('move-up',   'Move category up',   self._arrowUpSVG(),   '', catIndex === 0)
-				+ self._catBtn('move-down', 'Move category down', self._arrowDownSVG(), '', catIndex === catTotal - 1)
 				+ (cat.locked ? '' : self._catBtn('delete', 'Delete category', self._trashSVG(), 'eff-icon-btn--danger'))
 				+ self._catBtn('collapse', 'Collapse/expand category', self._chevronSVG(), 'eff-category-collapse-btn')
 				+ '</div>' // .eff-category-actions
 
 				+ '</div>' // .eff-cat-header-top
 				+ '</div>'; // .eff-category-header
+
+			// Column sort header row — same grid as variable rows; sort buttons in name (col4) and value (col5).
+			var _ns = (_catSortState[cat.id] && _catSortState[cat.id].field === 'name')  ? _catSortState[cat.id].dir : 'none';
+			var _vs = (_catSortState[cat.id] && _catSortState[cat.id].field === 'value') ? _catSortState[cat.id].dir : 'none';
+			html += '<div class="eff-color-list-header" data-cat-id="' + self._esc(cat.id) + '">'
+				+ '<span></span>'  // col1: drag
+				+ '<span></span>'  // col2: status dot
+				+ '<span></span>'  // col3: swatch
+				+ '<span class="eff-col-sort-wrap">'
+				+ '<button class="eff-col-sort-btn" data-sort-col="name" data-cat-id="' + self._esc(cat.id) + '" data-sort-dir="' + _ns + '"'
+				+ ' title="Sort by name" aria-label="Sort by name"'
+				+ ' data-eff-tooltip="Sort by name">'
+				+ self._sortBtnSVG(_ns)
+				+ '</button>'
+				+ '</span>'
+				+ '<span class="eff-col-sort-wrap">'
+				+ '<button class="eff-col-sort-btn" data-sort-col="value" data-cat-id="' + self._esc(cat.id) + '" data-sort-dir="' + _vs + '"'
+				+ ' title="Sort by value" aria-label="Sort by value"'
+				+ ' data-eff-tooltip="Sort by value">'
+				+ self._sortBtnSVG(_vs)
+				+ '</button>'
+				+ '</span>'
+				+ '</div>'; // .eff-color-list-header
 
 			// Variable rows.
 			html += '<div class="eff-color-list">';
@@ -351,7 +387,9 @@
 				+ '<button class="eff-icon-btn eff-add-var-btn" data-action="add-var"'
 				+ ' data-cat-id="' + self._esc(cat.id) + '"'
 				+ ' aria-label="Add Color to ' + self._esc(cat.name) + '"'
-				+ ' title="Add Color">'
+				+ ' title="Add Color"'
+			+ ' data-eff-tooltip="Add Color"'
+			+ ' data-eff-tooltip-long="Add a new color variable to this category">'
 				+ self._plusSVG()
 				+ '</button>'
 				+ '</div>';
@@ -374,6 +412,7 @@
 				+ ' data-action="' + action + '"'
 				+ ' aria-label="' + this._esc(label) + '"'
 				+ ' title="' + this._esc(label) + '"'
+			+ ' data-eff-tooltip="' + this._esc(label) + '"'
 				+ (disabled ? ' disabled' : '')
 				+ '>'
 				+ icon
@@ -398,14 +437,16 @@
 				+ ' data-var-id="' + this._esc(rowKey) + '">'
 
 				// Drag handle (col 1: 24px).
-				+ '<div class="eff-drag-handle" data-action="drag-handle" draggable="false">'
+				+ '<div class="eff-drag-handle" data-action="drag-handle" draggable="false"'
+			+ ' aria-label="Drag to reorder" data-eff-tooltip="Drag to reorder">'
 				+ this._sixDotSVG()
 				+ '</div>'
 
 				// Status dot (Phase 2e).
 				+ '<span class="eff-status-dot"'
 				+ ' style="background:' + statusColor + '"'
-				+ ' title="Status: ' + this._esc(status) + '"'
+				+ ' data-eff-tooltip="' + this._esc(status.charAt(0).toUpperCase() + status.slice(1)) + '"'
+				+ ' data-eff-tooltip-long="' + this._esc(this._statusLongTooltip(status)) + '"'
 				+ ' aria-label="Status: ' + this._esc(status) + '">'
 				+ '</span>'
 
@@ -445,12 +486,16 @@
 				+ ' data-action="expand"'
 				+ ' aria-label="Open color editor"'
 				+ ' aria-expanded="false"'
-				+ ' data-eff-tooltip="Open color editor">'
+				+ ' data-eff-tooltip="Open color editor"'
+			+ ' data-eff-tooltip-long="Open the full color editor — tints, shades, transparency, and picker">'
 				+ this._chevronSVG()
 				+ '</button>'
 
 				// Delete button (col 8).
-				+ '<button class="eff-icon-btn eff-color-delete-btn" data-action="delete-var" data-var-id="' + this._esc(rowKey) + '" title="Delete variable">&#x1F5D1;</button>'
+				+ '<button class="eff-icon-btn eff-color-delete-btn" data-action="delete-var" data-var-id="' + this._esc(rowKey) + '"'
+			+ ' title="Delete variable" aria-label="Delete variable"'
+			+ ' data-eff-tooltip="Delete variable"'
+			+ ' data-eff-tooltip-long="Remove this variable from the project">&#x1F5D1;</button>'
 
 				+ '</div>'; // .eff-color-row
 
@@ -712,6 +757,7 @@
 			// to falsely trigger on single clicks.
 			if (container._effEventsBound) { return; }
 			container._effEventsBound = true;
+			self._initCatDrag(container);
 			self._initDrag(container);
 
 			// ---- Delegated click events on category blocks ----
@@ -764,15 +810,16 @@
 				}
 			});
 
-			// ---- Sort buttons ----
+			// ---- Column sort buttons (in .eff-color-list-header) ----
 			container.addEventListener('click', function (e) {
-				var sortTarget = e.target.closest('.eff-sort-btn');
-				if (!sortTarget) { return; }
-				var sortAction = sortTarget.getAttribute('data-sort');
-				if (sortAction === 'colors-asc')  { self._sortColors(true); }
-				else if (sortAction === 'colors-desc') { self._sortColors(false); }
-				else if (sortAction === 'cats-asc')   { self._sortCategories(true); }
-				else if (sortAction === 'cats-desc')  { self._sortCategories(false); }
+				var sortBtn = e.target.closest('.eff-col-sort-btn');
+				if (!sortBtn) { return; }
+				var sCatId  = sortBtn.getAttribute('data-cat-id');
+				var sCol    = sortBtn.getAttribute('data-sort-col');
+				var sDir    = sortBtn.getAttribute('data-sort-dir');
+				var nextDir = sDir === 'none' ? 'asc' : (sDir === 'asc' ? 'desc' : 'none');
+				_catSortState[sCatId] = { field: sCol, dir: nextDir };
+				self._sortVarsInCategory(sCatId, sCol, nextDir, container);
 			});
 
 			// ---- Name / Category name: single-click to start editing ----
@@ -806,13 +853,15 @@
 			});
 
 
-			// ---- Tooltip delegation for dynamically created elements ----
+			// Tooltip delegation is handled globally by EFF.PanelTop._bindTooltips()
+			// via document-level delegated listeners. No local binding needed here.
 			container.addEventListener('mouseenter', function (e) {
 				var el = e.target ? e.target.closest('[data-eff-tooltip]') : null;
 				if (!el) { return; }
 				var tip = document.getElementById('eff-tooltip');
 				if (!tip) { return; }
-				tip.textContent = el.getAttribute('data-eff-tooltip');
+				return; /* EFF.PanelTop._bindTooltips handles all tooltips via document delegation */
+			tip.textContent = el.getAttribute('data-eff-tooltip'); /* unreachable */
 				var rect = el.getBoundingClientRect();
 				var scrollY = window.scrollY || document.documentElement.scrollTop;
 				tip.style.left      = (rect.left + rect.width / 2) + 'px';
@@ -827,7 +876,8 @@
 				if (!el) { return; }
 				var tip = document.getElementById('eff-tooltip');
 				if (tip) {
-					tip.classList.remove('is-visible');
+					return; /* EFF.PanelTop._bindTooltips handles all tooltips */
+				tip.classList.remove('is-visible'); /* unreachable */
 					tip.setAttribute('aria-hidden', 'true');
 				}
 			}, true);
@@ -1823,12 +1873,14 @@
 				if (!EFF.state.config) { EFF.state.config = {}; }
 				EFF.state.config.categories = res.data.categories;
 
-				var vars = self._getVarsForCategoryId(catId);
+				// Use _getVarsForCategory (checks both category_id AND category name)
+				// so Elementor-synced variables (which have only a category string, no
+				// category_id) are also duplicated correctly.
+				var vars = self._getVarsForCategory(cat);
 
 				var chain = Promise.resolve();
 				vars.forEach(function (v) {
 					var dupVar = {
-						id:          'var-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7),
 						name:        v.name + '-copy',
 						value:       v.value,
 						parent_id:   v.parent_id || null,
@@ -1868,6 +1920,26 @@
 				EFF.state.config.categories = [];
 			}
 			var cats = EFF.state.config.categories;
+
+			// --- v1 → Phase 2 migration ---
+			// If no Phase 2 category objects exist yet, seed from the v1 string list
+			// stored in config.groups.Variables.Colors. This happens the first time a
+			// file created before Phase 2 is opened in the Colors view.
+			if (cats.length === 0) {
+				var v1names = (EFF.state.config.groups &&
+				               EFF.state.config.groups.Variables &&
+				               EFF.state.config.groups.Variables.Colors) || [];
+				v1names.forEach(function (name, idx) {
+					var safeName = String(name).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+					cats.push({
+						id:     'default-' + safeName,
+						name:   String(name),
+						order:  idx,
+						locked: (name === 'Uncategorized'),
+					});
+				});
+			}
+
 			var hasUncat = cats.some(function (c) { return c.name === 'Uncategorized'; });
 			if (!hasUncat) {
 				var maxOrder = 0;
@@ -1938,8 +2010,8 @@
 			combined.forEach(function (c, i) { c.order = i + 1; });
 			EFF.state.config.categories = combined;
 			EFF.App.ajax('eff_reorder_categories', {
-				filename:   EFF.state.currentFile,
-				categories: JSON.stringify(combined),
+				filename:    EFF.state.currentFile,
+				ordered_ids: JSON.stringify(combined.map(function (c) { return c.id; })),
 			}).then(function (r) {
 				if (r.success && r.data && r.data.categories) {
 					EFF.state.config.categories = r.data.categories;
@@ -1982,8 +2054,8 @@
 					variable_id:     varId,
 					delete_children: deleteChildren ? '1' : '0',
 				}).then(function (res) {
-					if (res.success && res.data && res.data.variables) {
-						EFF.state.variables = res.data.variables;
+					if (res.success && res.data && res.data.data && res.data.data.variables) {
+						EFF.state.variables = res.data.data.variables;
 						EFF.App.setDirty(true);
 						EFF.App.refreshCounts();
 						self._rerenderView();
@@ -2064,12 +2136,230 @@
 				+ '</svg>';
 		},
 
-		/**
-		 * Initialize mouse-based drag-and-drop for color variable rows.
-		 *
-		 * @param {HTMLElement} container The color list container.
-		 */
-		_initDrag: function (container) {
+	/**
+	 * Return a small SVG icon for a sort button based on its direction state.
+	 * 'none' = neutral (up+down arrows), 'asc' = solid up triangle, 'desc' = solid down triangle.
+	 *
+	 * @param {string} dir 'none' | 'asc' | 'desc'
+	 * @returns {string}
+	 */
+	_sortBtnSVG: function (dir) {
+		if (dir === 'asc') {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" aria-hidden="true">'
+				+ '<polygon points="12,3 22,21 2,21" fill="currentColor"/>'
+				+ '</svg>';
+		}
+		if (dir === 'desc') {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" aria-hidden="true">'
+				+ '<polygon points="12,21 2,3 22,3" fill="currentColor"/>'
+				+ '</svg>';
+		}
+		// 'none' — stacked up+down triangles (neutral)
+		return '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="12" viewBox="0 0 10 12" aria-hidden="true">'
+			+ '<polygon points="5,1 9,5 1,5" fill="currentColor" opacity="0.6"/>'
+			+ '<polygon points="5,11 1,7 9,7" fill="currentColor" opacity="0.6"/>'
+			+ '</svg>';
+	},
+
+	/**
+	 * Sort variables within a single category and re-render that category's list.
+	 * Client-side only — does not call the server or modify v.order.
+	 *
+	 * @param {string}      catId     Category ID.
+	 * @param {string}      field     'name' | 'value'.
+	 * @param {string}      dir       'none' | 'asc' | 'desc'.
+	 * @param {HTMLElement} container Edit content container.
+	 */
+	_sortVarsInCategory: function (catId, field, dir, container) {
+		var self = this;
+		var cats = (EFF.state.config && EFF.state.config.categories)
+			? EFF.state.config.categories
+			: self._getDefaultCategories();
+		var cat  = null;
+		for (var i = 0; i < cats.length; i++) {
+			if (cats[i].id === catId) { cat = cats[i]; break; }
+		}
+		if (!cat) { return; }
+
+		var vars = self._getVarsForCategory(cat).slice();
+		if (dir !== 'none') {
+			vars.sort(function (a, b) {
+				var fa = ((field === 'value' ? a.value : a.name) || '').toLowerCase();
+				var fb = ((field === 'value' ? b.value : b.name) || '').toLowerCase();
+				if (fa < fb) { return dir === 'asc' ? -1 : 1; }
+				if (fa > fb) { return dir === 'asc' ?  1 : -1; }
+				return 0;
+			});
+		}
+
+		var block = container.querySelector('.eff-category-block[data-category-id="' + catId + '"]');
+		if (!block) { return; }
+
+		var list = block.querySelector('.eff-color-list');
+		if (!list) { return; }
+
+		var html = '';
+		if (vars.length === 0) {
+			html = '<p class="eff-colors-empty">No variables in this category.</p>';
+		} else {
+			for (var j = 0; j < vars.length; j++) {
+				html += self._buildVariableRow(vars[j]);
+			}
+		}
+		list.innerHTML = html;
+
+		// Update sort button states in this block's column header row.
+		var sortBtns = block.querySelectorAll('.eff-col-sort-btn');
+		for (var k = 0; k < sortBtns.length; k++) {
+			var btn    = sortBtns[k];
+			var btnCol = btn.getAttribute('data-sort-col');
+			var btnDir = (btnCol === field) ? dir : 'none';
+			btn.setAttribute('data-sort-dir', btnDir);
+			btn.innerHTML = self._sortBtnSVG(btnDir);
+		}
+	},
+
+	/**
+	 * Initialize mouse-based drag-and-drop for category blocks.
+	 *
+	 * @param {HTMLElement} container
+	 */
+	_initCatDrag: function (container) {
+		var self = this;
+		var d    = { active: false, catId: null, ghost: null, indicator: null, startY: 0, _dropTargetId: null, _dropAbove: null };
+
+		container.addEventListener('mousedown', function (e) {
+			var handle = e.target.closest('.eff-cat-drag-handle');
+			if (!handle) { return; }
+			e.preventDefault();
+
+			var block = handle.closest('.eff-category-block');
+			if (!block) { return; }
+
+			d.catId = block.getAttribute('data-category-id');
+			if (!d.catId) { return; }
+
+			d.active = true;
+			d.startY = e.clientY;
+
+			var blockRect = block.getBoundingClientRect();
+			var ghost = block.cloneNode(true);
+			ghost.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;'
+				+ 'width:' + block.offsetWidth + 'px;'
+				+ 'top:' + blockRect.top + 'px;left:' + blockRect.left + 'px;'
+				+ 'opacity:0.88;box-shadow:0 8px 24px rgba(0,0,0,0.28);border-radius:12px;';
+			ghost.className += ' eff-drag-ghost';
+			document.body.appendChild(ghost);
+			d.ghost = ghost;
+
+			var indicator = document.createElement('div');
+			indicator.className = 'eff-drop-indicator';
+			indicator.style.display = 'none';
+			indicator.style.pointerEvents = 'none';
+			var _appEl  = document.getElementById('eff-app');
+			var _accent = _appEl ? getComputedStyle(_appEl).getPropertyValue('--eff-clr-accent').trim() : '';
+			if (!_accent) { _accent = '#f4c542'; }
+			indicator.style.background = 'linear-gradient(to right, transparent, '
+				+ _accent + ' 15%, ' + _accent + ' 85%, transparent)';
+			document.body.appendChild(indicator);
+			d.indicator = indicator;
+
+			block.style.opacity = '0.3';
+		});
+
+		document.addEventListener('mousemove', function (e) {
+			if (!d.active || !d.ghost) { return; }
+			var dy = e.clientY - d.startY;
+			d.ghost.style.transform = 'translateY(' + dy + 'px)';
+
+			d.ghost.style.display = 'none';
+			var elBelow = document.elementFromPoint(e.clientX, e.clientY);
+			d.ghost.style.display = '';
+
+			var targetBlock = elBelow ? elBelow.closest('.eff-category-block') : null;
+			if (targetBlock && targetBlock.getAttribute('data-category-id') !== d.catId) {
+				var tbRect = targetBlock.getBoundingClientRect();
+				var above  = e.clientY < tbRect.top + tbRect.height / 2;
+				d.indicator.style.display = '';
+				d.indicator.style.left    = tbRect.left + 'px';
+				d.indicator.style.width   = tbRect.width + 'px';
+				d.indicator.style.top     = (above ? tbRect.top : tbRect.bottom) - 2 + 'px';
+				d.indicator.style.height  = '4px';
+				d._dropTargetId = targetBlock.getAttribute('data-category-id');
+				d._dropAbove    = above;
+			} else {
+				d.indicator.style.display = 'none';
+				d._dropTargetId = null;
+			}
+		});
+
+		document.addEventListener('mouseup', function () {
+			if (!d.active) { return; }
+			d.active = false;
+
+			if (d.ghost     && d.ghost.parentNode)     { d.ghost.parentNode.removeChild(d.ghost); }
+			if (d.indicator && d.indicator.parentNode) { d.indicator.parentNode.removeChild(d.indicator); }
+			d.ghost     = null;
+			d.indicator = null;
+
+			var draggingBlock = container.querySelector('.eff-category-block[data-category-id="' + d.catId + '"]');
+			if (draggingBlock) { draggingBlock.style.opacity = ''; }
+
+			if (d._dropTargetId && d.catId && d._dropTargetId !== d.catId) {
+				self._onDropCat(d.catId, d._dropTargetId, d._dropAbove);
+			}
+			d._dropTargetId = null;
+			d._dropAbove    = null;
+			d.catId         = null;
+		});
+	},
+
+	/**
+	 * Handle a completed category drop: reorder categories.
+	 */
+	_onDropCat: function (srcId, targetId, above) {
+		var self = this;
+		var cats = (EFF.state.config.categories || []).slice();
+
+		var srcIdx = -1, tgtIdx = -1;
+		for (var i = 0; i < cats.length; i++) {
+			if (cats[i].id === srcId)    { srcIdx = i; }
+			if (cats[i].id === targetId) { tgtIdx = i; }
+		}
+		if (srcIdx === -1 || tgtIdx === -1) { return; }
+
+		var srcCat = cats.splice(srcIdx, 1)[0];
+		tgtIdx = -1;
+		for (var j = 0; j < cats.length; j++) {
+			if (cats[j].id === targetId) { tgtIdx = j; break; }
+		}
+		cats.splice(above ? tgtIdx : tgtIdx + 1, 0, srcCat);
+		cats.forEach(function (c, idx) { c.order = idx; });
+
+		var ordered_ids = cats.map(function (c) { return c.id; });
+		EFF.state.config.categories = cats;
+
+		EFF.App.ajax('eff_reorder_categories', {
+			subgroup:    'Colors',
+			ordered_ids: JSON.stringify(ordered_ids),
+		}).then(function (res) {
+			if (res.success && res.data && res.data.categories) {
+				EFF.state.config.categories = res.data.categories;
+			}
+			if (EFF.App) { EFF.App.setDirty(true); }
+			if (EFF.PanelLeft) { EFF.PanelLeft.refresh(); }
+			EFF.Colors._renderAll(EFF.state.currentSelection, document.getElementById('eff-edit-content'));
+		}).catch(function () {
+			EFF.Colors._renderAll(EFF.state.currentSelection, document.getElementById('eff-edit-content'));
+		});
+	},
+
+	/**
+	 * Initialize mouse-based drag-and-drop for color variable rows.
+	 *
+	 * @param {HTMLElement} container The color list container.
+	 */
+	_initDrag: function (container) {
 			var self = this;
 
 			container.addEventListener('mousedown', function (e) {
@@ -2106,6 +2396,7 @@
 				var indicator = document.createElement('div');
 				indicator.className = 'eff-drop-indicator';
 				indicator.style.display = 'none';
+				indicator.style.pointerEvents = 'none'; // Must not intercept elementFromPoint during mousemove
 				// --eff-clr-accent is scoped to [data-eff-theme], not :root/body.
 				// Read it from the .eff-app element so body-appended elements get the right color.
 				var _appEl = document.getElementById('eff-app');
@@ -2172,6 +2463,19 @@
 						if (blockRows.length > 0) {
 							targetRow = blockRows[blockRows.length - 1];
 							_drag._forceAfter = true;
+					} else {
+						// Empty expanded category — show indicator at the drop zone inside it
+						var emptyBody = hoverBlock2.querySelector('.eff-color-list');
+						if (emptyBody) {
+							var emptyRect = emptyBody.getBoundingClientRect();
+							_drag.indicator.style.display = 'block';
+							_drag.indicator.style.top     = (emptyRect.top + emptyRect.height / 2) - 1 + 'px';
+							_drag.indicator.style.left    = emptyRect.left + 'px';
+							_drag.indicator.style.width   = emptyRect.width + 'px';
+							_drag.indicator._targetVarId    = '__empty-cat__';
+							_drag.indicator._insertBefore   = true;
+							_drag.indicator._targetCatBlock = hoverBlock2;
+						}
 						}
 					}
 				}
@@ -2189,8 +2493,8 @@
 					_drag.indicator._insertBefore   = insertBefore;
 					_drag.indicator._targetCatBlock = targetRow.closest('.eff-category-block');
 				} else {
-					_drag.indicator.style.display = 'none';
-					_drag.indicator._targetVarId  = null;
+					if (!el || !el.closest('.eff-category-block')) { _drag.indicator.style.display = 'none';
+					_drag.indicator._targetVarId  = null; }
 				}
 			});
 
@@ -2279,7 +2583,32 @@
 				if (self._rowKey(EFF.state.variables[i]) === draggedId) { dragged = EFF.state.variables[i]; }
 				if (self._rowKey(EFF.state.variables[i]) === targetId)  { target  = EFF.state.variables[i]; }
 			}
-			if (!dragged || !target) { return; }
+			// Special case: drop into an empty category (no target variable row exists).
+		if (targetId === '__empty-cat__' && dragged && targetCatBlock) {
+			var emptyCatId   = targetCatBlock.getAttribute('data-category-id');
+			var emptyCatName = dragged.category; // fallback
+			var ecCats = (EFF.state.config && EFF.state.config.categories) || self._getDefaultCategories();
+			for (var ei = 0; ei < ecCats.length; ei++) {
+				if (ecCats[ei].id === emptyCatId) { emptyCatName = ecCats[ei].name; break; }
+			}
+			for (var ek = 0; ek < EFF.state.variables.length; ek++) {
+				if (self._rowKey(EFF.state.variables[ek]) === draggedId) {
+					EFF.state.variables[ek].category    = emptyCatName;
+					EFF.state.variables[ek].category_id = emptyCatId;
+					EFF.state.variables[ek].order       = 0;
+					break;
+				}
+			}
+			self._rerenderView();
+			if (EFF.App) { EFF.App.setDirty(true); EFF.App.setPendingCommit(true); }
+			EFF.App.ajax('eff_save_color', {
+				filename: EFF.state.currentFile,
+				variable: JSON.stringify({ id: dragged.id, order: 0, category: emptyCatName, category_id: emptyCatId }),
+			}).catch(function () {});
+			return;
+		}
+
+		if (!dragged || !target) { return; }
 
 			// Determine target category from the targetCatBlock element.
 			var newCatId   = targetCatBlock ? targetCatBlock.getAttribute('data-category-id') : dragged.category_id;
@@ -2924,6 +3253,18 @@
 		 * @param {string} status
 		 * @returns {string} CSS color string.
 		 */
+		_statusLongTooltip: function (status) {
+			var map = {
+				synced:   'Synced \u2014 This variable matches the value in the Elementor kit.',
+				modified: 'Modified \u2014 Value changed since last sync. Commit to push to Elementor.',
+				new:      'New \u2014 Variable not yet in the Elementor kit. Commit to add it.',
+				deleted:  'Deleted \u2014 Marked for deletion. Commit to remove from Elementor.',
+				conflict: 'Conflict \u2014 Value changed both here and in Elementor since last sync.',
+				orphaned: 'Orphaned \u2014 Exists in EFF but not found in Elementor kit. Commit to add it.',
+			};
+			return map[status] || ('Status: ' + status);
+		},
+
 		_statusColor: function (status) {
 			var map = {
 				synced:   'var(--eff-status-synced)',

@@ -21,8 +21,15 @@ class EFF_Settings {
 	 * @var array Default setting values.
 	 */
 	private static array $defaults = array(
-		'default_file_path' => '',
-		'auto_sync'         => false,
+		'default_file_path'          => '',
+		'auto_sync'                  => false,
+		'last_file'                  => '',
+		'colors_default_type'        => 'HEX',
+		'fonts_default_type'         => 'System',
+		'numbers_default_type'       => 'REM',
+		'colors_default_categories'  => array( 'Branding', 'Backgrounds', 'Neutral', 'Status' ),
+		'fonts_default_categories'   => array( 'Titles', 'Text' ),
+		'numbers_default_categories' => array( 'Spacing', 'Gaps', 'Grids', 'Radius' ),
 	);
 
 	/**

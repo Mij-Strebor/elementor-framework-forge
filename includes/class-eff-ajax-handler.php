@@ -283,14 +283,16 @@ class EFF_Ajax_Handler {
 	// -----------------------------------------------------------------------
 
 	/**
-	 * Add or update a color category in the .eff.json file.
+	 * Add or update a category in the .eff.json file.
 	 *
-	 * POST params: filename, category (JSON: {id?, name, order?, locked?})
+	 * POST params: filename, subgroup (optional, defaults to 'Colors'),
+	 *              category (JSON: {id?, name, order?, locked?})
 	 */
 	public function ajax_eff_save_category(): void {
 		$this->verify_request();
 
 		$filename     = $this->get_filename_param();
+		$subgroup     = $this->get_subgroup_param();
 		$category_raw = isset( $_POST['category'] ) ? wp_unslash( $_POST['category'] ) : '';
 		$category     = json_decode( $category_raw, true );
 
@@ -306,7 +308,7 @@ class EFF_Ajax_Handler {
 			if ( empty( $name ) ) {
 				wp_send_json_error( array( 'message' => __( 'Category name is required.', 'elementor-framework-forge' ) ) );
 			}
-			$updated = $store->update_category( $category['id'], array( 'name' => $name ) );
+			$updated = $store->update_category_for_subgroup( $subgroup, $category['id'], array( 'name' => $name ) );
 			if ( ! $updated ) {
 				wp_send_json_error( array( 'message' => __( 'Category not found.', 'elementor-framework-forge' ) ) );
 			}
@@ -317,28 +319,29 @@ class EFF_Ajax_Handler {
 			if ( empty( $name ) ) {
 				wp_send_json_error( array( 'message' => __( 'Category name is required.', 'elementor-framework-forge' ) ) );
 			}
-			$id = $store->add_category( array( 'name' => $name ) );
+			$id = $store->add_category_for_subgroup( $subgroup, array( 'name' => $name ) );
 		}
 
 		$this->save_store( $store, $filename );
 
 		wp_send_json_success( array(
 			'id'         => $id,
-			'categories' => $store->get_categories(),
+			'categories' => $store->get_categories_for_subgroup( $subgroup ),
 			/* translators: %s: category name */
 			'message'    => sprintf( __( 'Category "%s" saved.', 'elementor-framework-forge' ), sanitize_text_field( $category['name'] ?? '' ) ),
 		) );
 	}
 
 	/**
-	 * Delete a color category from the .eff.json file.
+	 * Delete a category from the .eff.json file.
 	 *
-	 * POST params: filename, category_id
+	 * POST params: filename, subgroup (optional, defaults to 'Colors'), category_id
 	 */
 	public function ajax_eff_delete_category(): void {
 		$this->verify_request();
 
 		$filename    = $this->get_filename_param();
+		$subgroup    = $this->get_subgroup_param();
 		$category_id = isset( $_POST['category_id'] )
 			? sanitize_text_field( wp_unslash( $_POST['category_id'] ) )
 			: '';
@@ -348,7 +351,7 @@ class EFF_Ajax_Handler {
 		}
 
 		$store   = $this->load_store( $filename );
-		$deleted = $store->delete_category( $category_id );
+		$deleted = $store->delete_category_for_subgroup( $subgroup, $category_id );
 
 		if ( ! $deleted ) {
 			wp_send_json_error( array( 'message' => __( 'Category not found or cannot be deleted.', 'elementor-framework-forge' ) ) );
@@ -357,7 +360,7 @@ class EFF_Ajax_Handler {
 		$this->save_store( $store, $filename );
 
 		wp_send_json_success( array(
-			'categories' => $store->get_categories(),
+			'categories' => $store->get_categories_for_subgroup( $subgroup ),
 			'message'    => __( 'Category deleted.', 'elementor-framework-forge' ),
 		) );
 	}
@@ -365,12 +368,14 @@ class EFF_Ajax_Handler {
 	/**
 	 * Reorder categories in the .eff.json file.
 	 *
-	 * POST params: filename, ordered_ids (JSON array of category UUIDs in desired order)
+	 * POST params: filename, subgroup (optional, defaults to 'Colors'),
+	 *              ordered_ids (JSON array of category UUIDs in desired order)
 	 */
 	public function ajax_eff_reorder_categories(): void {
 		$this->verify_request();
 
 		$filename    = $this->get_filename_param();
+		$subgroup    = $this->get_subgroup_param();
 		$ids_raw     = isset( $_POST['ordered_ids'] ) ? wp_unslash( $_POST['ordered_ids'] ) : '[]';
 		$ordered_ids = json_decode( $ids_raw, true );
 
@@ -387,11 +392,11 @@ class EFF_Ajax_Handler {
 		) );
 
 		$store = $this->load_store( $filename );
-		$store->reorder_categories( $ordered_ids );
+		$store->reorder_categories_for_subgroup( $subgroup, $ordered_ids );
 		$this->save_store( $store, $filename );
 
 		wp_send_json_success( array(
-			'categories' => $store->get_categories(),
+			'categories' => $store->get_categories_for_subgroup( $subgroup ),
 			'message'    => __( 'Categories reordered.', 'elementor-framework-forge' ),
 		) );
 	}
@@ -449,12 +454,12 @@ class EFF_Ajax_Handler {
 
 			$new_var = array(
 				'name'        => $name,
-				'value'       => isset( $variable['value'] ) ? sanitize_text_field( $variable['value'] ) : '',
-				'type'        => 'color',
-				'subgroup'    => 'Colors',
-				'category'    => isset( $variable['category'] ) ? sanitize_text_field( $variable['category'] ) : '',
+				'value'       => isset( $variable['value'] )       ? sanitize_text_field( $variable['value'] )       : '',
+				'type'        => isset( $variable['type'] )        ? sanitize_text_field( $variable['type'] )        : 'color',
+				'subgroup'    => isset( $variable['subgroup'] )    ? sanitize_text_field( $variable['subgroup'] )    : 'Colors',
+				'category'    => isset( $variable['category'] )    ? sanitize_text_field( $variable['category'] )    : '',
 				'category_id' => isset( $variable['category_id'] ) ? sanitize_text_field( $variable['category_id'] ) : '',
-				'format'      => isset( $variable['format'] ) ? sanitize_text_field( $variable['format'] ) : 'HEX',
+				'format'      => isset( $variable['format'] )      ? sanitize_text_field( $variable['format'] )      : 'HEX',
 				'status'      => 'new',
 				'source'      => 'user-defined',
 			);
@@ -764,7 +769,7 @@ class EFF_Ajax_Handler {
 			}
 		}
 
-		// Issue 7: Insert pass — add newly-created variables not yet in the CSS.
+		// Insert pass — add newly-created variables not yet in the CSS.
 		if ( ! empty( $skipped ) ) {
 			$insert_block    = '';
 			$newly_committed = array();
@@ -779,20 +784,21 @@ class EFF_Ajax_Handler {
 				}
 			}
 			if ( $insert_block ) {
-				// Insert before the closing } of the last :root block.
-				$last_root_pos = strrpos( $css, ':root' );
-				if ( false !== $last_root_pos ) {
-					$close_pos = strpos( $css, '}', $last_root_pos );
-					if ( false !== $close_pos ) {
-						$css = substr( $css, 0, $close_pos )
-							. $insert_block . "\n"
-							. substr( $css, $close_pos );
-						foreach ( $newly_committed as $n ) {
-							$committed[] = $n;
-						}
-						$skipped = array_values( array_diff( $skipped, $newly_committed ) );
-					}
+				// Find the user-defined :root block (the one that contains no --e-global- / system vars).
+				// If found, insert before its closing }. If not found, append a new :root block.
+				$user_root_close = $this->find_user_root_close_pos( $css );
+				if ( false !== $user_root_close ) {
+					$css = substr( $css, 0, $user_root_close )
+						. $insert_block . "\n"
+						. substr( $css, $user_root_close );
+				} else {
+					// No user-variables :root block exists — append one.
+					$css .= "\n\n/* EFF user-defined variables */\n:root {" . $insert_block . "\n}\n";
 				}
+				foreach ( $newly_committed as $n ) {
+					$committed[] = $n;
+				}
+				$skipped = array_values( array_diff( $skipped, $newly_committed ) );
 			}
 		}
 
@@ -802,8 +808,9 @@ class EFF_Ajax_Handler {
 			}
 		}
 
-		// Trigger Elementor CSS regeneration if the API is available.
-		do_action( 'elementor/css-file/clear-cache' );
+		// NOTE: We intentionally do NOT call do_action('elementor/css-file/clear-cache') here.
+		// Doing so causes Elementor to regenerate CSS from its database, which would overwrite
+		// the variables EFF just inserted. The CSS file is the source of truth for EFF variables.
 
 		// Update the baseline to reflect the committed values.
 		$baseline_vars = array();
@@ -846,6 +853,67 @@ class EFF_Ajax_Handler {
 	// -----------------------------------------------------------------------
 	// PHASE 2 PRIVATE HELPERS
 	// -----------------------------------------------------------------------
+
+	/**
+	 * Find the closing-brace position of the user-defined :root block in a CSS string.
+	 *
+	 * Scans all :root { ... } blocks and returns the position of the closing `}` for
+	 * the LAST block that contains no system/Elementor variables (i.e., the block that
+	 * is safe to insert user-defined custom properties into).
+	 *
+	 * @param string $css Raw CSS content.
+	 * @return int|false Position of `}` in $css, or false if no suitable block found.
+	 */
+	private function find_user_root_close_pos( string $css ) {
+		$system_prefixes = array( '--e-global-', '--e-a-', '--e-one-', '--e-context-', '--e-button-', '--kit-' );
+
+		// Find all :root block positions and their content.
+		$offset = 0;
+		$best   = false; // position of } in the best (last) user-variables block
+
+		while ( ( $root_pos = strpos( $css, ':root', $offset ) ) !== false ) {
+			$open_pos = strpos( $css, '{', $root_pos );
+			if ( false === $open_pos ) { break; }
+
+			$close_pos = strpos( $css, '}', $open_pos );
+			if ( false === $close_pos ) { break; }
+
+			$block_content = substr( $css, $open_pos + 1, $close_pos - $open_pos - 1 );
+
+			// Check if the block has any system variables.
+			$has_system = false;
+			foreach ( $system_prefixes as $prefix ) {
+				if ( strpos( $block_content, $prefix ) !== false ) {
+					$has_system = true;
+					break;
+				}
+			}
+
+			if ( ! $has_system ) {
+				$best = $close_pos; // track last user-variables block
+			}
+
+			$offset = $close_pos + 1;
+		}
+
+		return $best;
+	}
+
+	/**
+	 * Get and validate the `subgroup` POST parameter for category endpoints.
+	 *
+	 * Returns 'Colors' as the default for backward compatibility.
+	 *
+	 * @return string One of 'Colors', 'Fonts', 'Numbers'.
+	 */
+	private function get_subgroup_param(): string {
+		$subgroup = isset( $_POST['subgroup'] )
+			? sanitize_text_field( wp_unslash( $_POST['subgroup'] ) )
+			: 'Colors';
+
+		$allowed = array( 'Colors', 'Fonts', 'Numbers' );
+		return in_array( $subgroup, $allowed, true ) ? $subgroup : 'Colors';
+	}
 
 	/**
 	 * Get and validate the `filename` POST parameter.
