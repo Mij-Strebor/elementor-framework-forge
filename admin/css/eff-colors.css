@@ -1,0 +1,1064 @@
+/**
+ * EFF Colors CSS — Phase 2 Colors Edit Space Styles
+ *
+ * Styles the Colors subgroup edit space: filter bar, category blocks,
+ * color variable rows (swatch + name + value + format + expand),
+ * inline expand panel (color picker, tint/shade generator, preview bars),
+ * and category action buttons.
+ *
+ * Filter bar layout (two rows):
+ *   Top:    COLORS label | search input | close btn | collapse-toggle btn
+ *   Bottom: + Category button (left-aligned)
+ *
+ * Category header layout (two rows):
+ *   Top:    [Name (bold) + count] ... [duplicate | ↑ | ↓ | delete | chevron]
+ *   Bottom: ⊕ add-variable button (left-aligned)
+ *
+ * Depends on: eff-theme.css (design tokens), eff-layout.css (base layout)
+ *
+ * @package ElementorFrameworkForge
+ * @version 2.1.0
+ */
+
+/* ==========================================================================
+   1. COLORS CONTAINER
+   ========================================================================== */
+
+.eff-colors-view {
+	display:        flex;
+	flex-direction: column;
+	/* overflow-y intentionally not set here — #eff-edit-space (the parent scroll
+	   container) handles scrolling. Setting overflow-y:auto here would create a
+	   nested scroll context that prevents position:sticky on .eff-colors-filter-bar
+	   from working relative to #eff-edit-space. */
+}
+
+/* ==========================================================================
+   2. FILTER BAR (two-row layout)
+   ========================================================================== */
+
+.eff-colors-filter-bar {
+	display:       flex;
+	flex-direction: column;
+	border:        none;
+	border-radius: 12px;
+	margin-bottom: 32px;
+	background:    var(--eff-bg-panel);
+	position:      sticky;
+	top:           0;
+	z-index:       10;
+	flex-shrink:   0;
+}
+
+/* Top row: COLORS title + search + close btn + collapse toggle */
+.eff-filter-bar-top {
+	display:     flex;
+	align-items: center;
+	gap:         var(--sp-2);
+	padding:     var(--sp-2) var(--sp-4);
+}
+
+/* Set name label (replaces .eff-colors-view-title in the top row) */
+.eff-filter-bar-set-name {
+	font-size:      24px;
+	font-weight:    700;
+	color:          var(--eff-clr-primary);
+	text-transform: uppercase;
+	user-select:    none;
+	padding-left:   40px;
+}
+
+/* Add Category button: circle on the bottom-left border of the set header (mirrors .eff-cat-add-btn-wrap) */
+.eff-filter-bar-add-cat-wrap {
+	position: absolute;
+	bottom:   -14px;
+	left:     -4px;
+	z-index:  2;
+}
+
+.eff-filter-bar-add-cat-wrap .eff-icon-btn {
+	width:         28px;
+	height:        28px;
+	border-radius: 50%;
+	background:    var(--eff-bg-card);
+	color:         var(--eff-clr-primary);
+	border:        2px solid var(--eff-clr-primary);
+	padding:       0;
+}
+
+.eff-filter-bar-add-cat-wrap .eff-icon-btn svg {
+	width:  18px;
+	height: 18px;
+}
+
+.eff-filter-bar-add-cat-wrap .eff-icon-btn:hover {
+	opacity:      1;
+	background:   var(--eff-clr-primary);
+	color:        var(--eff-clr-on-primary, #fff);
+	border-color: var(--eff-clr-primary);
+}
+
+/* Bottom row: + Category button, left-aligned */
+.eff-filter-bar-bottom {
+	display:     flex;
+	align-items: center;
+	padding:     0 var(--sp-4) var(--sp-2);
+}
+
+/* COLORS section title */
+.eff-colors-view-title {
+	font-size:      var(--fs-xs);
+	font-weight:    var(--fw-semibold);
+	color:          var(--eff-clr-muted);
+	letter-spacing: 0.08em;
+	text-transform: uppercase;
+	flex-shrink:    0;
+	user-select:    none;
+}
+
+/* Search input — flex-grow to fill available space */
+.eff-colors-search {
+	flex:          1;
+	padding:       var(--sp-1) var(--sp-3);
+	background:    var(--eff-bg-field);
+	border:        1px solid var(--eff-clr-border);
+	border-radius: var(--eff-border-radius-sm);
+	font-size:     var(--fs-sm);
+	color:         var(--eff-clr-secondary);
+	box-shadow:    var(--eff-field-shadow);
+	min-width:     0;
+}
+
+.eff-colors-search::placeholder {
+	color: var(--eff-clr-muted);
+}
+
+/* Back / close button */
+.eff-colors-back-btn {
+	flex-shrink: 0;
+}
+
+/* + Category button (bottom-left of filter bar) */
+.eff-colors-add-cat-btn {
+	display:     inline-flex;
+	align-items: center;
+	gap:         var(--sp-1);
+	font-size:   var(--fs-xs);
+	color:       var(--eff-clr-muted);
+	width:       auto;
+	height:      auto;
+	padding:     2px var(--sp-2);
+	border:      none;
+	background:  transparent;
+	cursor:      pointer;
+	border-radius: var(--eff-border-radius-sm);
+	transition:  background-color var(--eff-transition), color var(--eff-transition);
+}
+
+.eff-colors-add-cat-btn:hover {
+	background: var(--eff-icon-btn-hover-bg);
+	color:      var(--eff-clr-secondary);
+}
+
+/* ==========================================================================
+   3. CATEGORY BLOCK
+   ========================================================================== */
+
+.eff-category-block {
+	position:      relative;
+	margin-bottom: 32px;
+	border-radius: 12px;
+}
+
+.eff-category-block:last-child {
+	margin-bottom: 16px; /* Leave room for the add-btn circle below */
+}
+
+/* Inner wrapper clips content to rounded corners */
+.eff-category-inner {
+	background:     var(--eff-bg-card);
+	border-radius:  12px;
+	overflow:       hidden;
+	padding-top:    16px;
+	padding-bottom: 12px;
+}
+
+/* Add-variable button: circle with center on the bottom-left border of the panel.
+   Absolutely positioned so it straddles the bottom edge — half inside, half outside.
+   bottom: -14px puts the circle center exactly on the panel's bottom border.
+   left: 0 aligns the circle center ~14px from the panel left edge (rounded corner start). */
+.eff-cat-add-btn-wrap {
+	position: absolute;
+	bottom:   -14px;
+	left:     -4px;
+	z-index:  2;
+}
+
+/* Add button: prominent circle with primary-color border and plus sign */
+.eff-cat-add-btn-wrap .eff-icon-btn {
+	width:         28px;
+	height:        28px;
+	border-radius: 50%;
+	background:    var(--eff-bg-card);
+	color:         var(--eff-clr-primary);
+	box-shadow:    none;
+	border:        2px solid var(--eff-clr-primary);
+	padding:       0;
+}
+
+.eff-cat-add-btn-wrap .eff-icon-btn svg {
+	width:  18px;
+	height: 18px;
+}
+
+.eff-cat-add-btn-wrap .eff-icon-btn:hover {
+	opacity:      1;
+	background:   var(--eff-clr-primary);
+	color:        var(--eff-clr-on-primary, #fff);
+	border-color: var(--eff-clr-primary);
+	box-shadow:   none;
+	transform:    none;
+}
+
+/* ==========================================================================
+   4. CATEGORY HEADER (two-row layout)
+   ========================================================================== */
+
+/* Override eff-layout.css — no divider between header and variable list */
+.eff-category-block .eff-category-header {
+	padding-bottom: 0;
+	border-bottom:  none;
+}
+
+.eff-category-header {
+	display:        flex;
+	flex-direction: column;
+}
+
+/* Top row: name + count left / action buttons right */
+.eff-cat-header-top {
+	display:     flex;
+	align-items: center;
+	gap:         var(--sp-2);
+	padding:     var(--sp-2) var(--sp-3) var(--sp-1) var(--sp-4);
+	min-height:  40px;
+}
+
+/* Left group: name + count (takes all available width) */
+.eff-cat-header-left {
+	display:     flex;
+	align-items: center;
+	gap:         var(--sp-2);
+	flex:        1;
+	min-width:   0;
+}
+
+/* Category drag handle (six-dot, left side of category header) */
+.eff-cat-drag-handle {
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	cursor:          grab;
+	color:           var(--eff-clr-muted);
+	opacity:         0.45;
+	user-select:     none;
+	padding:         0 4px;
+	flex-shrink:     0;
+}
+
+.eff-cat-drag-handle:hover {
+	opacity: 0.85;
+	color:   var(--eff-clr-primary);
+}
+
+.eff-cat-drag-handle:active {
+	cursor: grabbing;
+}
+
+/* Bottom row: ⊕ add-variable button, left-aligned */
+.eff-cat-header-bottom {
+	display:     flex;
+	align-items: center;
+	padding:     0 var(--sp-4) var(--sp-1);
+}
+
+/* Category name span — looks like a heading, no box whatsoever */
+.eff-category-name-input {
+	padding:       2px var(--sp-2);
+	font-size:     24px;
+	font-weight:   700;
+	color:         var(--eff-clr-primary);
+	cursor:        default;
+	outline:       none;
+	white-space:   nowrap;
+	overflow:      hidden;
+	text-overflow: ellipsis;
+	min-width:     0;
+}
+
+.eff-category-name-input[contenteditable="true"] {
+	cursor:  text;
+	outline: none;
+}
+
+/* Variable count badge (next to name) */
+.eff-category-count {
+	font-size:  var(--fs-xs);
+	color:      var(--eff-clr-muted);
+	padding:    2px var(--sp-2);
+	background: var(--eff-clr-bg-hover);
+	border-radius: 100px;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+/* 5-button action group (right side of top row) */
+.eff-category-actions {
+	display:     flex;
+	align-items: center;
+	gap:         2px;
+	flex-shrink: 0;
+}
+
+/* Add variable button (⊕, bottom-left of category header) */
+.eff-add-var-btn {
+	width:       auto;
+	height:      auto;
+	padding:     2px var(--sp-1);
+	font-size:   var(--fs-xs);
+	color:       var(--eff-clr-muted);
+}
+
+.eff-add-var-btn:hover {
+	color: var(--eff-clr-accent);
+}
+
+/* ==========================================================================
+   5. ICON BUTTONS (shared)
+   ========================================================================== */
+
+.eff-icon-btn {
+	display:         inline-flex;
+	align-items:     center;
+	justify-content: center;
+	width:           28px;
+	height:          28px;
+	padding:         0;
+	background:      transparent;
+	border:          none;
+	border-radius:   var(--eff-border-radius-sm);
+	color:           var(--eff-clr-muted);
+	cursor:          pointer;
+	transition:      background-color var(--eff-transition), color var(--eff-transition);
+	flex-shrink:     0;
+}
+
+.eff-icon-btn:hover {
+	background: var(--eff-icon-btn-hover-bg);
+	color:      var(--eff-clr-secondary);
+}
+
+.eff-icon-btn:disabled,
+.eff-icon-btn[disabled] {
+	opacity: 0.4;
+	cursor:  not-allowed;
+}
+
+/* Collapse chevron — down when collapsed, up when expanded */
+.eff-category-collapse-btn svg {
+	transition: transform var(--eff-transition-md);
+	transform: rotate(180deg); /* expanded: chevron points up */
+}
+
+.eff-category-block[data-collapsed="true"] .eff-category-collapse-btn svg {
+	transform: rotate(0deg); /* collapsed: chevron points down */
+}
+
+/* Danger variant (delete button on hover) */
+.eff-icon-btn--danger:hover {
+	background: var(--eff-clr-error-bg);
+	color:      var(--eff-clr-error);
+}
+
+/* ==========================================================================
+   6. COLLAPSE STATE — hide list and add-var button when collapsed
+   ========================================================================== */
+
+.eff-category-block[data-collapsed="true"] .eff-color-list,
+.eff-category-block[data-collapsed="true"] .eff-color-list-header {
+	display: none;
+}
+
+/* ==========================================================================
+   7. COLOR VARIABLE LIST (column headings + rows)
+   ========================================================================== */
+
+.eff-color-list-header {
+	display:               grid;
+	grid-template-columns: 24px 8px 15% 1fr 28% 12% 28px;
+	column-gap:    16px;
+	align-items:   center;
+	padding:       var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-4);
+	font-size:     var(--fs-xs);
+	color:         var(--eff-clr-muted);
+	font-weight:   var(--fw-medium);
+	border-bottom: 1px solid var(--eff-clr-border);
+}
+
+.eff-color-list {
+	display:        flex;
+	flex-direction: column;
+}
+
+/* Single color variable row */
+.eff-color-row {
+	display:               grid;
+	grid-template-columns: 24px 8px 15% 1fr 28% 12% 28px;
+	column-gap:    16px;
+	align-items:   center;
+	padding:       6px var(--sp-3) 6px var(--sp-4);
+	transition:    background-color var(--eff-transition);
+}
+
+.eff-color-row:hover {
+	background: var(--eff-clr-bg-hover);
+}
+
+/* Phase 2e: status dot (8px circle in first column) */
+.eff-status-dot {
+	width:         8px;
+	height:        8px;
+	border-radius: 50%;
+	flex-shrink:   0;
+	background:    var(--eff-clr-muted);
+}
+
+/* Color swatch (second column) — wider for better color preview */
+.eff-color-swatch {
+	display:       block;
+	width:         100%;
+	height:        32px;
+	border-radius: var(--eff-border-radius-sm);
+	box-shadow:    0 3px 8px rgba(100, 100, 100, 0.30), 0 1px 4px rgba(100, 100, 100, 0.16);
+	cursor:        pointer;
+	border:        1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Variable name — bare input, single-click to edit */
+.eff-color-name-input {
+	width:         100%;
+	padding:       2px var(--sp-2);
+	background:    var(--eff-bg-card);
+	border:        none;
+	font-size:     var(--fs-xs);
+	color:         var(--eff-clr-secondary);
+	font-family:   monospace, monospace;
+	min-width:     0;
+	cursor:        default;
+	outline:       none;
+	border-radius: var(--eff-border-radius-sm);
+	box-shadow:
+		inset 0 3px 6px rgba(100, 100, 100, 0.22),
+		inset 0 1px 3px rgba(100, 100, 100, 0.14),
+		0 3px 6px rgba(100, 100, 100, 0.18),
+		0 1px 3px rgba(100, 100, 100, 0.10);
+}
+
+.eff-color-name-input:not([readonly]) {
+	cursor:      text;
+	user-select: auto;
+}
+
+.eff-color-name-input:focus {
+	outline: none;
+}
+
+/* Color value — bare input, always editable */
+.eff-color-value-input {
+	width:         100%;
+	padding:       2px var(--sp-2);
+	background:    var(--eff-bg-card);
+	border:        none;
+	font-size:     var(--fs-xs);
+	color:         var(--eff-clr-secondary);
+	font-family:   monospace, monospace;
+	min-width:     0;
+	outline:       none;
+	border-radius: var(--eff-border-radius-sm);
+	box-shadow:
+		inset 0 3px 6px rgba(100, 100, 100, 0.22),
+		inset 0 1px 3px rgba(100, 100, 100, 0.14),
+		0 3px 6px rgba(100, 100, 100, 0.18),
+		0 1px 3px rgba(100, 100, 100, 0.10);
+}
+
+.eff-color-value-input:focus {
+	outline: none;
+}
+
+/* Format selector — same shadow/border treatment as name + value inputs */
+.eff-color-format-sel {
+	width:              100%;
+	padding:            2px 20px 2px var(--sp-1);
+	background-color:   var(--eff-bg-card);
+	background-image:   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+	background-repeat:  no-repeat;
+	background-position: right 6px center;
+	background-size:    10px 6px;
+	border:             1px solid rgba(100, 100, 100, 0.28);
+	font-size:          var(--fs-xs);
+	color:              var(--eff-clr-muted);
+	cursor:             pointer;
+	outline:            none;
+	border-radius:      var(--eff-border-radius-sm);
+	-webkit-appearance: none;
+	appearance:         none;
+	box-shadow:
+		inset 0 3px 6px rgba(100, 100, 100, 0.22),
+		inset 0 1px 3px rgba(100, 100, 100, 0.14),
+		0 3px 6px rgba(100, 100, 100, 0.18),
+		0 1px 3px rgba(100, 100, 100, 0.10);
+}
+
+.eff-color-format-sel:focus {
+	outline: none;
+}
+
+/* Drag handle (first column — 24px) */
+.eff-drag-handle {
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	cursor:          grab;
+	color:           var(--eff-clr-muted);
+	opacity:         0.45;
+	user-select:     none;
+	padding:         0 4px;
+}
+
+.eff-drag-handle:hover {
+	opacity: 0.85;
+	color:   var(--eff-clr-primary);
+}
+
+.eff-drag-handle:active {
+	cursor: grabbing;
+}
+
+.eff-row-dragging {
+	opacity: 0.3;
+}
+
+.eff-drag-ghost {
+	/* ghost is a fixed clone with inline styles; ensure it looks clean */
+	border-radius: 4px;
+}
+
+.eff-drop-indicator {
+	position:      fixed;
+	height:        4px;
+	background:    var(--eff-clr-accent); /* overridden inline by JS gradient */
+	z-index:       9998;
+	pointer-events: none;
+	border-radius: 2px;
+	box-shadow:    0 0 6px var(--eff-clr-accent);
+}
+
+/* Expand chevron (seventh column — 28px, matches category collapse btn) */
+.eff-color-expand-btn {
+	width:   28px;
+	height:  28px;
+	padding: 0;
+}
+
+.eff-color-expand-btn svg {
+	transition: transform var(--eff-transition-md);
+}
+
+.eff-color-row[data-expanded="true"] .eff-color-expand-btn svg {
+	transform: rotate(180deg);
+}
+
+/* ==========================================================================
+   8. EXPAND MODAL (floating card — triggered by row chevron/swatch click)
+   ========================================================================== */
+
+/* Full-viewport click-catcher */
+.eff-expand-backdrop {
+	position:        fixed;
+	inset:           0;
+	background:      rgba(0, 0, 0, 0.50);
+	backdrop-filter: blur(2px);
+	z-index:         990;
+	cursor:          default;
+}
+
+/*
+ * Modal card.
+ * transform-origin is set by JS to the clicked row's centre so the scale
+ * animation makes the card grow OUT of the row (open) and shrink BACK into
+ * it (close).
+ *
+ * Closed (no .is-open): scale(0.04) — a near-point at the row
+ * Open   (.is-open):    scale(1.0)  — full size, centred in viewport
+ *
+ * Two separate transition sets:
+ *   default  = closing  (fast ease-in, snaps back to row)
+ *   .is-open = opening  (slow spring, flows out of the row)
+ */
+.eff-expand-modal {
+	position:      fixed;
+	z-index:       991;
+	left:          50%;
+	top:           50%;
+	width:         min(92vw, 860px);
+	transform:     translate(-50%, -50%) scale(0.04);
+	opacity:       0;
+	/* Always solid white — no alpha, regardless of page theme */
+	background:    #ffffff;
+	color:         #1a1a1a;
+	/* Force light-mode tokens inside the modal */
+	--eff-bg-card:       #ffffff;
+	--eff-bg-panel:      #f5f5f5;
+	--eff-bg-field:      #f0f0f1;
+	--eff-clr-primary:   #1a1a1a;
+	--eff-clr-secondary: #374151;
+	--eff-clr-muted:     #6b7280;
+	--eff-clr-border:    #e5e7eb;
+	border-radius: 16px;
+	box-shadow:    0 32px 80px rgba(0, 0, 0, 0.40), 0 8px 24px rgba(0, 0, 0, 0.20);
+	overflow:      hidden;
+	/* Closing transition */
+	transition:    opacity 0.28s ease-in,
+	               transform 0.38s cubic-bezier(0.55, 0, 1, 0.45);
+}
+
+.eff-expand-modal.is-open {
+	transform:  translate(-50%, -50%) scale(1);
+	opacity:    1;
+	/* Opening transition — slow spring, flows out of the row */
+	transition: opacity 0.28s ease-out,
+	            transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/*
+ * Modal header — identical grid to .eff-color-row so every column aligns.
+ * Columns: drag-handle | status-dot | swatch | name | value | format | close-btn
+ */
+.eff-modal-header {
+	display:               grid;
+	grid-template-columns: 24px 8px 15% 1fr 28% 12% 28px;
+	column-gap:            16px;
+	align-items:           center;
+	padding:               var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
+	border-bottom:         2px solid var(--eff-clr-border);
+	background:            var(--eff-bg-panel);
+	min-height:            52px;
+}
+
+/* Close button (rightmost column in header) */
+.eff-modal-close-btn {
+	display:         flex;
+	align-items:     center;
+	justify-content: center;
+	align-self:      center;
+	justify-self:    center;
+	width:           28px;
+	height:          28px;
+	padding:         0;
+	font-size:       22px;
+	font-weight:     700;
+	line-height:     1;
+	background:      none;
+	border:          none;
+	border-radius:   4px;
+	cursor:          pointer;
+	flex-shrink:     0;
+	color:           var(--eff-clr-secondary, #6b5c4e);
+	opacity:         0.7;
+}
+
+.eff-modal-close-btn:hover {
+	opacity: 1;
+	color:   var(--eff-clr-primary, #3d2f1f);
+}
+
+/* In the always-light expand modal (appended to body, outside .eff-app) */
+.eff-expand-modal .eff-modal-close-btn {
+	color: #6b5c4e;
+}
+
+.eff-expand-modal .eff-modal-close-btn:hover {
+	color: #3d2f1f;
+}
+
+/*
+ * Toggle track override — inside the always-light expand modal the default
+ * track colour (--eff-clr-border: #e5e7eb) is invisible on white.
+ */
+.eff-expand-modal .eff-toggle-track {
+	background: #9ca3af;
+}
+
+/* Modal body — stacked tints / shades / transparencies rows */
+.eff-modal-body {
+	display:        flex;
+	flex-direction: column;
+	padding:        var(--sp-1) 0;
+}
+
+/* Each generator row: label | fixed-width control | palette strip */
+.eff-modal-gen-row {
+	display:       flex;
+	align-items:   center;
+	gap:           var(--sp-4);
+	padding:       var(--sp-3) var(--sp-4) var(--sp-3) var(--sp-5);
+	border-bottom: 1px solid var(--eff-clr-border);
+}
+
+.eff-modal-gen-row:last-child {
+	border-bottom: none;
+}
+
+.eff-modal-gen-label {
+	min-width:      130px;
+	flex-shrink:    0;
+	white-space:    nowrap;
+	font-size:      var(--fs-xs);
+	font-weight:    var(--fw-semibold);
+	color:          var(--eff-clr-muted);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	user-select:    none;
+}
+
+/*
+ * Fixed-width control wrapper — ensures all three palette strips start at
+ * the same horizontal position whether the control is a number input or toggle.
+ */
+.eff-modal-gen-ctrl {
+	width:       72px;
+	flex-shrink: 0;
+	display:     flex;
+	align-items: center;
+}
+
+.eff-modal-gen-ctrl .eff-gen-num {
+	width: 100%;
+}
+
+/* Toggle inside the ctrl cell — just the track, no text label */
+.eff-modal-gen-ctrl .eff-toggle-label {
+	gap: 0;
+}
+
+/* Horizontal palette strip — fills remaining row width */
+.eff-palette-strip {
+	display:       flex;
+	gap:           2px;
+	height:        36px;
+	border-radius: var(--eff-border-radius-sm);
+	overflow:      hidden;
+	flex:          1;
+	min-width:     0;
+}
+
+/* Hide strip when no swatches (steps = 0 or transparencies off) */
+.eff-palette-strip:empty {
+	display: none;
+}
+
+.eff-palette-swatch {
+	flex:     1;
+	height:   100%;
+	border:   none;
+	display:  block;
+	cursor:   default;
+	min-width: 0;
+}
+
+/* Empty-state placeholder when steps = 0 */
+.eff-palette-empty {
+	font-size:   var(--fs-xs);
+	color:       var(--eff-clr-muted);
+	line-height: 36px;
+	flex:        1;
+}
+
+/* Number input (shared — gen rows in modal) */
+.eff-gen-num {
+	width:         64px;
+	padding:       3px var(--sp-1);
+	background:    var(--eff-bg-field);
+	border:        1px solid var(--eff-clr-border);
+	border-radius: var(--eff-border-radius-sm);
+	font-size:     var(--fs-xs);
+	color:         var(--eff-clr-secondary);
+	text-align:    center;
+}
+
+.eff-gen-num:focus {
+	outline:        2px solid var(--eff-clr-accent);
+	outline-offset: -2px;
+}
+
+/* On/Off toggle */
+.eff-toggle-label {
+	display:     flex;
+	align-items: center;
+	gap:         var(--sp-2);
+	cursor:      pointer;
+	user-select: none;
+}
+
+.eff-toggle-label input[type="checkbox"] {
+	position: absolute;
+	opacity:  0;
+	width:    0;
+	height:   0;
+}
+
+.eff-toggle-track {
+	display:       inline-block;
+	width:         36px;
+	height:        20px;
+	background:    var(--eff-clr-border);
+	border-radius: 10px;
+	position:      relative;
+	transition:    background-color var(--eff-transition);
+	flex-shrink:   0;
+}
+
+.eff-toggle-track::after {
+	content:       '';
+	display:       block;
+	width:         14px;
+	height:        14px;
+	background:    #fff;
+	border-radius: 50%;
+	position:      absolute;
+	top:           3px;
+	left:          3px;
+	transition:    left var(--eff-transition);
+	box-shadow:    0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.eff-toggle-label input[type="checkbox"]:checked + .eff-toggle-track {
+	background: var(--eff-clr-accent);
+}
+
+.eff-toggle-label input[type="checkbox"]:checked + .eff-toggle-track::after {
+	left: 19px;
+}
+
+.eff-toggle-state-label {
+	font-size: var(--fs-xs);
+	color:     var(--eff-clr-secondary);
+}
+
+/* Move-to-category select (inside expand modal gen row) */
+.eff-cat-move-select {
+	width:              100%;
+	padding:            3px 20px 3px var(--sp-2);
+	background-color:   var(--eff-bg-field);
+	background-image:   url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236b7280'/%3E%3C/svg%3E");
+	background-repeat:  no-repeat;
+	background-position: right 6px center;
+	background-size:    10px 6px;
+	border:             1px solid var(--eff-clr-border);
+	border-radius:      var(--eff-border-radius-sm);
+	font-size:          var(--fs-xs);
+	color:              var(--eff-clr-secondary);
+	-webkit-appearance: none;
+	appearance:         none;
+	cursor:             pointer;
+}
+
+.eff-cat-move-select:focus {
+	outline:        2px solid var(--eff-clr-accent);
+	outline-offset: -2px;
+}
+
+/* Inline field error — floating tooltip (appended to body by JS) */
+.eff-inline-error {
+	position:    fixed;
+	z-index:     9999;
+	padding:     4px 8px;
+	background:  #fee2e2;
+	color:       #dc2626;
+	font-size:   11px;
+	border:      1px solid #fca5a5;
+	border-radius: 4px;
+	box-shadow:  0 2px 8px rgba(0, 0, 0, 0.20);
+	max-width:   280px;
+	word-wrap:   break-word;
+	line-height: 1.4;
+	pointer-events: none;
+	animation:   eff-error-in 0.15s ease;
+}
+
+@keyframes eff-error-in {
+	from { opacity: 0; transform: translateY(-4px); }
+	to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   9. EMPTY STATE
+   ========================================================================== */
+
+.eff-colors-empty {
+	padding:    var(--sp-4) var(--sp-4);
+	color:      var(--eff-clr-muted);
+	font-size:  var(--fs-sm);
+}
+
+/* ==========================================================================
+   10. RESPONSIVE — reduce column gap on narrow screens
+   ========================================================================== */
+
+@media (max-width: 600px) {
+	.eff-color-list-header,
+	.eff-color-row {
+		grid-template-columns: 24px 8px 12% 1fr 24% 0 28px;
+		column-gap: 6px;
+		padding-right: var(--sp-2);
+	}
+}
+
+/* ==========================================================================
+   11. SECONDARY / DANGER BUTTON VARIANTS
+   ========================================================================== */
+
+.eff-app .eff-btn--secondary {
+	background: transparent;
+	color:      var(--eff-clr-secondary);
+	border:     1px solid var(--eff-clr-border);
+	box-shadow: var(--eff-shadow-sm);
+}
+
+.eff-app .eff-btn--secondary:hover:not(:disabled) {
+	background:   var(--eff-icon-btn-hover-bg);
+	border-color: var(--eff-clr-accent);
+	color:        var(--eff-clr-primary);
+}
+
+.eff-app .eff-btn--secondary:disabled {
+	opacity: 0.5;
+	cursor:  not-allowed;
+}
+
+.eff-app .eff-btn--danger {
+	background: var(--eff-clr-error-bg, #fee2e2);
+	color:      var(--eff-clr-error, #dc2626);
+	border:     1px solid var(--eff-clr-error, #dc2626);
+}
+
+.eff-app .eff-btn--danger:hover:not(:disabled) {
+	background: var(--eff-clr-error, #dc2626);
+	color:      #fff;
+}
+
+/* ==========================================================================
+   12. DELETE VARIABLE BUTTON (Issue 8)
+   ========================================================================== */
+
+/* Eighth column: 28px delete button — added to row and header grids */
+.eff-color-list-header,
+.eff-color-row {
+	grid-template-columns: 24px 8px 15% 1fr 28% 12% 28px 28px;
+}
+
+/* Delete button — trash icon, danger variant on hover */
+.eff-color-delete-btn {
+	width:   28px;
+	height:  28px;
+	padding: 0;
+	opacity: 0;
+	transition: opacity var(--eff-transition);
+}
+
+.eff-color-row:hover .eff-color-delete-btn {
+	opacity: 1;
+}
+
+/* ==========================================================================
+   13. SORT BUTTONS (Issue 5)
+   ========================================================================== */
+
+/* Chevron rotation: indicates collapsed vs expanded state */
+.eff-category-collapse-btn svg {
+	transition: transform 0.2s ease;
+}
+.eff-category-block[data-collapsed="true"] .eff-category-collapse-btn svg {
+	transform: rotate(-90deg);
+}
+
+/* Column sort buttons — appear inside .eff-color-list-header cells */
+.eff-col-sort-wrap {
+	display:         flex;
+	justify-content: flex-end;
+	align-items:     center;
+}
+
+.eff-col-sort-btn {
+	display:         inline-flex;
+	align-items:     center;
+	justify-content: center;
+	width:           18px;
+	height:          18px;
+	padding:         0;
+	background:      transparent;
+	border:          none;
+	border-radius:   var(--eff-border-radius-sm);
+	cursor:          pointer;
+	color:           var(--eff-clr-muted);
+	opacity:         0.4;
+	transition:      opacity var(--eff-transition), color var(--eff-transition);
+}
+
+.eff-col-sort-btn:hover {
+	opacity: 0.85;
+	color:   var(--eff-clr-secondary);
+}
+
+.eff-col-sort-btn[data-sort-dir="asc"],
+.eff-col-sort-btn[data-sort-dir="desc"] {
+	opacity: 0.9;
+	color:   var(--eff-clr-accent);
+}
+
+.eff-sort-btn {
+	display:         inline-flex;
+	align-items:     center;
+	justify-content: center;
+	padding:         2px 5px;
+	font-size:       11px;
+	font-weight:     var(--fw-semibold);
+	color:           var(--eff-clr-muted);
+	background:      transparent;
+	border:          1px solid transparent;
+	border-radius:   var(--eff-border-radius-sm);
+	cursor:          pointer;
+	line-height:     1;
+	height:          24px;
+	white-space:     nowrap;
+	transition:      background-color var(--eff-transition), color var(--eff-transition), border-color var(--eff-transition);
+}
+
+.eff-sort-btn:hover {
+	background:   var(--eff-icon-btn-hover-bg);
+	color:        var(--eff-clr-secondary);
+	border-color: var(--eff-clr-border);
+}
+
+/* Commit button: force gold/accent — overrides .eff-btn--secondary */
+.eff-app .eff-panel-right__commit .eff-btn {
+	background:   var(--eff-clr-accent);
+	border-color: var(--eff-clr-accent);
+	color:        var(--eff-clr-on-accent, #3d2f1f);
+}
+
+.eff-app .eff-panel-right__commit .eff-btn:disabled {
+	opacity: 0.5;
+	cursor:  not-allowed;
+}

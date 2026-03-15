@@ -50,12 +50,14 @@ function eff_icon( string $name ): string {
 		<div class="eff-top-bar__left">
 			<button class="eff-icon-btn" id="eff-btn-preferences"
 			        aria-label="<?php esc_attr_e( 'Preferences', 'elementor-framework-forge' ); ?>"
-			        data-eff-tooltip="<?php esc_attr_e( 'Preferences', 'elementor-framework-forge' ); ?>">
+			        data-eff-tooltip="<?php esc_attr_e( 'Preferences', 'elementor-framework-forge' ); ?>"
+		        data-eff-tooltip-long="<?php esc_attr_e( 'Open Preferences — change theme, configure tooltips, and set file defaults', 'elementor-framework-forge' ); ?>">
 				<?php echo eff_icon( 'gear' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			</button>
 			<button class="eff-icon-btn" id="eff-btn-manage-project"
 			        aria-label="<?php esc_attr_e( 'Manage Project', 'elementor-framework-forge' ); ?>"
-			        data-eff-tooltip="<?php esc_attr_e( 'Manage Project', 'elementor-framework-forge' ); ?>">
+			        data-eff-tooltip="<?php esc_attr_e( 'Manage Project', 'elementor-framework-forge' ); ?>"
+		        data-eff-tooltip-long="<?php esc_attr_e( 'Manage Project — edit the project name, color categories, and subgroup layout', 'elementor-framework-forge' ); ?>">
 				<?php echo eff_icon( 'grid' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			</button>
 		</div>
@@ -77,7 +79,8 @@ function eff_icon( string $name ): string {
 			</button>
 			<button class="eff-icon-btn" id="eff-btn-sync"
 			        aria-label="<?php esc_attr_e( 'Sync from Elementor', 'elementor-framework-forge' ); ?>"
-			        data-eff-tooltip="<?php esc_attr_e( 'Sync from Elementor', 'elementor-framework-forge' ); ?>">
+			        data-eff-tooltip="<?php esc_attr_e( 'Sync from Elementor', 'elementor-framework-forge' ); ?>"
+		        data-eff-tooltip-long="<?php esc_attr_e( 'Sync from Elementor — import CSS variables from the active Elementor kit into EFF', 'elementor-framework-forge' ); ?>">
 				<?php echo eff_icon( 'sync' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			</button>
 			<button class="eff-icon-btn" id="eff-btn-history"
@@ -87,7 +90,8 @@ function eff_icon( string $name ): string {
 			</button>
 			<button class="eff-icon-btn" id="eff-btn-search"
 			        aria-label="<?php esc_attr_e( 'Search', 'elementor-framework-forge' ); ?>"
-			        data-eff-tooltip="<?php esc_attr_e( 'Search', 'elementor-framework-forge' ); ?>">
+			        data-eff-tooltip="<?php esc_attr_e( 'Search', 'elementor-framework-forge' ); ?>"
+		        data-eff-tooltip-long="<?php esc_attr_e( 'Search — find variables, classes, and components by name or value', 'elementor-framework-forge' ); ?>">
 				<?php echo eff_icon( 'search' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			</button>
 			<button class="eff-icon-btn" id="eff-btn-help"
@@ -233,11 +237,7 @@ function eff_icon( string $name ): string {
 		<main class="eff-edit-space" id="eff-edit-space" role="main">
 
 			<!-- Placeholder — shown when no category is selected -->
-			<div class="eff-placeholder" id="eff-placeholder">
-				<p class="eff-placeholder__text">
-					<?php esc_html_e( 'Select a category from the left panel', 'elementor-framework-forge' ); ?>
-				</p>
-			</div>
+			<div class="eff-placeholder" id="eff-placeholder"></div>
 
 			<!-- Content area — hidden until a category is selected -->
 			<div class="eff-edit-content" id="eff-edit-content" hidden aria-live="polite"></div>
@@ -253,7 +253,7 @@ function eff_icon( string $name ): string {
 			<!-- File Management -->
 			<div class="eff-panel-right__files">
 				<label class="eff-field-label" for="eff-filename">
-					<?php esc_html_e( 'Storage file', 'elementor-framework-forge' ); ?>
+					<?php esc_html_e( 'Project', 'elementor-framework-forge' ); ?>
 				</label>
 				<input type="text"
 				       class="eff-field-input"
@@ -284,6 +284,18 @@ function eff_icon( string $name ): string {
 					</button>
 				</div>
 			</div><!-- .eff-panel-right__files -->
+
+			<!-- Unsynced indicator — shown when EFF values differ from Elementor -->
+			<div class="eff-panel-right__unsynced" id="eff-unsynced-indicator" hidden>
+				<span class="eff-unsynced-dot" aria-hidden="true"></span>
+				<span class="eff-unsynced-label"><?php esc_html_e( 'Unsynced changes', 'elementor-framework-forge' ); ?></span>
+				<button class="eff-btn eff-btn--xs" id="eff-btn-commit"
+				        aria-label="<?php esc_attr_e( 'Commit EFF values to Elementor kit', 'elementor-framework-forge' ); ?>"
+			        data-eff-tooltip="<?php esc_attr_e( 'Commit to Elementor', 'elementor-framework-forge' ); ?>"
+			        data-eff-tooltip-long="<?php esc_attr_e( 'Commit to Elementor — write all EFF variable values to the active Elementor kit CSS file', 'elementor-framework-forge' ); ?>">
+					<?php esc_html_e( 'Commit', 'elementor-framework-forge' ); ?>
+				</button>
+			</div>
 
 			<!-- Counts -->
 			<div class="eff-panel-right__counts" aria-label="<?php esc_attr_e( 'Asset counts', 'elementor-framework-forge' ); ?>">

@@ -21,7 +21,7 @@
 	font-weight: 400;
 	font-style:  normal;
 	font-display: swap;
-	src: url('../../../assets/fonts/Inter-Regular.woff2') format('woff2');
+	src: url('../../assets/fonts/Inter-Regular.woff2') format('woff2');
 }
 
 @font-face {
@@ -29,7 +29,7 @@
 	font-weight: 500;
 	font-style:  normal;
 	font-display: swap;
-	src: url('../../../assets/fonts/Inter-Medium.woff2') format('woff2');
+	src: url('../../assets/fonts/Inter-Medium.woff2') format('woff2');
 }
 
 @font-face {
@@ -37,7 +37,7 @@
 	font-weight: 600;
 	font-style:  normal;
 	font-display: swap;
-	src: url('../../../assets/fonts/Inter-SemiBold.woff2') format('woff2');
+	src: url('../../assets/fonts/Inter-SemiBold.woff2') format('woff2');
 }
 
 @font-face {
@@ -45,7 +45,7 @@
 	font-weight: 700;
 	font-style:  normal;
 	font-display: swap;
-	src: url('../../../assets/fonts/Inter-Bold.woff2') format('woff2');
+	src: url('../../assets/fonts/Inter-Bold.woff2') format('woff2');
 }
 
 /* ==========================================================================
@@ -159,6 +159,18 @@
 
 	/* Modal overlay */
 	--eff-overlay-bg: rgba(61, 47, 31, 0.45);
+
+	/* Phase 2 — Colors */
+	--eff-clr-bg-hover:   rgba(61, 47, 31, 0.04);  /* Row hover / expand panel background */
+	--eff-swatch-shadow:  inset 0 1px 3px rgba(61, 47, 31, 0.25);  /* Recessed swatch */
+	--eff-field-shadow:   inset 0 1px 3px rgba(61, 47, 31, 0.20);  /* Recessed value field */
+	/* Status dot colors */
+	--eff-status-synced:   #059669;
+	--eff-status-modified: #f59e0b;
+	--eff-status-conflict: #dc2626;
+	--eff-status-orphaned: #94a3b8;
+	--eff-status-new:      #3b82f6;
+	--eff-status-deleted:  #dc2626;
 }
 
 /* ==========================================================================
@@ -221,6 +233,18 @@
 
 	/* Modal overlay */
 	--eff-overlay-bg: rgba(0, 0, 0, 0.65);
+
+	/* Phase 2 — Colors */
+	--eff-clr-bg-hover:   rgba(240, 230, 216, 0.05);
+	--eff-swatch-shadow:  inset 0 1px 3px rgba(0, 0, 0, 0.40);
+	--eff-field-shadow:   inset 0 1px 3px rgba(0, 0, 0, 0.35);
+	/* Status dot colors — slightly brighter for dark bg */
+	--eff-status-synced:   #10b981;
+	--eff-status-modified: #f59e0b;
+	--eff-status-conflict: #ef4444;
+	--eff-status-orphaned: #6b7280;
+	--eff-status-new:      #60a5fa;
+	--eff-status-deleted:  #ef4444;
 }
 
 /* ==========================================================================
@@ -402,11 +426,11 @@
 
 .eff-app .eff-field-label {
 	display:     block;
-	font-size:   var(--fs-xs);
+	font-size:   var(--fs-lg);
 	font-weight: var(--fw-semibold);
-	color:       var(--eff-clr-muted);
+	color:       rgb(61, 47, 31);
 	margin-bottom: var(--sp-1);
-	text-transform: uppercase;
+	text-transform: capitalize;
 	letter-spacing: 0.05em;
 }
 
@@ -449,14 +473,14 @@
 	pointer-events:   none;
 	white-space:      nowrap;
 	opacity:          0;
-	transform:        translateY(4px);
+	transform:        translateX(4px);
 	transition:       opacity 0.12s ease, transform 0.12s ease;
 	box-shadow:       var(--eff-shadow-sm);
 }
 
 .eff-app .eff-tooltip.is-visible {
 	opacity:   1;
-	transform: translateY(0);
+	transform: translateX(0);
 }
 
 /* ==========================================================================
@@ -556,4 +580,24 @@
 	font-style:  italic;
 	padding:     var(--sp-2) var(--sp-4);
 	margin:      0;
+}
+
+/* ==========================================================================
+   13. DARK MODE COMPONENT OVERRIDES
+   ========================================================================== */
+
+/* Tooltip — in dark mode --eff-clr-primary is light cream, so we override
+   with a dark background to keep the tooltip readable. */
+[data-eff-theme="dark"] .eff-tooltip,
+.eff-app[data-eff-theme="dark"] .eff-tooltip {
+	background: #3d2f1f;
+	color:      #f0e6d8;
+}
+
+/* Category panels — dark bg-card (#231c16) vs bg-page (#1a1510) has very
+   little contrast; a border and shadow make panels stand out in dark mode. */
+[data-eff-theme="dark"] .eff-category-inner,
+.eff-app[data-eff-theme="dark"] .eff-category-inner {
+	border:     1px solid var(--eff-clr-border);
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }

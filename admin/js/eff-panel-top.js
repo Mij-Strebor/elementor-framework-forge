@@ -17,6 +17,9 @@
 
 	EFF.PanelTop = {
 
+		_showTooltips:     true,  // false → all tooltips suppressed
+		_extendedTooltips: false, // true → show data-eff-tooltip-long text when available
+
 		/** @type {HTMLElement|null} */
 		_tooltip: null,
 		/** @type {number|null} */
@@ -30,6 +33,20 @@
 
 			this._bindTooltips();
 			this._bindButtons();
+
+		// Load tooltip preferences from settings (async, non-blocking)
+		var _panelTop = this;
+		EFF.App.ajax('eff_get_settings', {}).then(function (res) {
+			if (res.success && res.data && res.data.settings) {
+				var s = res.data.settings;
+				if (s.show_tooltips === false || s.show_tooltips === 'false') {
+					_panelTop._showTooltips = false;
+				}
+				if (s.extended_tooltips === true || s.extended_tooltips === 'true') {
+					_panelTop._extendedTooltips = true;
+				}
+			}
+		}).catch(function () {});
 		},
 
 		// ------------------------------------------------------------------
@@ -42,7 +59,33 @@
 		_bindTooltips: function () {
 			var self = this;
 
-			document.querySelectorAll('[data-eff-tooltip]').forEach(function (el) {
+			// Delegated listener — covers dynamically created elements in the colors/fonts/numbers views.
+		// _tipEl tracks the active tooltip element to prevent repeated show calls as the mouse
+		// moves over child nodes (SVG paths, spans, etc.) of the same trigger element.
+		var _tipEl = null;
+		document.addEventListener('mouseover', function (e) {
+			var target = e.target.closest ? e.target.closest('[data-eff-tooltip]') : null;
+			if (target !== _tipEl) {
+				if (_tipEl) { self._hideTooltip(); }
+				_tipEl = target;
+				if (target) { self._showTooltip(target); }
+			}
+		});
+		document.addEventListener('mouseout', function (e) {
+			var target = e.target.closest ? e.target.closest('[data-eff-tooltip]') : null;
+			if (target && target === _tipEl) {
+				var rt = e.relatedTarget;
+				if (!rt || !target.contains(rt)) { _tipEl = null; self._hideTooltip(); }
+			}
+		});
+		document.addEventListener('focusin', function (e) {
+			if (e.target && e.target.getAttribute && e.target.getAttribute('data-eff-tooltip')) { self._showTooltip(e.target); }
+		});
+		document.addEventListener('focusout', function (e) {
+			if (e.target && e.target.getAttribute && e.target.getAttribute('data-eff-tooltip')) { self._hideTooltip(); }
+		});
+		// Empty iteration keeps the original per-element block intact but harmless
+		[].forEach(function (el) {
 				el.addEventListener('mouseenter', function () {
 					self._showTooltip(el);
 				});
@@ -69,7 +112,11 @@
 		 */
 		_showTooltip: function (anchor) {
 			var self = this;
-			var text = anchor.getAttribute('data-eff-tooltip');
+			if (!this._showTooltips) { return; }
+
+		var text = this._extendedTooltips
+			? (anchor.getAttribute('data-eff-tooltip-long') || anchor.getAttribute('data-eff-tooltip'))
+			: anchor.getAttribute('data-eff-tooltip');
 
 			if (!text || !this._tooltip) {
 				return;
@@ -81,13 +128,27 @@
 				self._tooltip.textContent = text;
 				self._tooltip.setAttribute('aria-hidden', 'false');
 
-				var rect = anchor.getBoundingClientRect();
-				var scrollY = window.scrollY || document.documentElement.scrollTop;
+				var rect   = anchor.getBoundingClientRect();
+				var tipW   = self._tooltip.offsetWidth  || 120;
+				var tipH   = self._tooltip.offsetHeight || 28;
+				var margin = 8;
+				var vpW    = window.innerWidth  || document.documentElement.clientWidth;
+				var vpH    = window.innerHeight || document.documentElement.clientHeight;
 
-				// Position below the anchor, centered horizontally
-				self._tooltip.style.left = (rect.left + rect.width / 2) + 'px';
-				self._tooltip.style.top  = (rect.bottom + scrollY + 6) + 'px';
-				self._tooltip.style.transform = 'translateX(-50%)';
+				// Default: to the right of the anchor, vertically centred.
+				var leftPos = rect.right + margin;
+				var topPos  = rect.top + (rect.height - tipH) / 2;
+
+				// Flip to left if the tooltip would overflow the right edge.
+				if (leftPos + tipW > vpW - 10) {
+					leftPos = rect.left - tipW - margin;
+				}
+
+				// Clamp vertically within the viewport.
+				topPos = Math.max(4, Math.min(topPos, vpH - tipH - 4));
+
+				self._tooltip.style.left = leftPos + 'px';
+				self._tooltip.style.top  = topPos  + 'px';
 
 				self._tooltip.classList.add('is-visible');
 			}, 300);
@@ -162,6 +223,19 @@
 				+ '<label class="eff-field-label" for="eff-pref-filepath">Default storage file</label>'
 				+ '<input type="text" class="eff-field-input" id="eff-pref-filepath" '
 				+ 'placeholder="e.g., my-project.eff.json" />'
+			+ '</div>'
+
+			// Tooltip preferences
+			+ '<div>'
+			+ '<p class="eff-field-label">Tooltips</p>'
+			+ '<div style="display:flex;flex-direction:column;gap:8px">'
+			+ '<label style="display:flex;align-items:center;gap:8px;cursor:pointer">'
+			+ '<input type="checkbox" id="eff-pref-tooltips-show"'
+			+ (this._showTooltips ? ' checked' : '') + '> Show tooltips</label>'
+			+ '<label style="display:flex;align-items:center;gap:8px;cursor:pointer">'
+			+ '<input type="checkbox" id="eff-pref-tooltips-extended"'
+			+ (this._extendedTooltips ? ' checked' : '') + '> Extended mode (show detailed descriptions)</label>'
+			+ '</div>'
 				+ '</div>'
 
 				+ '</div>';
@@ -174,7 +248,23 @@
 
 			// Bind theme toggle buttons after modal renders
 			requestAnimationFrame(function () {
-				var lightBtn = document.getElementById('eff-pref-theme-light');
+				// Tooltip preference checkboxes
+			var showChk = document.getElementById('eff-pref-tooltips-show');
+			var extChk  = document.getElementById('eff-pref-tooltips-extended');
+			if (showChk) {
+				showChk.addEventListener('change', function () {
+					EFF.PanelTop._showTooltips = showChk.checked;
+					EFF.App.ajax('eff_save_settings', { settings: JSON.stringify({ show_tooltips: showChk.checked }) });
+				});
+			}
+			if (extChk) {
+				extChk.addEventListener('change', function () {
+					EFF.PanelTop._extendedTooltips = extChk.checked;
+					EFF.App.ajax('eff_save_settings', { settings: JSON.stringify({ extended_tooltips: extChk.checked }) });
+				});
+			}
+
+			var lightBtn = document.getElementById('eff-pref-theme-light');
 				var darkBtn  = document.getElementById('eff-pref-theme-dark');
 
 				if (lightBtn) {
@@ -191,15 +281,15 @@
 					});
 				}
 
-				// Load saved default filepath
+				// Load saved settings and populate fields
 				EFF.App.ajax('eff_get_settings', {}).then(function (res) {
-					if (res.success && res.data.settings && res.data.settings.default_file_path) {
-						var input = document.getElementById('eff-pref-filepath');
-						if (input) {
-							input.value = res.data.settings.default_file_path;
-						}
+					var s = res.success && res.data && res.data.settings ? res.data.settings : {};
+
+					if (s.default_file_path) {
+						var fpInput = document.getElementById('eff-pref-filepath');
+						if (fpInput) { fpInput.value = s.default_file_path; }
 					}
-				});
+			});
 			});
 		},
 
@@ -209,11 +299,116 @@
 
 		_openManageProject: function () {
 			var config  = EFF.state.config;
-			var groups  = (config && config.groups && config.groups.Variables) || {};
+			var cfg      = EFF.state.config || {};
+		var projName = EFF.state.projectName || '';
+		function _catsToStr(arr) {
+			return (arr || []).filter(function (c) { return !c.locked && c.name !== 'Uncategorized'; })
+				.map(function (c) { return c.name; }).join(', ');
+		}
+		var colorsStr  = _catsToStr(cfg.colorCategories || cfg.categories) || 'Branding, Backgrounds, Neutral, Status';
+		var fontsStr   = _catsToStr(cfg.fontCategories)  || 'Titles, Text';
+		var numbersStr = _catsToStr(cfg.numberCategories) || 'Spacing, Gaps, Grids, Radius';
+		function _catPanel(label, id, value) {
+			return '<div style="margin-bottom:16px">'
+				+ '<p class="eff-field-label" style="margin-bottom:4px">' + label + ' Categories</p>'
+				+ '<p style="font-size:12px;color:var(--eff-clr-muted);margin-bottom:6px">'
+				+ 'Comma-separated. \u201cUncategorized\u201d is added automatically.</p>'
+				+ '<input type="text" class="eff-field-input" id="' + id + '"'
+				+ ' value="' + value + '" style="width:100%" autocomplete="off" spellcheck="false">'
+				+ '</div>';
+		}
+		var projNameEscaped = this._escapeHtml(projName);
+		var body = '<div style="margin-bottom:20px">'
+			+ '<label class="eff-field-label" for="eff-proj-name">Project name</label>'
+			+ '<input type="text" class="eff-field-input" id="eff-proj-name"'
+			+ ' placeholder="e.g., My Brand" autocomplete="off" spellcheck="false"'
+			+ ' value="' + projNameEscaped + '" style="width:100%">'
+			+ '<p style="font-size:12px;color:var(--eff-clr-muted);margin-top:4px">'
+			+ 'Used as the project file name: <em>project-name.eff.json</em></p>'
+			+ '</div>'
+			+ '<div style="border-top:1px solid var(--eff-clr-border,#d6ccc2);padding-top:16px">'
+			+ _catPanel('Colors',  'eff-proj-cat-colors',  this._escapeHtml(colorsStr))
+			+ _catPanel('Fonts',   'eff-proj-cat-fonts',   this._escapeHtml(fontsStr))
+			+ _catPanel('Numbers', 'eff-proj-cat-numbers', this._escapeHtml(numbersStr))
+			+ '</div>'
+			+ '<div style="border-top:1px solid var(--eff-clr-border,#d6ccc2);padding-top:16px;margin-top:16px">'
+			+ '<p class="eff-field-label">Default Format</p>'
+			+ '<p style="font-size:12px;color:var(--eff-clr-muted);margin-bottom:8px">Formatting default for variables.</p>'
+			+ '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px">'
+			+ '<div>'
+			+ '<label class="eff-field-label" for="eff-proj-colors-type" style="font-size:11px;margin-bottom:4px">Colors</label>'
+			+ '<select class="eff-field-input" id="eff-proj-colors-type" style="width:100%">'
+			+ ['HEX','HEXA','RGB','RGBA','HSL','HSLA'].map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join('')
+			+ '</select>'
+			+ '</div>'
+			+ '<div>'
+			+ '<label class="eff-field-label" for="eff-proj-fonts-type" style="font-size:11px;margin-bottom:4px">Fonts</label>'
+			+ '<select class="eff-field-input" id="eff-proj-fonts-type" style="width:100%">'
+			+ ['System','Custom'].map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join('')
+			+ '</select>'
+			+ '</div>'
+			+ '<div>'
+			+ '<label class="eff-field-label" for="eff-proj-numbers-type" style="font-size:11px;margin-bottom:4px">Numbers</label>'
+			+ '<select class="eff-field-input" id="eff-proj-numbers-type" style="width:100%">'
+			+ ['PX','%','EM','REM','VW','VH','CH','FX'].map(function (t) { return '<option value="' + t + '">' + t + '</option>'; }).join('')
+			+ '</select>'
+			+ '</div>'
+			+ '</div>'
+			+ '</div>';
+		var footer = '<button class="eff-btn" id="eff-proj-cancel" style="margin-right:8px">Cancel</button>'
+			+ '<button class="eff-btn" id="eff-proj-save">Save</button>';
+		EFF.Modal.open({ title: 'Manage project', body: body, footer: footer });
+		requestAnimationFrame(function () {
+			var cancelBtn = document.getElementById('eff-proj-cancel');
+			var saveBtn   = document.getElementById('eff-proj-save');
+			if (cancelBtn) { cancelBtn.addEventListener('click', function () { EFF.Modal.close(); }); }
+			if (saveBtn)   { saveBtn.addEventListener('click', this._saveProjectConfig.bind(this)); }
+			// Load saved default types and populate selects
+			EFF.App.ajax('eff_get_settings', {}).then(function (res) {
+				var s = res.success && res.data && res.data.settings ? res.data.settings : {};
+				var selColors  = document.getElementById('eff-proj-colors-type');
+				var selFonts   = document.getElementById('eff-proj-fonts-type');
+				var selNumbers = document.getElementById('eff-proj-numbers-type');
+				if (selColors  && s.colors_default_type)  { selColors.value  = s.colors_default_type; }
+				if (selFonts   && s.fonts_default_type)   { selFonts.value   = s.fonts_default_type; }
+				if (selNumbers && s.numbers_default_type) { selNumbers.value = s.numbers_default_type; }
+			});
+			// Save default types on change
+			var colorsTypeSel  = document.getElementById('eff-proj-colors-type');
+			var fontsTypeSel   = document.getElementById('eff-proj-fonts-type');
+			var numbersTypeSel = document.getElementById('eff-proj-numbers-type');
+			if (colorsTypeSel) {
+				colorsTypeSel.addEventListener('change', function () {
+					EFF.App.ajax('eff_save_settings', { settings: JSON.stringify({ colors_default_type: colorsTypeSel.value }) });
+				});
+			}
+			if (fontsTypeSel) {
+				fontsTypeSel.addEventListener('change', function () {
+					EFF.App.ajax('eff_save_settings', { settings: JSON.stringify({ fonts_default_type: fontsTypeSel.value }) });
+				});
+			}
+			if (numbersTypeSel) {
+				numbersTypeSel.addEventListener('change', function () {
+					EFF.App.ajax('eff_save_settings', { settings: JSON.stringify({ numbers_default_type: numbersTypeSel.value }) });
+				});
+			}
+		}.bind(this));
+		return; // dead-code anchor — old implementation follows (CRLF-safe strategy)
+		var groups  = (config && config.groups && config.groups.Variables) || {}; // unreachable
 			var colors  = (groups.Colors  || ['Branding', 'Backgrounds', 'Neutral', 'Status']).join('\n');
 			var numbers = (groups.Numbers || ['Spacing', 'Gaps', 'Grids', 'Radius']).join('\n');
+			var projName = EFF.state.projectName || '';
 
-			var body = '<p style="font-size:13px;color:var(--eff-clr-muted);margin-bottom:16px">'
+			var body = '<div style="margin-bottom:20px">'
+				+ '<label class="eff-field-label" for="eff-proj-name">Project name</label>'
+				+ '<input type="text" class="eff-field-input" id="eff-proj-name"'
+				+ ' placeholder="e.g., My Brand" autocomplete="off" spellcheck="false"'
+				+ ' value="' + this._escapeHtml(projName) + '" style="width:100%">'
+				+ '<p style="font-size:12px;color:var(--eff-clr-muted);margin-top:4px">'
+				+ 'Used as the project file name: <em>project-name.eff.json</em></p>'
+				+ '</div>'
+
+				+ '<p style="font-size:13px;color:var(--eff-clr-muted);margin-bottom:16px">'
 				+ 'Edit subgroups below. One name per line. At least one subgroup required per section.</p>'
 
 				+ '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">'
@@ -232,11 +427,20 @@
 
 				+ '</div>';
 
-			var footer = '<button class="eff-btn" id="eff-proj-save">Save changes</button>';
+			var existingCats = (EFF.state.config && EFF.state.config.categories) || [];
+		var catsBody = '<div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--eff-clr-border,#d6ccc2)">'
+			+ '<p class="eff-field-label" style="margin-bottom:6px">Colors categories</p>'
+			+ '<p style="font-size:12px;color:var(--eff-clr-muted);margin-bottom:10px">'
+			+ 'Add or remove categories. \u201cUncategorized\u201d is always present and cannot be removed.</p>'
+			+ '<div id="eff-proj-cats-list">' + this._buildCatsEditorHtml(existingCats) + '</div>'
+			+ '<button class="eff-btn eff-btn--sm" id="eff-proj-cats-add" style="margin-top:8px">+ Add category</button>'
+			+ '</div>';
+
+		var footer = '<button class="eff-btn" id="eff-proj-save">Save changes</button>';
 
 			EFF.Modal.open({
 				title:  'Manage project',
-				body:   body,
+				body:   body + catsBody,
 				footer: footer,
 			});
 
@@ -244,6 +448,7 @@
 				var saveBtn = document.getElementById('eff-proj-save');
 				if (saveBtn) {
 					saveBtn.addEventListener('click', this._saveProjectConfig.bind(this));
+				this._bindCatsEditor();
 				}
 			}.bind(this));
 		},
@@ -253,18 +458,154 @@
 		 * @private
 		 */
 		_saveProjectConfig: function () {
-			var colorsEl  = document.getElementById('eff-proj-colors');
-			var numbersEl = document.getElementById('eff-proj-numbers');
+			var projNameEl  = document.getElementById('eff-proj-name');
+		var colCatEl    = document.getElementById('eff-proj-cat-colors');
+		var fntCatEl    = document.getElementById('eff-proj-cat-fonts');
+		var numCatEl    = document.getElementById('eff-proj-cat-numbers');
+		var projName    = projNameEl ? projNameEl.value.trim() : (EFF.state.projectName || '');
 
-			var colors  = colorsEl  ? this._parseLines(colorsEl.value)  : [];
-			var numbers = numbersEl ? this._parseLines(numbersEl.value) : [];
+		function _parseCsvNames(el) {
+			if (!el) { return []; }
+			return el.value.split(',').map(function (s) { return s.trim(); })
+				.filter(function (s) { return s && s !== 'Uncategorized'; });
+		}
+		function _buildCatArray(newNames, existingArr) {
+			existingArr = existingArr || [];
+			var byName = {};
+			for (var i = 0; i < existingArr.length; i++) { byName[existingArr[i].name] = existingArr[i]; }
+			var result = [];
+			for (var j = 0; j < newNames.length; j++) {
+				var nm = newNames[j];
+				if (byName[nm]) {
+					result.push({ id: byName[nm].id, name: nm, order: j, locked: !!byName[nm].locked });
+				} else {
+					result.push({ id: 'cat-' + Date.now() + '-' + j, name: nm, order: j, locked: false });
+				}
+			}
+			var uncatSrc = byName['Uncategorized'] || { id: 'uncategorized' };
+			result.push({ id: uncatSrc.id, name: 'Uncategorized', order: result.length, locked: true });
+			return result;
+		}
+
+		var cfg         = EFF.state.config || {};
+		var colNewNames = _parseCsvNames(colCatEl);
+		var fntNewNames = _parseCsvNames(fntCatEl);
+		var numNewNames = _parseCsvNames(numCatEl);
+
+		var newColCats = _buildCatArray(colNewNames, cfg.colorCategories || cfg.categories || []);
+		var newFntCats = _buildCatArray(fntNewNames, cfg.fontCategories  || []);
+		var newNumCats = _buildCatArray(numNewNames, cfg.numberCategories || []);
+
+		// Find IDs of Colors categories that were removed, so their variables can be reassigned.
+		var existingColCats = cfg.colorCategories || cfg.categories || [];
+		var removedColIds   = {};
+		for (var ri = 0; ri < existingColCats.length; ri++) {
+			var ec = existingColCats[ri];
+			if (!ec.locked && ec.name !== 'Uncategorized') {
+				var kept = (colNewNames.indexOf(ec.name) !== -1);
+				if (!kept) { removedColIds[ec.id] = true; }
+			}
+		}
+		var uncatId = 'uncategorized';
+		for (var ui = 0; ui < newColCats.length; ui++) {
+			if (newColCats[ui].name === 'Uncategorized') { uncatId = newColCats[ui].id; break; }
+		}
+
+		// Reassign variables from removed categories to Uncategorized.
+		var saveVarPromises = [];
+		var vars = EFF.state.variables || [];
+		for (var vi = 0; vi < vars.length; vi++) {
+			var v = vars[vi];
+			if (v.subgroup === 'Colors' && v.category_id && removedColIds[v.category_id]) {
+				v.category    = 'Uncategorized';
+				v.category_id = uncatId;
+				saveVarPromises.push(EFF.App.ajax('eff_save_color', { variable: JSON.stringify(v) }));
+			}
+		}
+
+		var self   = this;
+		var config = {
+			version:          '1.0',
+			projectName:      projName,
+			colorCategories:  newColCats,
+			fontCategories:   newFntCats,
+			numberCategories: newNumCats,
+			categories:       newColCats,   // backward-compat alias
+			groups:           cfg.groups || {},
+		};
+
+		Promise.all(saveVarPromises).then(function () {
+			return EFF.App.ajax('eff_save_config', { config: JSON.stringify(config) });
+		}).then(function (res) {
+			if (res && res.success) {
+				EFF.state.config      = config;
+				EFF.state.projectName = projName;
+				if (projName && EFF.PanelRight && EFF.PanelRight._filenameInput) {
+					var slugged = projName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+					EFF.PanelRight._filenameInput.value = slugged + '.eff.json';
+					if (!EFF.state.currentFile || EFF.state.currentFile === 'eff-temp.eff.json') {
+						EFF.state.currentFile = slugged + '.eff.json';
+					}
+				}
+				EFF.PanelLeft.refresh();
+				if (EFF.Colors && EFF.Colors._rerenderView && EFF.state.currentSelection &&
+						EFF.state.currentSelection.subgroup === 'Colors') {
+					EFF.Colors._rerenderView();
+				}
+				EFF.Modal.close();
+			} else {
+				EFF.Modal.open({ title: 'Save error', body: '<p>' + ((res && res.data && res.data.message) || 'Unknown error.') + '</p>' });
+			}
+		}).catch(function () {
+			EFF.Modal.open({ title: 'Save error', body: '<p>Network error while saving config.</p>' });
+		});
+		return; // dead-code anchor — old implementation follows (CRLF-safe strategy)
+		var colorsEl   = document.getElementById('eff-proj-colors'); // unreachable
+			var numbersEl  = document.getElementById('eff-proj-numbers');
+			var projNameEl = document.getElementById('eff-proj-name');
+
+			var colors   = colorsEl   ? this._parseLines(colorsEl.value)           : [];
+			var numbers  = numbersEl  ? this._parseLines(numbersEl.value)           : [];
+			var projName = projNameEl ? projNameEl.value.trim()                     : '';
 
 			// Enforce minimum one subgroup per section
 			if (!colors.length)  { colors  = ['Colors']; }
 			if (!numbers.length) { numbers = ['Numbers']; }
 
-			var config = {
-				version: '1.0',
+			// Read the categories editor DOM rows
+		var catsList = document.getElementById('eff-proj-cats-list');
+		var newCats  = [];
+		if (catsList) {
+			var catRows = catsList.querySelectorAll('.eff-cats-row');
+			for (var ci = 0; ci < catRows.length; ci++) {
+				var catRow     = catRows[ci];
+				var catId      = catRow.getAttribute('data-cat-id') || ('cat-new-' + ci);
+				var nameInput  = catRow.querySelector('.eff-cats-name-input');
+				var catName    = nameInput ? nameInput.value.trim() : '';
+				var isLocked   = !!(nameInput && nameInput.disabled);
+				if (catName) {
+					newCats.push({ id: catId, name: catName, order: ci, locked: isLocked });
+				}
+			}
+		} else {
+			// Cats editor not in DOM — preserve existing categories
+			newCats = (EFF.state.config && EFF.state.config.categories)
+				? EFF.state.config.categories.slice()
+				: [];
+		}
+		// Ensure Uncategorized is always present and locked at the end
+		var hasUncat = false;
+		for (var ui = 0; ui < newCats.length; ui++) {
+			if (newCats[ui].name === 'Uncategorized') { hasUncat = true; break; }
+		}
+		if (!hasUncat) {
+			newCats.push({ id: 'uncategorized', name: 'Uncategorized', order: newCats.length, locked: true });
+		}
+
+		var config = {
+				version:     '1.0',
+			categories:  newCats,
+				projectName: projName,
 				groups: {
 					Variables: {
 						Colors:  colors,
@@ -277,15 +618,29 @@
 			EFF.App.ajax('eff_save_config', { config: JSON.stringify(config) })
 				.then(function (res) {
 					if (res.success) {
-						EFF.state.config = config;
+						EFF.state.config      = config;
+						EFF.state.projectName = projName;
+						// Reflect project name in the right panel filename input (always).
+						if (projName && EFF.PanelRight && EFF.PanelRight._filenameInput) {
+							var slugged  = projName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+							EFF.PanelRight._filenameInput.value = slugged + '.eff.json';
+							// Update currentFile if no real file is loaded yet.
+							if (!EFF.state.currentFile || EFF.state.currentFile === 'eff-temp.eff.json') {
+								EFF.state.currentFile = slugged + '.eff.json';
+							}
+						}
 						EFF.PanelLeft.refresh();
+						// Re-render the colors view if it's currently active, so new categories appear.
+						if (EFF.Colors && EFF.Colors._rerenderView && EFF.state.currentSelection && EFF.state.currentSelection.subgroup === 'Colors') {
+							EFF.Colors._rerenderView();
+						}
 						EFF.Modal.close();
 					} else {
-						alert('Error saving config: ' + (res.data.message || 'Unknown error.'));
+						EFF.Modal.open({ title: 'Save error', body: '<p>' + (res.data.message || 'Unknown error.') + '</p>' });
 					}
 				})
 				.catch(function () {
-					alert('Network error while saving config.');
+					EFF.Modal.open({ title: 'Save error', body: '<p>Network error while saving config.</p>' });
 				});
 		},
 
@@ -351,7 +706,8 @@
 		// SYNC FROM ELEMENTOR
 		// ------------------------------------------------------------------
 
-		_syncFromElementor: function () {
+		_syncFromElementor: function (options) {
+			var silent = options && options.silent;
 			var btn = document.getElementById('eff-btn-sync');
 			if (btn) {
 				btn.style.opacity = '0.5';
@@ -376,15 +732,21 @@
 
 						vars.forEach(function (v) {
 							if (!existingNames.includes(v.name)) {
+							var lc = (v.value || '').trim().toLowerCase();
+							var isColor = lc.charAt(0) === '#' || lc.indexOf('rgb(') === 0 || lc.indexOf('rgba(') === 0 || lc.indexOf('hsl(') === 0 || lc.indexOf('hsla(') === 0;
+							var isFont   = !isColor && /\b(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-sans-serif|ui-serif|ui-monospace)\b/.test(lc);
+							var isNumber = !isColor && !isFont && (/^\d/.test(lc) || lc.indexOf('clamp(') === 0 || lc.indexOf('calc(') === 0 || lc.indexOf('min(') === 0 || lc.indexOf('max(') === 0 || /\d+(px|rem|em|%|vw|vh|ch|fr|pt|deg|ms)\b/.test(lc));
+							var subgroup = isColor ? 'Colors' : (isFont ? 'Fonts' : (isNumber ? 'Numbers' : ''));
 								EFF.state.variables.push({
 									id:         '',
 									name:       v.name,
 									value:      v.value,
 									source:     'elementor-parsed',
-									type:       'unknown',
+									type:        isColor ? 'color' : (isFont ? 'font' : (isNumber ? 'number' : 'unknown')),
 									group:      'Variables',
-									subgroup:   '',
-									category:   '',
+									subgroup:    subgroup,
+									category:    subgroup ? 'Uncategorized' : '',
+								category_id: '',
 									modified:   false,
 									created_at: new Date().toISOString(),
 									updated_at: new Date().toISOString(),
@@ -393,22 +755,31 @@
 						});
 
 						EFF.App.refreshCounts();
-						if (count > 0) {
+						if (EFF.Colors && EFF.Colors._ensureUncategorized) { EFF.Colors._ensureUncategorized(); }
+						if (EFF.Variables && EFF.Variables._sets) {
+							var _vsets = EFF.Variables._sets;
+							if (_vsets['Fonts']   && _vsets['Fonts']._ensureUncategorized)   { _vsets['Fonts']._ensureUncategorized(); }
+							if (_vsets['Numbers'] && _vsets['Numbers']._ensureUncategorized) { _vsets['Numbers']._ensureUncategorized(); }
+						}
+						if (EFF.PanelLeft) { EFF.PanelLeft.refresh(); }
+						if (count > 0 && !silent) {
 							EFF.App.setDirty(true);
 						}
 
 						// Scan widget usage for the synced variables (async, non-blocking)
 						EFF.App.fetchUsageCounts();
 
-						EFF.Modal.open({
-							title: 'Sync complete',
-							body:  '<p>' + message + '</p>'
-								+ (source ? '<p class="eff-text-muted" style="font-size:12px">Source: ' + source + '</p>' : ''),
-						});
-					} else {
+						if (!silent) {
+							EFF.Modal.open({
+								title: 'Sync complete',
+								body:  '<p>' + message + '</p>'
+									+ (source ? '<p class="eff-text-muted" style="font-size:12px">Source: ' + source + '</p>' : ''),
+							});
+						}
+					} else if (!silent) {
 						EFF.Modal.open({
 							title: 'Sync failed',
-							body:  '<p>' + (res.data.message || 'Could not read Elementor CSS file.') + '</p>',
+							body:  (function () { var b = '<p>' + (res.data.message || 'Could not read Elementor CSS file.') + '</p>'; if (res.data.hint) { b += '<p class="eff-text-muted" style="font-size:12px">' + res.data.hint + '</p>'; } if (res.data.expected_file) { b += '<p class="eff-text-muted" style="font-size:12px">Expected: ' + res.data.expected_file + '</p>'; } return b; }()),
 						});
 					}
 				})
@@ -417,10 +788,12 @@
 						btn.style.opacity = '';
 						btn.disabled      = false;
 					}
-					EFF.Modal.open({
-						title: 'Sync error',
-						body:  '<p>Network error while syncing from Elementor.</p>',
-					});
+					if (!silent) {
+						EFF.Modal.open({
+							title: 'Sync error',
+							body:  '<p>Network error while syncing from Elementor.</p>',
+						});
+					}
 				});
 		},
 
@@ -475,6 +848,70 @@
 		 * @returns {string[]}
 		 * @private
 		 */
+		/**
+		 * Build HTML rows for the categories editor inside the Manage Project modal.
+		 *
+		 * @param {Array} cats Array of {id, name, order, locked} objects.
+		 * @returns {string}
+		 * @private
+		 */
+		_buildCatsEditorHtml: function (cats) {
+			var self = this;
+			if (!cats || cats.length === 0) {
+				return '<p style="font-size:12px;color:var(--eff-clr-muted)">No categories yet. Load a file or add one below.</p>';
+			}
+			var html = '';
+			for (var i = 0; i < cats.length; i++) {
+				var cat    = cats[i];
+				var locked = !!(cat.locked || cat.name === 'Uncategorized');
+				html += '<div class="eff-cats-row" data-cat-id="' + self._escapeHtml(cat.id || cat.name) + '"'
+					+ ' style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
+					+ '<input class="eff-field-input eff-cats-name-input" value="' + self._escapeHtml(cat.name) + '"'
+					+ (locked ? ' disabled' : '')
+					+ ' style="flex:1' + (locked ? ';opacity:0.6' : '') + '">'
+					+ (locked
+						? '<span style="font-size:11px;color:var(--eff-clr-muted);min-width:52px;text-align:center">locked</span>'
+						: '<button class="eff-btn eff-btn--sm eff-cats-del-btn" style="flex-shrink:0">Delete</button>')
+					+ '</div>';
+			}
+			return html;
+		},
+
+		/**
+		 * Bind add-category and delete-category events in the Manage Project modal.
+		 * @private
+		 */
+		_bindCatsEditor: function () {
+			var list   = document.getElementById('eff-proj-cats-list');
+			var addBtn = document.getElementById('eff-proj-cats-add');
+
+			if (list) {
+				list.addEventListener('click', function (e) {
+					var btn = e.target && e.target.closest ? e.target.closest('.eff-cats-del-btn') : null;
+					if (btn) {
+						var row = btn.closest('.eff-cats-row');
+						if (row && row.parentNode) { row.parentNode.removeChild(row); }
+					}
+				});
+			}
+
+			if (addBtn) {
+				addBtn.addEventListener('click', function () {
+					if (!list) { return; }
+					var newId = 'cat-' + Date.now();
+					var row   = document.createElement('div');
+					row.className = 'eff-cats-row';
+					row.setAttribute('data-cat-id', newId);
+					row.style.cssText = 'display:flex;align-items:center;gap:8px;margin-bottom:6px';
+					row.innerHTML = '<input class="eff-field-input eff-cats-name-input" value="New Category" style="flex:1">'
+						+ '<button class="eff-btn eff-btn--sm eff-cats-del-btn" style="flex-shrink:0">Delete</button>';
+					list.appendChild(row);
+					var input = row.querySelector('.eff-cats-name-input');
+					if (input) { input.focus(); input.select(); }
+				});
+			}
+		},
+
 		_parseLines: function (text) {
 			return text.split('\n')
 				.map(function (l) { return l.trim(); })

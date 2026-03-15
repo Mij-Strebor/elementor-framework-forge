@@ -26,19 +26,40 @@
 		_saveBtn: null,
 		/** @type {HTMLElement|null} */
 		_saveChangesBtn: null,
+		/** @type {HTMLElement|null} */
+		_unsyncedIndicator: null,
+		/** @type {HTMLElement|null} */
+		_commitBtn: null,
 
 		/**
 		 * Initialize the right panel.
 		 */
 		init: function () {
-			this._filenameInput  = document.getElementById('eff-filename');
-			this._loadBtn        = document.getElementById('eff-btn-load');
-			this._saveBtn        = document.getElementById('eff-btn-save');
-			this._saveChangesBtn = document.getElementById('eff-btn-save-changes');
+			this._filenameInput     = document.getElementById('eff-filename');
+			this._loadBtn           = document.getElementById('eff-btn-load');
+			this._saveBtn           = document.getElementById('eff-btn-save');
+			this._saveChangesBtn    = document.getElementById('eff-btn-save-changes');
+			this._unsyncedIndicator = document.getElementById('eff-unsynced-indicator');
+			this._commitBtn         = document.getElementById('eff-btn-commit');
 
 			this._bindLoadBtn();
 			this._bindSaveBtn();
 			this._bindSaveChangesBtn();
+			this._bindCommitBtn();
+			this._bindFilenameInput();
+		},
+
+		// ------------------------------------------------------------------
+		// FILENAME INPUT — keep EFF.state.projectName in sync
+		// ------------------------------------------------------------------
+
+		_bindFilenameInput: function () {
+			if (!this._filenameInput) { return; }
+			this._filenameInput.addEventListener('input', function () {
+				var val = this._filenameInput.value.trim();
+				// Strip .eff.json to get the human-readable project name.
+				EFF.state.projectName = val.replace(/\.eff\.json$/i, '');
+			}.bind(this));
 		},
 
 		// ------------------------------------------------------------------
@@ -106,14 +127,50 @@
 						EFF.App.setDirty(false);
 						EFF.Modal.close();
 
+						// Persist last loaded filename so auto-load can restore it on next open.
+						EFF.App.ajax('eff_save_settings', { settings: JSON.stringify({ last_file: filename }) });
+
 						// Scan widget usage for loaded variables (async, non-blocking)
 						EFF.App.fetchUsageCounts();
 					} else {
-						alert('Load error: ' + (res.data.message || 'Unknown error.'));
+						EFF.Modal.open({ title: 'Load error', body: '<p>' + (res.data.message || 'Unknown error.') + '</p>' });
 					}
 				}.bind(this))
 				.catch(function () {
-					alert('Network error while loading file.');
+					EFF.Modal.open({ title: 'Load error', body: '<p>Network error while loading file.</p>' });
+				});
+		},
+
+		/**
+		 * Silently load a file on startup (no dirty flag, no modal on failure).
+		 * Used for auto-loading the last opened file.
+		 *
+		 * @param {string} filename
+		 */
+		_autoLoadFile: function (filename) {
+			EFF.App.ajax('eff_load_file', { filename: filename })
+				.then(function (res) {
+					if (res.success) {
+						EFF.state.variables  = res.data.data.variables  || [];
+						EFF.state.classes    = res.data.data.classes    || [];
+						EFF.state.components = res.data.data.components || [];
+						EFF.state.config     = res.data.data.config     || {};
+						EFF.state.currentFile = res.data.filename;
+
+						if (this._filenameInput) {
+							this._filenameInput.value = res.data.filename;
+						}
+
+						EFF.App.refreshCounts();
+						if (EFF.PanelLeft) {
+							EFF.PanelLeft.refresh();
+						}
+						EFF.App.fetchUsageCounts();
+					}
+					// Silent on failure — user will see empty state as expected.
+				}.bind(this))
+				.catch(function () {
+					// Silent on network error at startup.
 				});
 		},
 
@@ -129,7 +186,7 @@
 			this._saveBtn.addEventListener('click', function () {
 				var filename = this._getFilename();
 				if (!filename) {
-					alert('Please enter a filename before saving.');
+					EFF.Modal.open({ title: 'Filename required', body: '<p>Please enter a filename before saving.</p>' });
 					if (this._filenameInput) {
 						this._filenameInput.focus();
 					}
@@ -165,11 +222,11 @@
 						}
 						EFF.App.setDirty(false);
 					} else {
-						alert('Save error: ' + (res.data.message || 'Unknown error.'));
+						EFF.Modal.open({ title: 'Save error', body: '<p>' + (res.data.message || 'Unknown error.') + '</p>' });
 					}
 				}.bind(this))
 				.catch(function () {
-					alert('Network error while saving file.');
+					EFF.Modal.open({ title: 'Save error', body: '<p>Network error while saving file.</p>' });
 				});
 		},
 
@@ -193,18 +250,145 @@
 		},
 
 		/**
-		 * Update the Save Changes button active/inactive state.
-		 * Called whenever EFF.state.hasUnsavedChanges changes.
+		 * Update the Save Changes button state.
+		 * Disabled when no unsaved changes exist.
+		 * Shows "Saving…" and stays disabled while per-variable saves are in-flight
+		 * (pendingSaveCount > 0) to prevent a full file save over stale state.
 		 */
 		updateSaveChangesBtn: function () {
 			if (!this._saveChangesBtn) {
 				return;
 			}
 
-			var isDirty = EFF.state.hasUnsavedChanges;
+			var isPending = EFF.state.pendingSaveCount > 0;
+			var isDirty   = EFF.state.hasUnsavedChanges;
 
-			this._saveChangesBtn.disabled         = !isDirty;
-			this._saveChangesBtn.setAttribute('aria-disabled', String(!isDirty));
+			if (isPending) {
+				this._saveChangesBtn.disabled         = true;
+				this._saveChangesBtn.setAttribute('aria-disabled', 'true');
+				this._saveChangesBtn.textContent      = 'Saving\u2026';
+			} else {
+				this._saveChangesBtn.disabled         = !isDirty;
+				this._saveChangesBtn.setAttribute('aria-disabled', String(!isDirty));
+				this._saveChangesBtn.textContent      = 'Save Changes';
+			}
+		},
+
+		// ------------------------------------------------------------------
+		// COMMIT TO ELEMENTOR (Phase 2)
+		// ------------------------------------------------------------------
+
+		/**
+		 * Bind the Commit to Elementor button.
+		 */
+		_bindCommitBtn: function () {
+			if (!this._commitBtn) {
+				return;
+			}
+
+			this._commitBtn.addEventListener('click', function () {
+				if (!EFF.state.hasPendingElementorCommit) { return; }
+				this._openCommitConfirmation();
+			}.bind(this));
+		},
+
+		/**
+		 * Open a confirmation modal before committing.
+		 *
+		 * After user confirms, sends all EFF variables to the commit endpoint.
+		 */
+		_openCommitConfirmation: function () {
+			var self = this;
+
+			EFF.Modal.open({
+				title: 'Commit to Elementor',
+				body:  '<p style="margin-bottom:8px">This will write your EFF color variable values directly to the Elementor kit CSS file.</p>'
+					+ '<p style="margin-bottom:8px"><strong>This operation modifies Elementor\'s files.</strong> Elementor CSS will be regenerated automatically.</p>'
+					+ '<p>Are you sure you want to continue?</p>',
+				footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
+					+ '<button class="eff-btn eff-btn--secondary" id="eff-commit-cancel">Cancel</button>'
+					+ '<button class="eff-btn" id="eff-commit-confirm">Commit</button>'
+					+ '</div>',
+			});
+
+			// Bind modal action buttons.
+			document.addEventListener('click', function commitHandler(e) {
+				if (e.target.id === 'eff-commit-cancel') {
+					EFF.Modal.close();
+					document.removeEventListener('click', commitHandler);
+				} else if (e.target.id === 'eff-commit-confirm') {
+					EFF.Modal.close();
+					document.removeEventListener('click', commitHandler);
+					self._executeCommit();
+				}
+			});
+		},
+
+		/**
+		 * Execute the commit AJAX call.
+		 *
+		 * Sends all current variables to eff_commit_to_elementor, then updates
+		 * variable statuses to 'synced' and clears the pending commit flag.
+		 */
+		_executeCommit: function () {
+			if (!EFF.state.currentFile) {
+				EFF.Modal.open({ title: 'No file loaded', body: '<p>Please load a file before committing.</p>' }); return;
+			}
+
+			var variables = EFF.state.variables.map(function (v) {
+				return { name: v.name, value: v.value };
+			});
+
+			EFF.App.ajax('eff_commit_to_elementor', {
+				filename:  EFF.state.currentFile,
+				variables: JSON.stringify(variables),
+			}).then(function (res) {
+				if (res.success) {
+					var committed = res.data.committed || [];
+					var skipped   = res.data.skipped || [];
+
+					// Update variable statuses to 'synced' for committed vars.
+					for (var i = 0; i < EFF.state.variables.length; i++) {
+						if (committed.indexOf(EFF.state.variables[i].name) !== -1) {
+							EFF.state.variables[i].status = 'synced';
+						}
+					}
+
+					EFF.App.setPendingCommit(false);
+
+					var msg = committed.length + ' variable(s) committed.';
+					if (skipped.length > 0) {
+						msg += ' ' + skipped.length + ' variable(s) not found in Elementor kit (check names).';
+					}
+					EFF.Modal.open({ title: 'Commit complete', body: '<p>' + msg + '</p>' });
+
+					// Re-render current view to show updated status dots.
+					if (EFF.Colors && EFF.state.currentSelection && EFF.state.currentSelection.subgroup === 'Colors') {
+						EFF.Colors.loadColors(EFF.state.currentSelection);
+					}
+				} else {
+					EFF.Modal.open({ title: 'Commit error', body: '<p>' + ((res.data && res.data.message) || 'Unknown error.') + '</p>' });
+				}
+			}).catch(function () {
+				EFF.Modal.open({ title: 'Commit error', body: '<p>Network error during commit.</p>' });
+			});
+		},
+
+		/**
+		 * Show or hide the "Unsynced changes" indicator.
+		 *
+		 * Called from EFF.App.setPendingCommit(). When there are pending commits
+		 * the indicator is shown; when cleared it is hidden.
+		 */
+		updateCommitBtn: function () {
+			if (!this._unsyncedIndicator) { return; }
+
+			var hasPending = EFF.state.hasPendingElementorCommit;
+			if (hasPending) {
+				this._unsyncedIndicator.removeAttribute('hidden');
+			} else {
+				this._unsyncedIndicator.setAttribute('hidden', '');
+			}
 		},
 
 		// ------------------------------------------------------------------
