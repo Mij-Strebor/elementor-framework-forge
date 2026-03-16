@@ -443,12 +443,19 @@
 	border:        1px solid rgba(0, 0, 0, 0.08);
 }
 
-/* Pickr trigger — swatch rendered as a button; reset browser button defaults */
+/* Pickr trigger — swatch rendered as a button; reset browser button defaults.
+   useAsButton:true adds .pcr-button to our element — override its size rules. */
 button.eff-pickr-btn {
 	padding:            0;
 	font:               inherit;
-	background-color:   transparent; /* overridden by inline style */
 	-webkit-appearance: none;
+}
+
+button.eff-pickr-btn.pcr-button,
+button.eff-pickr-btn.pcr-button::before {
+	width:         100% !important;
+	height:        32px !important;
+	border-radius: var(--eff-border-radius-sm) !important;
 }
 
 button.eff-pickr-btn:focus-visible {

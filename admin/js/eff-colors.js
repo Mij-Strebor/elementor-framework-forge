@@ -1184,6 +1184,10 @@
 					// Live swatch update while typing.
 					var swatch = modal.querySelector('.eff-color-swatch');
 					if (swatch) { swatch.style.background = valueInput.value; }
+					// Sync Pickr state to the typed value.
+					if (self._pickrInstance) {
+						try { self._pickrInstance.setColor(valueInput.value, true); } catch (e) {}
+					}
 				});
 				valueInput.addEventListener('change', function () {
 					var vv  = self._findVarByKey(varId);
@@ -1199,6 +1203,10 @@
 					self._saveVarValue(varId, res.value, valueInput);
 					var swatch = modal.querySelector('.eff-color-swatch');
 					if (swatch) { swatch.style.background = res.value; }
+					if (self._pickrInstance) {
+						try { self._pickrInstance.setColor(res.value, true); } catch (e) {}
+					}
+					self._refreshModalPalettes(modal, varId);
 				});
 				valueInput.addEventListener('keydown', function (e) {
 					if (e.key === 'Enter') { valueInput.blur(); }
@@ -1229,8 +1237,9 @@
 				// Normalise legacy alpha-suffix formats.
 				var pickerFmt = (v.format || 'HEX').replace(/A$/, '');
 				var pickr = Pickr.create({
-					el:    pickrBtn,
-					theme: 'classic',
+					el:          pickrBtn,
+					theme:       'classic',
+					useAsButton: true,
 					default: v.value || '#000000',
 					components: {
 						preview: true,
@@ -1262,6 +1271,7 @@
 					}
 					if (pickrBtn) { pickrBtn.style.background = res.value; }
 					self._saveVarValue(varId, res.value, valueInput);
+					self._refreshModalPalettes(modal, varId);
 					pickr.hide();
 				});
 
@@ -3220,6 +3230,38 @@
 		 * @param {string} format 'HEXA' | 'RGBA' | 'HSLA'
 		 * @returns {string}
 		 */
+		/**
+		 * Re-render tints, shades, and transparencies after a color change.
+		 *
+		 * @param {HTMLElement} modal  The open expand modal element.
+		 * @param {string}      varId  Variable ID.
+		 */
+		_refreshModalPalettes: function (modal, varId) {
+			var self  = this;
+			var vv    = self._findVarByKey(varId);
+			if (!vv || !modal) { return; }
+			var rgba2     = self._parseToRgba(vv.value || '');
+			var hsl2      = rgba2 ? self._rgbToHsl(rgba2.r, rgba2.g, rgba2.b) : null;
+			var tintsNum  = modal.querySelector('.eff-gen-tints-num');
+			var shadesNum = modal.querySelector('.eff-gen-shades-num');
+			var transChk  = modal.querySelector('.eff-gen-trans-toggle');
+			var tintsPal  = modal.querySelector('.eff-tints-palette');
+			var shadesPal = modal.querySelector('.eff-shades-palette');
+			var transPal  = modal.querySelector('.eff-trans-palette');
+			if (tintsPal && tintsNum) {
+				var ts = parseInt(tintsNum.value, 10) || 0;
+				tintsPal.innerHTML = self._buildTintsBars(hsl2, ts);
+			}
+			if (shadesPal && shadesNum) {
+				var ss = parseInt(shadesNum.value, 10) || 0;
+				shadesPal.innerHTML = self._buildShadesBars(hsl2, ss);
+			}
+			if (transPal && transChk) {
+				transPal.innerHTML = transChk.checked ? self._buildTransBars(rgba2) : '';
+			}
+			self._debounceGenerate(varId, modal);
+		},
+
 		_pickrColorToString: function (color, format) {
 			var rgba    = color.toRGBA();
 			var alpha   = rgba[3]; // 0–1
