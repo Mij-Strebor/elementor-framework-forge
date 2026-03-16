@@ -599,7 +599,7 @@
 				EFF.state.projectName = projName;
 				if (projName && EFF.PanelRight && EFF.PanelRight._filenameInput) {
 					var slugged = projName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-					EFF.PanelRight._filenameInput.value = slugged + '.eff.json';
+					EFF.PanelRight._filenameInput.value = projName;
 					if (!EFF.state.currentFile || EFF.state.currentFile === 'eff-temp.eff.json') {
 						EFF.state.currentFile = slugged + '.eff.json';
 					}

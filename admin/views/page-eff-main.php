@@ -273,25 +273,25 @@ function eff_icon( string $name ): string {
 			<!-- File Management -->
 			<div class="eff-panel-right__files">
 				<label class="eff-field-label" for="eff-filename">
-					<?php esc_html_e( 'Project', 'elementor-framework-forge' ); ?>
+					<?php esc_html_e( 'Name', 'elementor-framework-forge' ); ?>
 				</label>
 				<input type="text"
 				       class="eff-field-input"
 				       id="eff-filename"
 				       name="eff-filename"
-				       placeholder="<?php esc_attr_e( 'e.g., my-project.eff.json', 'elementor-framework-forge' ); ?>"
+				       placeholder="<?php esc_attr_e( 'e.g., My Project', 'elementor-framework-forge' ); ?>"
 				       autocomplete="off"
 				       spellcheck="false" />
 
 				<div class="eff-file-actions">
 					<button class="eff-icon-btn" id="eff-btn-load"
-					        aria-label="<?php esc_attr_e( 'Load file', 'elementor-framework-forge' ); ?>"
-					        data-eff-tooltip="<?php esc_attr_e( 'Load file', 'elementor-framework-forge' ); ?>">
+					        aria-label="<?php esc_attr_e( 'Load name', 'elementor-framework-forge' ); ?>"
+					        data-eff-tooltip="<?php esc_attr_e( 'Load name', 'elementor-framework-forge' ); ?>">
 						<?php echo eff_icon( 'folder-open' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 					</button>
 					<button class="eff-icon-btn" id="eff-btn-save"
-					        aria-label="<?php esc_attr_e( 'Save file', 'elementor-framework-forge' ); ?>"
-					        data-eff-tooltip="<?php esc_attr_e( 'Save file', 'elementor-framework-forge' ); ?>">
+					        aria-label="<?php esc_attr_e( 'Save name', 'elementor-framework-forge' ); ?>"
+					        data-eff-tooltip="<?php esc_attr_e( 'Save name', 'elementor-framework-forge' ); ?>">
 						<?php echo eff_icon( 'save' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 					</button>
 					<button class="eff-icon-btn eff-save-changes-btn"

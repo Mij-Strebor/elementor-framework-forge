@@ -76,7 +76,7 @@
 				if (!filename) {
 					// Open a prompt-style modal to enter the filename
 					EFF.Modal.open({
-						title: 'Load file',
+						title: 'Load name',
 						body:  this._buildLoadModalBody(),
 					});
 					return;
@@ -115,7 +115,9 @@
 						EFF.state.currentFile = filename;
 
 						if (this._filenameInput) {
-							this._filenameInput.value = res.data.filename;
+							this._filenameInput.value = (EFF.state.config && EFF.state.config.projectName)
+						? EFF.state.config.projectName
+						: (res.data.filename || '').replace(/\.eff\.json$/i, '');
 						}
 
 						// Refresh counts and nav
@@ -137,7 +139,7 @@
 					}
 				}.bind(this))
 				.catch(function () {
-					EFF.Modal.open({ title: 'Load error', body: '<p>Network error while loading file.</p>' });
+					EFF.Modal.open({ title: 'Load error', body: '<p>Network error while loading.</p>' });
 				});
 		},
 
@@ -158,7 +160,9 @@
 						EFF.state.currentFile = res.data.filename;
 
 						if (this._filenameInput) {
-							this._filenameInput.value = res.data.filename;
+							this._filenameInput.value = (EFF.state.config && EFF.state.config.projectName)
+						? EFF.state.config.projectName
+						: (res.data.filename || '').replace(/\.eff\.json$/i, '');
 						}
 
 						EFF.App.refreshCounts();
@@ -186,7 +190,7 @@
 			this._saveBtn.addEventListener('click', function () {
 				var filename = this._getFilename();
 				if (!filename) {
-					EFF.Modal.open({ title: 'Filename required', body: '<p>Please enter a filename before saving.</p>' });
+					EFF.Modal.open({ title: 'Name required', body: '<p>Please enter a name before saving.</p>' });
 					if (this._filenameInput) {
 						this._filenameInput.focus();
 					}
@@ -218,7 +222,9 @@
 					if (res.success) {
 						EFF.state.currentFile = res.data.filename;
 						if (this._filenameInput) {
-							this._filenameInput.value = res.data.filename;
+							this._filenameInput.value = (EFF.state.config && EFF.state.config.projectName)
+						? EFF.state.config.projectName
+						: (res.data.filename || '').replace(/\.eff\.json$/i, '');
 						}
 						EFF.App.setDirty(false);
 					} else {
@@ -226,7 +232,7 @@
 					}
 				}.bind(this))
 				.catch(function () {
-					EFF.Modal.open({ title: 'Save error', body: '<p>Network error while saving file.</p>' });
+					EFF.Modal.open({ title: 'Save error', body: '<p>Network error while saving.</p>' });
 				});
 		},
 
@@ -423,15 +429,18 @@
 		// ------------------------------------------------------------------
 
 		/**
-		 * Get the current filename input value, trimmed.
+		 * Get the filename derived from the name input.
+		 * If the value already ends in .eff.json it is used as-is.
+		 * Otherwise the value is treated as a project name and slugified.
 		 *
 		 * @returns {string}
 		 */
 		_getFilename: function () {
-			if (!this._filenameInput) {
-				return '';
-			}
-			return this._filenameInput.value.trim();
+			if (!this._filenameInput) { return ''; }
+			var val = this._filenameInput.value.trim();
+			if (!val) { return ''; }
+			if (/\.eff\.json$/i.test(val)) { return val; }
+			return val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '.eff.json';
 		},
 	};
 }());
