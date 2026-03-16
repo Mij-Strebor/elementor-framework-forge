@@ -60,6 +60,26 @@ function eff_icon( string $name ): string {
 		        data-eff-tooltip-long="<?php esc_attr_e( 'Manage Project — edit the project name, color categories, and subgroup layout', 'elementor-framework-forge' ); ?>">
 				<?php echo eff_icon( 'grid' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			</button>
+			<div class="eff-dropdown-wrap" id="eff-dropdown-wrap-functions">
+				<button class="eff-icon-btn" id="eff-btn-functions"
+				        aria-label="<?php esc_attr_e( 'Functions', 'elementor-framework-forge' ); ?>"
+				        aria-haspopup="true"
+				        aria-expanded="false"
+				        data-eff-tooltip="<?php esc_attr_e( 'Functions', 'elementor-framework-forge' ); ?>"
+				        data-eff-tooltip-long="<?php esc_attr_e( 'Functions — variable conversion and transformation tools', 'elementor-framework-forge' ); ?>">
+					<?php echo eff_icon( 'function' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+				</button>
+				<ul class="eff-dropdown" id="eff-dropdown-functions" role="menu" aria-labelledby="eff-btn-functions">
+					<li class="eff-dropdown__item" data-action="convert-v3" role="menuitem">
+						<?php esc_html_e( 'Convert V3 Variables', 'elementor-framework-forge' ); ?>
+						<span class="eff-badge eff-badge--soon"><?php esc_html_e( 'Soon', 'elementor-framework-forge' ); ?></span>
+					</li>
+					<li class="eff-dropdown__item" data-action="change-types" role="menuitem">
+						<?php esc_html_e( 'Change Variable Types', 'elementor-framework-forge' ); ?>
+						<span class="eff-badge eff-badge--soon"><?php esc_html_e( 'Soon', 'elementor-framework-forge' ); ?></span>
+					</li>
+				</ul>
+			</div>
 		</div>
 
 		<div class="eff-top-bar__brand">

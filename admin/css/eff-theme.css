@@ -420,6 +420,67 @@
 	transition: color var(--eff-transition), background var(--eff-transition);
 }
 
+/* Dropdown wrapper — positions the panel relative to the trigger button */
+.eff-app .eff-dropdown-wrap {
+	position: relative;
+	display:  inline-flex;
+}
+
+/* Dropdown panel */
+.eff-app .eff-dropdown {
+	display:          none;
+	position:         absolute;
+	top:              calc(100% + 4px);
+	left:             0;
+	min-width:        200px;
+	background:       var(--eff-bg-panel);
+	border:           1px solid var(--eff-clr-border);
+	border-radius:    var(--eff-border-radius-md);
+	box-shadow:       0 4px 16px rgba(0, 0, 0, 0.18);
+	list-style:       none;
+	margin:           0;
+	padding:          var(--sp-1) 0;
+	z-index:          200;
+}
+
+.eff-app .eff-dropdown.is-open {
+	display: block;
+}
+
+/* Dropdown item */
+.eff-app .eff-dropdown__item {
+	display:         flex;
+	align-items:     center;
+	justify-content: space-between;
+	gap:             var(--sp-3);
+	padding:         var(--sp-2) var(--sp-4);
+	font-size:       var(--fs-sm);
+	color:           var(--eff-clr-primary);
+	cursor:          pointer;
+	user-select:     none;
+	transition:      background var(--eff-transition);
+}
+
+.eff-app .eff-dropdown__item:hover {
+	background: var(--eff-icon-btn-hover-bg);
+}
+
+/* "Soon" badge on dropdown items */
+.eff-app .eff-badge--soon {
+	display:          inline-flex;
+	align-items:      center;
+	font-size:        10px;
+	font-weight:      var(--fw-semibold);
+	line-height:      1;
+	padding:          2px 6px;
+	border-radius:    999px;
+	color:            var(--eff-clr-accent);
+	border:           1px solid var(--eff-clr-accent);
+	opacity:          0.75;
+	white-space:      nowrap;
+	flex-shrink:      0;
+}
+
 /* ==========================================================================
    9. FORM FIELDS
    ========================================================================== */

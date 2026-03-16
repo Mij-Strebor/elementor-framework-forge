@@ -194,6 +194,105 @@
 					btn.addEventListener('click', bindings[id]);
 				}
 			});
+
+			this._bindFunctionsBtn();
+		},
+
+		// ------------------------------------------------------------------
+		// FUNCTIONS DROPDOWN
+		// ------------------------------------------------------------------
+
+		/**
+		 * Bind the Functions dropdown toggle and item clicks.
+		 * @private
+		 */
+		_bindFunctionsBtn: function () {
+			var self     = this;
+			var btn      = document.getElementById('eff-btn-functions');
+			var dropdown = document.getElementById('eff-dropdown-functions');
+
+			if (!btn || !dropdown) { return; }
+
+			// Toggle dropdown on button click.
+			btn.addEventListener('click', function (e) {
+				e.stopPropagation();
+				var isOpen = dropdown.classList.contains('is-open');
+				self._closeFunctionsDropdown();
+				if (!isOpen) {
+					dropdown.classList.add('is-open');
+					btn.setAttribute('aria-expanded', 'true');
+				}
+			});
+
+			// Close on click outside.
+			document.addEventListener('click', function () {
+				self._closeFunctionsDropdown();
+			});
+
+			// Item clicks.
+			dropdown.addEventListener('click', function (e) {
+				var item = e.target.closest('.eff-dropdown__item');
+				if (!item) { return; }
+				e.stopPropagation();
+				self._closeFunctionsDropdown();
+				var action = item.getAttribute('data-action');
+				if (action === 'convert-v3') {
+					self._openConvertV3();
+				} else if (action === 'change-types') {
+					self._openChangeTypes();
+				}
+			});
+		},
+
+		/**
+		 * Close the Functions dropdown.
+		 * @private
+		 */
+		_closeFunctionsDropdown: function () {
+			var btn      = document.getElementById('eff-btn-functions');
+			var dropdown = document.getElementById('eff-dropdown-functions');
+			if (dropdown) { dropdown.classList.remove('is-open'); }
+			if (btn)      { btn.setAttribute('aria-expanded', 'false'); }
+		},
+
+		/**
+		 * Placeholder modal — Convert V3 Variables.
+		 * @private
+		 */
+		_openConvertV3: function () {
+			EFF.Modal.open(
+				'Convert V3 Variables',
+				'<p style="color:var(--eff-clr-secondary);line-height:1.6">'
+				+ 'This tool will scan your variables for Elementor V3 naming patterns and '
+				+ 'offer to rename them to the V4 convention.'
+				+ '</p>'
+				+ '<p style="margin-top:12px;color:var(--eff-clr-muted);font-size:var(--fs-sm)">'
+				+ 'Coming in a future release.'
+				+ '</p>',
+				'<button class="eff-btn" id="eff-modal-close-btn">Close</button>'
+			);
+			var closeBtn = document.getElementById('eff-modal-close-btn');
+			if (closeBtn) { closeBtn.addEventListener('click', function () { EFF.Modal.close(); }); }
+		},
+
+		/**
+		 * Placeholder modal — Change Variable Types.
+		 * @private
+		 */
+		_openChangeTypes: function () {
+			EFF.Modal.open(
+				'Change Variable Types',
+				'<p style="color:var(--eff-clr-secondary);line-height:1.6">'
+				+ 'This tool will let you bulk-change the type (format) of selected variables — '
+				+ 'for example, converting a group of HEX colors to RGBA.'
+				+ '</p>'
+				+ '<p style="margin-top:12px;color:var(--eff-clr-muted);font-size:var(--fs-sm)">'
+				+ 'Coming in a future release.'
+				+ '</p>',
+				'<button class="eff-btn" id="eff-modal-close-btn">Close</button>'
+			);
+			var closeBtn = document.getElementById('eff-modal-close-btn');
+			if (closeBtn) { closeBtn.addEventListener('click', function () { EFF.Modal.close(); }); }
 		},
 
 		// ------------------------------------------------------------------
