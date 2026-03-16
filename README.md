@@ -4,8 +4,8 @@
 
 **A professional management interface for Elementor Version 4 CSS Variables.**
 
-[![Alpha](https://img.shields.io/badge/status-Alpha%200.0.1-e07a40?style=flat-square&labelColor=2a1a0e)](https://github.com/Mij-Strebor/elementor-framework-forge/releases)
-[![Version](https://img.shields.io/badge/version-0.0.1--alpha-f4c542?style=flat-square&labelColor=3d2f1f)](https://github.com/Mij-Strebor/elementor-framework-forge/releases)
+[![Alpha](https://img.shields.io/badge/status-Alpha%200.1.0-e07a40?style=flat-square&labelColor=2a1a0e)](https://github.com/Mij-Strebor/elementor-framework-forge/releases)
+[![Version](https://img.shields.io/badge/version-0.1.0-f4c542?style=flat-square&labelColor=3d2f1f)](https://github.com/Mij-Strebor/elementor-framework-forge/releases)
 [![WordPress](https://img.shields.io/badge/WordPress-5.8%2B-21759b?style=flat-square)](https://wordpress.org)
 [![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4?style=flat-square)](https://php.net)
 [![Requires](https://img.shields.io/badge/requires-Elementor%20Pro-cc2b5e?style=flat-square)](https://elementor.com/pro)
@@ -27,17 +27,18 @@ EFF is a **read-first, non-destructive** tool — it never modifies Elementor's 
 
 ## Alpha Status
 
-This is **Alpha 0.0.1** — an early testing release distributed exclusively to LytBox Academy members. Expect rough edges. The core variable workflow is functional; some features shown in the roadmap are not yet built.
+This is **Alpha 0.1.0** — distributed exclusively to LytBox Academy members. The core variable workflow (Colors, Fonts, Numbers) is fully functional. This release adds default categories per set, default type per set, auto-load last project on startup, and the Functions dropdown placeholder.
 
 Please report issues in the LytBox Academy community. Your feedback directly shapes the next release.
 
 ---
 
-## What Works in Alpha 0.0.1
+## What Works in Alpha 0.1.0
 
 | Feature | Status |
 |---------|--------|
 | Sync CSS variables from Elementor kit | ✅ Working |
+| Manual CSS path fallback when sync auto-detect fails | ✅ Working |
 | Auto-classify variables into Colors / Fonts / Numbers | ✅ Working |
 | Organize variables into named categories | ✅ Working |
 | Inline rename variables | ✅ Working |
@@ -45,15 +46,21 @@ Please report issues in the LytBox Academy community. Your feedback directly sha
 | Color swatch preview | ✅ Working |
 | Add / rename / delete / duplicate categories | ✅ Working |
 | Save and load `.eff.json` project files | ✅ Working |
+| Auto-load last used project file on startup | ✅ Working |
 | Usage count scan (how many widgets use each variable) | ✅ Working |
 | Commit variable values back to Elementor kit CSS | ✅ Working |
 | Expand panel — tint/shade/transparency generator | ✅ Working |
 | Light / Dark interface theme | ✅ Working |
 | Fonts and Numbers variable sets | ✅ Working |
-| Classes management | 🔜 EFF v2 |
-| Components registry | 🔜 EFF v3 |
-| Export / Import | 🔜 EFF v2 |
-| Change history / Undo | 🔜 EFF v2 |
+| Default categories per variable set (configurable) | ✅ Working |
+| Default type per variable set (configurable) | ✅ Working |
+| Functions menu (Convert V3, Change Types — placeholders) | ✅ Working |
+| Color picker (Pickr integration) | 🔜 EFF 0.2.0 |
+| Value format conversion (HEX ↔ RGB ↔ HSL) | 🔜 EFF 0.2.0 |
+| Classes management | 🔜 EFF 1.0.0 |
+| Components registry | 🔜 EFF 2.0.0 |
+| Export / Import | 🔜 EFF 1.0.0 |
+| Change history / Undo | 🔜 EFF 1.0.0 |
 
 ---
 
@@ -191,8 +198,8 @@ elementor-framework-forge/
 
 | Version | Scope |
 |---------|-------|
-| **0.0.1-alpha** *(this release)* | Variables module — Colors, Fonts, Numbers. Sync, organize, save, commit. |
-| **0.1.0** | Preferences: default categories per set, default type per set. Auto-load last project on startup. |
+| **0.0.1-alpha** | Variables module — Colors, Fonts, Numbers. Sync, organize, save, commit. |
+| **0.1.0** *(this release)* | Default categories/types per set. Auto-load last project. Functions menu. Sync manual-path fallback. |
 | **0.2.0** | Pickr color picker integration. Value format conversion (HEX ↔ RGB ↔ HSL). |
 | **1.0.0** | Full variable workflow stable. Classes management. Export / Import. Change history. |
 | **2.0.0** | Components registry. Elementor Kit Manager API write-back. Bulk variable rename. |

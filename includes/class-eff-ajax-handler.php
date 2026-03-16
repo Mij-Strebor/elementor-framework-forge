@@ -128,7 +128,35 @@ class EFF_Ajax_Handler {
 		$this->verify_request();
 
 		$parser   = new EFF_CSS_Parser();
-		$css_file = $parser->find_kit_css_file();
+		$css_file = null;
+
+		// Optional manual override — user-supplied path validated against the uploads/elementor/css/ dir.
+		$manual_path = isset( $_POST['css_file_path'] )
+			? sanitize_text_field( wp_unslash( $_POST['css_file_path'] ) )
+			: '';
+
+		if ( $manual_path ) {
+			$upload_dir   = wp_upload_dir();
+			$allowed_base = wp_normalize_path( $upload_dir['basedir'] . '/elementor/css/' );
+			$candidate    = wp_normalize_path( $manual_path );
+
+			// Reject anything outside the allowed directory or that is not a .css file.
+			if (
+				str_starts_with( $candidate, $allowed_base ) &&
+				'.css' === substr( $candidate, -4 ) &&
+				file_exists( $candidate )
+			) {
+				$css_file = $candidate;
+			} else {
+				wp_send_json_error( array(
+					'message' => __( 'The supplied path is not valid. It must be an existing .css file inside wp-content/uploads/elementor/css/.', 'elementor-framework-forge' ),
+				) );
+			}
+		}
+
+		if ( ! $css_file ) {
+			$css_file = $parser->find_kit_css_file();
+		}
 
 		if ( ! $css_file ) {
 			$upload_dir  = wp_upload_dir();
