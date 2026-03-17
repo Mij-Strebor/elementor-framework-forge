@@ -1,9 +1,11 @@
 # EFF Quick Start Guide
-## Elementor Framework Forge — Alpha 0.0.1
+## Elementor Framework Forge — Alpha 0.2.0
 
 > **LytBox Academy Testing Edition**
 > Welcome, and thank you for being an early tester. This guide gets you from zero to your first
 > organized variable set in about ten minutes.
+>
+> For a complete feature reference, see the **[User Manual →](USER-MANUAL.md)**
 
 ---
 
@@ -49,12 +51,7 @@ Click **Code → Download ZIP** on the GitHub repository page. Unzip into
 
 ## Step 2 — Open EFF
 
-Click **EFF** in the WordPress admin sidebar. You will see the four-panel interface:
-
-```
-![EFF Home](docs/images/home.png)
-
-```
+Click **EFF** in the WordPress admin sidebar. You will see the four-panel interface.
 
 On first load, the edit space shows a placeholder banner. That's expected — nothing has been loaded yet.
 
@@ -62,7 +59,7 @@ On first load, the edit space shows a placeholder banner. That's expected — no
 
 ## Step 3 — Sync Your Variables from Elementor
 
-Click the **Sync** button in the top-right of the top bar (circular arrows icon ↻).
+Click the **Sync** button in the top bar (circular arrows icon ↻).
 
 EFF will:
 1. Locate your active Elementor kit CSS file automatically.
@@ -90,17 +87,39 @@ Click any category name in the left panel to open it in the center edit space.
 Each variable row shows:
 - **⠿** Drag handle — reorder by dragging
 - **●** Status dot — green = synced from Elementor, orange = modified, blue = new
-- **Color swatch** — live preview of the color value (Colors only)
-- **Variable name** — the CSS custom property name (click to rename)
-- **Value** — the current value (click to edit)
-- **Format** — HEX / RGB / HSL / REM / PX / etc.
+- **Color swatch** — live preview of the color value (Colors only); click to open the color picker
+- **Variable name** — the CSS custom property name; click to rename
+- **Value** — the current value; click to edit directly
+- **Format** — HEX / RGB / HSL (Colors) or REM / PX / % etc. (Numbers)
+- **›** Expand chevron — opens the full detail panel (Colors only)
 - **Usage badge** — how many Elementor widgets use this variable (gold = used, gray = unused)
+
+---
+
+## Step 4a — Use the Color Picker
+
+Each color variable row has a **colored swatch** button. Click it to open the Pickr visual color picker.
+
+**In the color picker:**
+- Drag the color field and hue slider to choose a color
+- Use the opacity slider if you need a semi-transparent color
+- The bottom input shows the current color value in your selected format
+- Click **Save** to apply the color and close the picker
+
+The variable value, the swatch, and the tints/shades/transparencies all update immediately when you save a color.
+
+> **Format notes:**
+> - **HEX** — 6-digit (`#FF5733`) or 8-digit (`#FF573380`) for semi-transparency
+> - **RGB** — `rgb(r, g, b)` for opaque; `rgba(r, g, b, a)` auto-added if alpha < 1
+> - **HSL** — `hsl(h, s%, l%)` for opaque; `hsla(h, s%, l%, a)` auto-added if alpha < 1
+>
+> Typing a 4-digit HEX shorthand expands each digit: `f00a` → `#FF0000AA`
 
 ---
 
 ## Step 5 — Organize into Categories
 
-Variables land in **Uncategorized** by default. You can create your own categories to organize them logically (Brand, Background, Text, etc.).
+Variables land in **Uncategorized** by default. Create your own categories to organize them logically (Brand, Background, Text, etc.).
 
 ### Add a category
 
@@ -108,28 +127,44 @@ Click the **⊕** circle button at the bottom-left of the edit space (below all 
 
 ### Move a variable to a category
 
-Drag any variable row by its **⠿** handle and drop it onto the target category header or into the category's variable list.
+Open a variable's expand panel (click the **›** chevron), then use the **Move to Category** dropdown at the bottom of the panel.
+
+You can also drag any variable row by its **⠿** handle and drop it into the target category.
 
 ### Add a variable manually
 
-Each category block has an **⊕** Add Variable button at its bottom-left. Click it to create a new variable inside that category.
+Each category block has an **⊕ Add Variable** button at its bottom-left. Click it to create a new variable inside that category.
 
 ### Category actions
 
-Each category header has three action buttons (top-right corner):
+Each category header has action buttons on the right:
 - **Copy** — Duplicate the category and all its variables
 - **Trash** — Delete the category (variables move to Uncategorized)
 - **Chevron** — Collapse / expand the category
 
 ### Sort a category
 
-Each category block has sort arrow buttons in the column header row (above the variable list):
-- Click the **Name** sort arrows to sort variables alphabetically
-- Click the **Value** sort arrows to sort by value
+Click the **Name** or **Value** sort arrows in the column header row to sort variables alphabetically or by value.
 
 ---
 
-## Step 6 — Save Your Project
+## Step 6 — Explore the Expand Panel (Colors)
+
+Click the **›** chevron at the right of any color row to open the full detail panel.
+
+Inside the expand panel:
+- **Header row** — Edit name, value, and format; click the swatch to open the color picker
+- **Tints** — Generate up to 10 progressively lighter tints; set the count with the number input
+- **Shades** — Generate up to 10 progressively darker shades
+- **Transparencies** — Toggle on to generate 9 fixed-alpha transparency variants
+
+All palette strips update live when you change the color.
+
+When you're ready to push changes to Elementor, click **Commit** in the top bar.
+
+---
+
+## Step 7 — Save Your Project
 
 Type a filename in the **right panel** input box (e.g., `my-project.eff.json`) and click **Save**.
 
@@ -138,16 +173,17 @@ EFF saves your project as a `.eff.json` file in:
 /wp-content/uploads/eff/my-project.eff.json
 ```
 
+> EFF remembers your last used filename and reloads it automatically on the next startup.
+
 To reload your project in a future session:
 1. Type the filename in the right panel
 2. Click **Load**
 
-> **Save often.** In Alpha, there is no auto-save. Changes not saved to a `.eff.json` file
-> will be lost if you navigate away or refresh the page.
+> **Save often.** In Alpha, auto-save is not implemented. Changes not saved to a `.eff.json` file will be lost if you navigate away or refresh the page.
 
 ---
 
-## Step 7 — Commit to Elementor (Optional)
+## Step 8 — Commit to Elementor (Optional)
 
 If you edit a variable's value and want to push it back to Elementor's kit CSS:
 
@@ -169,7 +205,7 @@ Click the **⚙ gear icon** in the top-left to open Preferences:
 | Setting | What it does |
 |---------|-------------|
 | **Interface Theme** | Switch between Light and Dark mode |
-| **Default Storage File** | Filename to pre-fill in the right panel |
+| **Default Storage File** | Filename to pre-fill in the right panel on startup |
 | **Show Tooltips** | Enable / disable hover tooltips on all buttons |
 | **Extended Tooltips** | Show longer descriptions in tooltips |
 
@@ -196,6 +232,7 @@ Your preference is saved automatically to your WordPress user account.
 | Fonts variable editing | Value input works; font preview forthcoming |
 | Auto-save | Not implemented — save manually and often |
 | Mobile devices | Not supported (min 1024px screen required) |
+| Batch format conversion | Per-variable format change works; batch "convert all" coming in 1.0 |
 
 ---
 
@@ -209,6 +246,9 @@ Your preference is saved automatically to your WordPress user account.
 
 **Variables appear in the wrong set (e.g., a color in Numbers)**
 → EFF uses value patterns to classify variables. You can drag a variable to the correct category manually.
+
+**Color picker opens but the swatch shows black**
+→ Try a hard refresh (Ctrl+Shift+R). The Pickr library loads from a CDN — if it fails to load, the swatch won't display correctly.
 
 **After committing, Elementor variables look wrong**
 → Go to Elementor → Site Settings and regenerate the CSS file. If values look corrupted, restore from a backup and report the issue in LytBox Academy.
@@ -235,10 +275,13 @@ Report to me, Jim Roberts, in the **LytBox Academy** community portal.
 
 Once you're comfortable with the basics:
 
-- Try the **color swatch expand panel** — click the chevron `›` at the right of any color row to generate tints, shades, and transparency variants.
+- Try the **color swatch expand panel** — click the **›** chevron at the right of any color row to generate tints, shades, and transparency variants.
+- Click a **color swatch** to open the Pickr visual color picker and choose colors with precision.
 - Use the **Manage Project** button (grid icon, top bar) to edit the default category lists.
-- Try the **Preferences → Dark mode** for a different look.
-- Explore **usage badges** — the gold pills on each variable show how many Elementor widgets reference that variable. Unused variables (gray outline) might be safe to clean up.
+- Try **Preferences → Dark mode** for a different look.
+- Explore **usage badges** — gold pills mean the variable is referenced in at least one Elementor widget. Gray outline means unused — possibly safe to clean up.
+
+For everything else, see the **[User Manual →](USER-MANUAL.md)**
 
 ---
 

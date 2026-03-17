@@ -7,6 +7,52 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.0] — 2026-03-17
+
+### Added — Color Picker
+
+- **Pickr integration** — Visual color picker (Simonwep/Pickr v1.9.0, classic theme) on every
+  color variable swatch. Click the swatch in any color row or inside the expand panel header to
+  open the picker.
+- **HEX / RGB / HSL picker** — Picker format tracks the variable's format selector. Alpha slider
+  always visible; opaque colors output without alpha suffix, semi-transparent colors auto-add
+  `rgba()` / `hsla()` / 8-digit HEX.
+- **4-digit HEX shorthand** — Typing `f00a` in the value field expands to `#FF0000AA` (each
+  digit doubled, same as 3→6 shorthand).
+- **Live palette refresh** — Tints, shades, and transparency strips inside the expand panel
+  refresh immediately when a color is changed via the picker or the value input.
+- **Pickr ↔ value input sync** — Editing the value input updates the Pickr state silently;
+  saving from the Pickr updates the value input and all palette strips.
+
+### Added — Documentation
+
+- **USER-MANUAL.md** — Complete feature reference covering all panels, workflows, and the
+  color picker.
+- Updated **README.md** — Prominent Quick Start and User Manual links; feature table reflects
+  0.2.0 status.
+- Updated **QUICK-START.md** — Color picker step; expand panel details; updated limitations.
+
+---
+
+## [0.1.0] — 2026-03-16
+
+### Added
+
+- Default categories per variable set (Colors, Fonts, Numbers) configurable in Preferences.
+- Default type per variable set configurable in Preferences.
+- Auto-load last used project file on startup.
+- Functions dropdown button (top bar) with Convert V3 / Change Types placeholders.
+- Sync manual CSS path fallback for sites where auto-detect fails.
+- Right panel: project name field shows stored name, not raw filename.
+
+### Fixed
+
+- PHP 7.4 compatibility: replaced `str_starts_with()` with `strpos()` in AJAX handler.
+- Missing closing brace in sync error handler (caused JS parse error).
+- Fonts / Numbers category reassignment after sync.
+
+---
+
 ## [0.0.1-alpha] — 2026-03-15
 
 Initial Alpha release — distributed to LytBox Academy testers.

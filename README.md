@@ -4,8 +4,8 @@
 
 **A professional management interface for Elementor Version 4 CSS Variables.**
 
-[![Alpha](https://img.shields.io/badge/status-Alpha%200.1.0-e07a40?style=flat-square&labelColor=2a1a0e)](https://github.com/Mij-Strebor/elementor-framework-forge/releases)
-[![Version](https://img.shields.io/badge/version-0.1.0-f4c542?style=flat-square&labelColor=3d2f1f)](https://github.com/Mij-Strebor/elementor-framework-forge/releases)
+[![Alpha](https://img.shields.io/badge/status-Alpha%200.2.0-e07a40?style=flat-square&labelColor=2a1a0e)](https://github.com/Mij-Strebor/elementor-framework-forge/releases)
+[![Version](https://img.shields.io/badge/version-0.2.0-f4c542?style=flat-square&labelColor=3d2f1f)](https://github.com/Mij-Strebor/elementor-framework-forge/releases)
 [![WordPress](https://img.shields.io/badge/WordPress-5.8%2B-21759b?style=flat-square)](https://wordpress.org)
 [![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4?style=flat-square)](https://php.net)
 [![Requires](https://img.shields.io/badge/requires-Elementor%20Pro-cc2b5e?style=flat-square)](https://elementor.com/pro)
@@ -13,7 +13,14 @@
 
 ---
 
-> **LytBox Academy Testers** — Welcome! If you are here to test EFF, jump straight to the  **[Quick Start Guide →](QUICK-START.md)**
+## Get Started
+
+| | |
+|---|---|
+| **New to EFF?** | **[Quick Start Guide →](QUICK-START.md)** — from zero to an organized project in about ten minutes |
+| **Looking up a feature?** | **[User Manual →](USER-MANUAL.md)** — complete reference for every panel and workflow |
+
+> **LytBox Academy testers:** Start with the Quick Start Guide. It covers installation through your first saved project and explains every part of the interface.
 
 ---
 
@@ -27,13 +34,13 @@ EFF is a **read-first, non-destructive** tool — it never modifies Elementor's 
 
 ## Alpha Status
 
-This is **Alpha 0.1.0** — distributed exclusively to LytBox Academy members. The core variable workflow (Colors, Fonts, Numbers) is fully functional. This release adds default categories per set, default type per set, auto-load last project on startup, and the Functions dropdown placeholder.
+This is **Alpha 0.2.0** — distributed exclusively to LytBox Academy members. The core variable workflow (Colors, Fonts, Numbers) is fully functional. This release adds the Pickr visual color picker with HEX / RGB / HSL support, alpha auto-detection, and live tint/shade/transparency palette refresh. Previous releases added default categories per set, auto-load last project on startup, and the Functions dropdown.
 
 Please report issues in the LytBox Academy community. Your feedback directly shapes the next release.
 
 ---
 
-## What Works in Alpha 0.1.0
+## What Works in Alpha 0.2.0
 
 | Feature | Status |
 |---------|--------|
@@ -55,8 +62,8 @@ Please report issues in the LytBox Academy community. Your feedback directly sha
 | Default categories per variable set (configurable) | ✅ Working |
 | Default type per variable set (configurable) | ✅ Working |
 | Functions menu (Convert V3, Change Types — placeholders) | ✅ Working |
-| Color picker (Pickr integration) | 🔜 EFF 0.2.0 |
-| Value format conversion (HEX ↔ RGB ↔ HSL) | 🔜 EFF 0.2.0 |
+| Color picker (Pickr) — HEX / RGB / HSL + alpha | ✅ Working |
+| Value format per variable (HEX / RGB / HSL / REM / PX / etc.) | ✅ Working |
 | Classes management | 🔜 EFF 1.0.0 |
 | Components registry | 🔜 EFF 2.0.0 |
 | Export / Import | 🔜 EFF 1.0.0 |
@@ -68,12 +75,8 @@ Please report issues in the LytBox Academy community. Your feedback directly sha
 
 ![EFF Numbers](docs/images/numbers.png)
 
-```
-
-```
-
 **Four panels:**
-- **Top bar** — Preferences, Manage Project, Sync, Export, Help
+- **Top bar** — Preferences, Manage Project, Sync, Functions, Export, Help
 - **Left nav** — Collapsible tree: Variables (Colors / Fonts / Numbers) · Classes · Components
 - **Center edit space** — Category blocks, variable rows, inline editing
 - **Right panel** — File management, asset counts, save/load
@@ -127,14 +130,25 @@ ln -s /path/to/eff /path/to/wp/wp-content/plugins/elementor-framework-forge
 
 ## Quick Start
 
-> **[→ Read the full Quick Start Guide](QUICK-START.md)**
+> ### [Read the Quick Start Guide →](QUICK-START.md)
+>
+> The Quick Start walks through every step: installation, syncing variables, organizing into categories, and saving your project. Takes about ten minutes. Start there.
 
 The short version:
 
 1. Activate the plugin and open **EFF** in the WordPress admin sidebar.
-2. Click **Sync** (circular arrows, top-right) to import variables from Elementor.
-3. Variables appear organized under **Colors**, **Fonts**, and **Numbers** in the left panel.
-4. Type a filename in the right panel and click **Save**.
+2. Click **Sync** (circular arrows, top bar) to import variables from Elementor.
+3. Variables appear under **Colors**, **Fonts**, and **Numbers** in the left panel.
+4. Click any category to open it in the edit space. Edit values inline; click the swatch to open the color picker.
+5. Type a filename in the right panel and click **Save**.
+
+---
+
+## User Manual
+
+> ### [Read the User Manual →](USER-MANUAL.md)
+>
+> Complete reference covering every panel, button, and workflow — the color picker, expand panel, category management, file management, Preferences, and more.
 
 ---
 
@@ -164,11 +178,11 @@ elementor-framework-forge/
 │   ├── css/
 │   │   ├── eff-theme.css                # Design tokens, light/dark palettes
 │   │   ├── eff-layout.css               # Panel structure, nav, badges
-│   │   ├── eff-colors.css               # Colors edit space styles
+│   │   ├── eff-colors.css               # Colors edit space + Pickr styles
 │   │   └── eff-variables.css            # Fonts / Numbers edit space styles
 │   └── js/
 │       ├── eff-app.js                   # Global state, AJAX wrapper, init
-│       ├── eff-colors.js                # Colors variable set module
+│       ├── eff-colors.js                # Colors variable set module + Pickr
 │       ├── eff-variables.js             # Generic variable set factory (Fonts, Numbers)
 │       ├── eff-edit-space.js            # Edit space router
 │       ├── eff-modal.js                 # Modal system with focus trap
@@ -199,8 +213,8 @@ elementor-framework-forge/
 | Version | Scope |
 |---------|-------|
 | **0.0.1-alpha** | Variables module — Colors, Fonts, Numbers. Sync, organize, save, commit. |
-| **0.1.0** *(this release)* | Default categories/types per set. Auto-load last project. Functions menu. Sync manual-path fallback. |
-| **0.2.0** | Pickr color picker integration. Value format conversion (HEX ↔ RGB ↔ HSL). |
+| **0.1.0** | Default categories/types per set. Auto-load last project. Functions menu. Sync manual-path fallback. |
+| **0.2.0** *(this release)* | Pickr color picker (HEX / RGB / HSL + alpha). Per-variable format selector. Live palette refresh. |
 | **1.0.0** | Full variable workflow stable. Classes management. Export / Import. Change history. |
 | **2.0.0** | Components registry. Elementor Kit Manager API write-back. Bulk variable rename. |
 | **Future** | Standalone Windows / Mac desktop application. |
@@ -237,6 +251,7 @@ All endpoints require `manage_options` capability and a valid `eff_admin_nonce`.
 - **PHP** — WordPress hooks, AJAX handlers, CSS parsing, post meta scanning
 - **Vanilla JavaScript (ES5)** — No jQuery for EFF UI logic; `fetch()` for all AJAX; no build step
 - **CSS Custom Properties** — Full design token system; light/dark mode via `[data-eff-theme]`
+- **Pickr v1.9.0** — Visual color picker (CDN); classic theme; HEX / RGB / HSL + alpha
 - **Inter** — Loaded locally from `assets/fonts/` (WOFF2, Latin subset, no CDN)
 - **SVG icons** — `stroke="currentColor"`, no icon font
 
