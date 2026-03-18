@@ -496,7 +496,11 @@
 			if (cancelBtn) { cancelBtn.addEventListener('click', function () { EFF.Modal.close(); }); }
 			if (saveBtn)   { saveBtn.addEventListener('click', this._saveProjectConfig.bind(this)); }
 			var projNameInput = document.getElementById('eff-proj-name');
-			if (projNameInput) { projNameInput.focus(); projNameInput.select(); }
+			if (projNameInput) {
+				projNameInput.addEventListener('focus', function () { this.select(); });
+				projNameInput.focus();
+				projNameInput.select();
+			}
 			// Load saved default types and populate selects
 			EFF.App.ajax('eff_get_settings', {}).then(function (res) {
 				var s = res.success && res.data && res.data.settings ? res.data.settings : {};
@@ -538,7 +542,7 @@
 		var colCatEl    = document.getElementById('eff-proj-cat-colors');
 		var fntCatEl    = document.getElementById('eff-proj-cat-fonts');
 		var numCatEl    = document.getElementById('eff-proj-cat-numbers');
-		var projName    = projNameEl ? projNameEl.value.trim() : (EFF.state.projectName || '');
+		var projName    = (projNameEl ? projNameEl.value.trim() : (EFF.state.projectName || '')).replace(/(?:\.eff)+(?:\.json)?$/i, '');
 
 		function _parseCsvNames(el) {
 			if (!el) { return []; }

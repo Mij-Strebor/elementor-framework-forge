@@ -60,6 +60,7 @@
 			this._filenameInput.addEventListener('input', function () {
 				EFF.state.projectName = self._filenameInput.value.trim();
 			});
+			this._filenameInput.addEventListener('focus', function () { this.select(); });
 		},
 
 		// ------------------------------------------------------------------
@@ -112,7 +113,7 @@
 
 						// Prefer the name stored inside the project file for round-trip accuracy.
 						// Strip any stale .eff extension to prevent -eff suffix on next save.
-					var displayName = (res.data.data.name || name).replace(/\.eff(?:\.json)?$/i, '');
+					var displayName = (res.data.data.name || name).replace(/(?:\.eff)+(?:\.json)?$/i, '');
 						EFF.state.projectName = displayName;
 						if (self._filenameInput) {
 							self._filenameInput.value = displayName;
@@ -172,8 +173,8 @@
 						EFF.state.currentFile = res.data.filename;
 
 						var displayName = (res.data.data.name
-							|| (res.data.filename || '').replace(/\.eff\.json$/i, ''))
-							.replace(/\.eff(?:\.json)?$/i, '');
+							|| (res.data.filename || '').replace(/(?:\.eff)+(?:\.json)?$/i, ''))
+							.replace(/(?:\.eff)+(?:\.json)?$/i, '');
 						EFF.state.projectName = displayName;
 						if (self._filenameInput) {
 							self._filenameInput.value = displayName;
@@ -267,7 +268,7 @@
 					var name = self._filenameInput ? self._filenameInput.value.trim() : '';
 					if (!name && EFF.state.currentFile) {
 						// Fall back to deriving the name from the stored filename.
-						name = EFF.state.projectName || EFF.state.currentFile.replace(/\.eff\.json$/i, '');
+						name = EFF.state.projectName || EFF.state.currentFile.replace(/(?:\.eff)+(?:\.json)?$/i, '');
 					}
 					if (name) {
 						self._saveFile(name);
