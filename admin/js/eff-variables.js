@@ -1036,7 +1036,20 @@
 					}).then(function (res) {
 						if (res.success && res.data) {
 							if (!EFF.state.config) { EFF.state.config = {}; }
-							EFF.state.config[self._cfg.catKey] = res.data.categories;
+							// Merge: append new category to local state instead of
+							// replacing — preserves globalConfig-sourced categories
+							// that aren't written to the file yet.
+							var _newCat = null;
+							var _serverCats = res.data.categories || [];
+							for (var _ki = 0; _ki < _serverCats.length; _ki++) {
+								if (_serverCats[_ki].id === res.data.id) { _newCat = _serverCats[_ki]; break; }
+							}
+							if (_newCat) {
+								if (!Array.isArray(EFF.state.config[self._cfg.catKey])) { EFF.state.config[self._cfg.catKey] = []; }
+								EFF.state.config[self._cfg.catKey].push(_newCat);
+							} else {
+								EFF.state.config[self._cfg.catKey] = _serverCats;
+							}
 							if (EFF.App) { EFF.App.setDirty(true); }
 							self._rerenderView();
 							if (EFF.PanelLeft && EFF.PanelLeft.refresh) { EFF.PanelLeft.refresh(); }
@@ -1075,7 +1088,15 @@
 			}).then(function (res) {
 				if (res.success && res.data) {
 					if (!EFF.state.config) { EFF.state.config = {}; }
-					EFF.state.config[self._cfg.catKey] = res.data.categories;
+					// Merge: update the renamed category in local state by ID.
+					var _localCats = EFF.state.config[self._cfg.catKey];
+					if (Array.isArray(_localCats)) {
+						for (var _ri = 0; _ri < _localCats.length; _ri++) {
+							if (_localCats[_ri].id === catId) { _localCats[_ri].name = newName; break; }
+						}
+					} else {
+						EFF.state.config[self._cfg.catKey] = res.data.categories || [];
+					}
 					input.setAttribute('data-original', newName);
 					if (EFF.App) { EFF.App.setDirty(true); }
 					self._rerenderView();
@@ -1117,7 +1138,8 @@
 				} else if (e.target.id === 'eff-modal-del-ok') {
 					EFF.Modal.close();
 					document.removeEventListener('click', handleClick);
-					EFF.App.ajax('eff_delete_category', {
+					var _preDelCats = (EFF.state.config && Array.isArray(EFF.state.config[self._cfg.catKey])) ? EFF.state.config[self._cfg.catKey].slice() : null;
+				EFF.App.ajax('eff_delete_category', {
 						filename:    EFF.state.currentFile,
 						subgroup:    self._cfg.setName,
 						category_id: catId,
@@ -1125,7 +1147,11 @@
 						if (res.success && res.data) {
 							if (!EFF.state.config) { EFF.state.config = {}; }
 							EFF.state.config[self._cfg.catKey] = res.data.categories;
-							delete self._collapsedIds[catId];
+							// Merge: use pre-captured local list, filtered by deleted ID.
+						if (_preDelCats !== null) {
+							EFF.state.config[self._cfg.catKey] = _preDelCats.filter(function (c) { return c.id !== catId; });
+						}
+						delete self._collapsedIds[catId];
 							if (EFF.App) { EFF.App.setDirty(true); }
 							self._rerenderView();
 							if (EFF.PanelLeft && EFF.PanelLeft.refresh) { EFF.PanelLeft.refresh(); }
@@ -1191,7 +1217,18 @@
 			}).then(function (res) {
 				if (!res.success || !res.data) { return; }
 				if (!EFF.state.config) { EFF.state.config = {}; }
-				EFF.state.config[self._cfg.catKey] = res.data.categories;
+				// Merge: append new duplicate category to local state by ID.
+				var _dupCat = null;
+				var _dupServerCats = res.data.categories || [];
+				for (var _di = 0; _di < _dupServerCats.length; _di++) {
+					if (_dupServerCats[_di].id === res.data.id) { _dupCat = _dupServerCats[_di]; break; }
+				}
+				if (_dupCat) {
+					if (!Array.isArray(EFF.state.config[self._cfg.catKey])) { EFF.state.config[self._cfg.catKey] = []; }
+					EFF.state.config[self._cfg.catKey].push(_dupCat);
+				} else {
+					EFF.state.config[self._cfg.catKey] = _dupServerCats;
+				}
 				var newCatId = res.data.id;
 				var vars     = self._getVarsForCategory(cat);
 				var chain    = Promise.resolve();
@@ -1252,9 +1289,8 @@
 				subgroup:    self._cfg.setName,
 				ordered_ids: JSON.stringify(orderedIds),
 			}).then(function (res) {
-				if (res.success && res.data && res.data.categories) {
-					if (!EFF.state.config) { EFF.state.config = {}; }
-					EFF.state.config[catKey] = res.data.categories;
+				if (res.success) {
+					// Order already applied locally; no state overwrite needed.
 					self._rerenderView();
 				}
 			}).catch(function () {});
@@ -1614,8 +1650,8 @@
 				subgroup:    self._cfg.setName,
 				ordered_ids: JSON.stringify(ordered_ids),
 			}).then(function (res) {
-				if (res.success && res.data && res.data.categories) {
-					EFF.state.config[catKey] = res.data.categories;
+				if (res.success) {
+					// Order already applied locally; no state overwrite needed.
 				}
 				if (EFF.App) { EFF.App.setDirty(true); }
 				if (EFF.PanelLeft) { EFF.PanelLeft.refresh(); }

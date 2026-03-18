@@ -721,3 +721,104 @@
 	padding:    var(--sp-6);
 	text-align: center;
 }
+
+/* ==========================================================================
+   12. SAVE CHANGES GLOW — pulses the Save Changes button when dirty
+   ========================================================================== */
+
+@keyframes eff-save-glow {
+	0%, 100% { opacity: 0.45; box-shadow: none; }
+	50%       { opacity: 1;    box-shadow: 0 0 10px 3px var(--eff-clr-accent); }
+}
+
+/* Save Changes — full-width button below Load/Save row */
+#eff-btn-save-changes {
+	width:      100%;
+	margin-top: var(--sp-1);
+}
+#eff-btn-save-changes:disabled {
+	opacity: 0.4;
+	cursor:  not-allowed;
+}
+
+.eff-save-changes-btn.has-changes {
+	animation:   eff-save-glow 2.4s ease-in-out infinite;
+	color:       #2a1a0e !important;
+	font-weight: var(--fw-bold, 700);
+}
+
+/* ==========================================================================
+   13. PROJECT PICKER MODAL
+   ========================================================================== */
+
+.eff-picker-list {
+	display:        flex;
+	flex-direction: column;
+	gap:            var(--sp-1);
+	max-height:     320px;
+	overflow-y:     auto;
+	margin-bottom:  var(--sp-2);
+}
+
+.eff-picker-row {
+	display:     flex;
+	align-items: center;
+	gap:         var(--sp-2);
+	padding:     var(--sp-2) var(--sp-3);
+	border-radius: 4px;
+	border:      1px solid var(--eff-clr-border);
+}
+
+.eff-picker-row__name {
+	flex:          1;
+	font-size:     var(--fs-sm);
+	color:         var(--eff-clr-primary);
+	white-space:   nowrap;
+	overflow:      hidden;
+	text-overflow: ellipsis;
+}
+
+.eff-picker-row__date {
+	font-size:  var(--fs-xs);
+	color:      var(--eff-clr-muted);
+	flex-shrink: 0;
+}
+
+.eff-picker-create {
+	display:     flex;
+	align-items: center;
+	gap:         var(--sp-2);
+	margin-top:  var(--sp-4);
+	padding-top: var(--sp-4);
+	border-top:  1px solid var(--eff-clr-border);
+}
+
+.eff-picker-create .eff-field-input {
+	flex: 1;
+}
+
+/* ==========================================================================
+   14. TOAST NOTIFICATION
+   ========================================================================== */
+
+.eff-toast {
+	position:   fixed;
+	bottom:     24px;
+	left:       50%;
+	transform:  translateX(-50%) translateY(12px);
+	background: var(--eff-clr-accent);
+	color:      var(--eff-clr-on-accent, #3d2f1f);
+	padding:    8px 16px;
+	border-radius: 4px;
+	font-size:  var(--fs-sm);
+	font-weight: var(--fw-semibold);
+	opacity:    0;
+	transition: opacity 0.2s ease, transform 0.2s ease;
+	z-index:    9999;
+	pointer-events: none;
+}
+
+.eff-toast--visible {
+	opacity:   1;
+	transform: translateX(-50%) translateY(0);
+}

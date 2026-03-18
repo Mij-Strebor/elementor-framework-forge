@@ -882,16 +882,113 @@
 		// ------------------------------------------------------------------
 
 		_openExport: function () {
-			EFF.Modal.open({
-				title: 'Export',
-				body:  '<p>Export functionality arrives in EFF v5.</p>',
-			});
+			if (!EFF.state.currentFile && EFF.state.variables.length === 0) {
+				EFF.Modal.open({ title: 'Nothing to export', body: '<p>Load or create a project first.</p>' });
+				return;
+			}
+
+			var projectName = EFF.state.projectName || 'eff-project';
+			var filename    = projectName.trim().toLowerCase()
+			                      .replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+			                  + '.eff.json';
+
+			var payload = {
+				version:    '1.0',
+				name:       EFF.state.projectName || '',
+				config:     EFF.state.config      || {},
+				variables:  EFF.state.variables   || [],
+				classes:    EFF.state.classes     || [],
+				components: EFF.state.components  || [],
+				metadata:   { exported_at: new Date().toISOString() },
+			};
+
+			var json  = JSON.stringify(payload, null, 2);
+			var blob  = new Blob([json], { type: 'application/json' });
+			var url   = URL.createObjectURL(blob);
+			var link  = document.createElement('a');
+			link.href     = url;
+			link.download = filename;
+			document.body.appendChild(link);
+			link.click();
+			document.body.removeChild(link);
+			setTimeout(function () { URL.revokeObjectURL(url); }, 10000);
 		},
 
 		_openImport: function () {
-			EFF.Modal.open({
-				title: 'Import',
-				body:  '<p>Import functionality arrives in EFF v5.</p>',
+			var body =
+				'<p style="margin-bottom:12px;color:var(--eff-clr-secondary);line-height:1.6">'
+				+ 'Select a <code>.eff.json</code> file exported from EFF. The project will be '
+				+ 'loaded into the editor. Use <strong>Save Project</strong> to keep it.</p>'
+				+ '<div style="margin-bottom:16px">'
+				+ '<input type="file" id="eff-import-file" accept=".json" '
+				+ 'style="display:block;width:100%;padding:8px 0;cursor:pointer">'
+				+ '</div>'
+				+ '<div id="eff-import-status" style="font-size:12px;color:var(--eff-clr-muted);min-height:18px"></div>';
+
+			var footer =
+				'<button class="eff-btn" id="eff-import-cancel" style="margin-right:8px">Cancel</button>'
+				+ '<button class="eff-btn" id="eff-import-go">Import</button>';
+
+			EFF.Modal.open({ title: 'Import project', body: body, footer: footer });
+
+			requestAnimationFrame(function () {
+				var fileInput = document.getElementById('eff-import-file');
+				var statusEl  = document.getElementById('eff-import-status');
+				var cancelBtn = document.getElementById('eff-import-cancel');
+				var importBtn = document.getElementById('eff-import-go');
+
+				if (cancelBtn) { cancelBtn.addEventListener('click', function () { EFF.Modal.close(); }); }
+
+				if (fileInput) {
+					fileInput.addEventListener('change', function () {
+						if (statusEl) { statusEl.textContent = fileInput.files[0] ? fileInput.files[0].name : ''; }
+					});
+				}
+
+				if (importBtn) {
+					importBtn.addEventListener('click', function () {
+						if (!fileInput || !fileInput.files || !fileInput.files[0]) {
+							if (statusEl) { statusEl.textContent = 'Please choose a file first.'; }
+							return;
+						}
+						var reader = new FileReader();
+						reader.onload = function (e) {
+							var parsed;
+							try { parsed = JSON.parse(e.target.result); } catch (err) {
+								if (statusEl) { statusEl.textContent = 'Invalid JSON \u2014 could not parse file.'; }
+								return;
+							}
+							if (!parsed || typeof parsed !== 'object') {
+								if (statusEl) { statusEl.textContent = 'File does not look like an EFF project.'; }
+								return;
+							}
+
+							// Load into state
+							EFF.state.variables   = Array.isArray(parsed.variables)  ? parsed.variables  : [];
+							EFF.state.classes     = Array.isArray(parsed.classes)     ? parsed.classes    : [];
+							EFF.state.components  = Array.isArray(parsed.components)  ? parsed.components : [];
+							EFF.state.config      = (parsed.config && typeof parsed.config === 'object') ? parsed.config : {};
+							EFF.state.projectName = parsed.name || '';
+
+							// Populate the project name input in the right panel
+							if (EFF.PanelRight && EFF.PanelRight._filenameInput && parsed.name) {
+								EFF.PanelRight._filenameInput.value = parsed.name;
+							}
+
+							// Refresh all views
+							EFF.App.refreshCounts();
+							if (EFF.PanelLeft) { EFF.PanelLeft.refresh(); }
+							if (EFF.state.currentSelection && EFF.EditSpace) {
+								EFF.EditSpace.loadCategory(EFF.state.currentSelection);
+							}
+							EFF.App.setDirty(true);  // user must save to persist
+							EFF.App.fetchUsageCounts();
+
+							EFF.Modal.close();
+						};
+						reader.readAsText(fileInput.files[0]);
+					});
+				}
 			});
 		},
 

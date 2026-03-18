@@ -2,8 +2,9 @@
  * EFF Panel Right — File Management and Asset Counts
  *
  * Manages:
- *  - Storage file name input
- *  - Load / Save file buttons
+ *  - Project name input (human-readable; derives filename via _getFilename)
+ *  - Load / Save project buttons
+ *  - Project Picker modal (opens when Load is clicked with empty input)
  *  - Save Changes button (inactive/active state driven by EFF.state.hasUnsavedChanges)
  *  - Live asset count display (variables, classes, components)
  *
@@ -55,11 +56,10 @@
 
 		_bindFilenameInput: function () {
 			if (!this._filenameInput) { return; }
+			var self = this;
 			this._filenameInput.addEventListener('input', function () {
-				var val = this._filenameInput.value.trim();
-				// Strip .eff.json to get the human-readable project name.
-				EFF.state.projectName = val.replace(/\.eff\.json$/i, '');
-			}.bind(this));
+				EFF.state.projectName = self._filenameInput.value.trim();
+			});
 		},
 
 		// ------------------------------------------------------------------
@@ -67,77 +67,77 @@
 		// ------------------------------------------------------------------
 
 		_bindLoadBtn: function () {
-			if (!this._loadBtn) {
-				return;
-			}
+			if (!this._loadBtn) { return; }
+			var self = this;
 
 			this._loadBtn.addEventListener('click', function () {
-				var filename = this._getFilename();
-				if (!filename) {
-					// Open a prompt-style modal to enter the filename
-					EFF.Modal.open({
-						title: 'Load name',
-						body:  this._buildLoadModalBody(),
-					});
-					return;
+				var name = self._filenameInput ? self._filenameInput.value.trim() : '';
+				if (!name) {
+					self._openProjectPicker();
+				} else {
+					self._loadFile(name);
 				}
-				this._loadFile(filename);
-			}.bind(this));
+			});
 		},
 
 		/**
-		 * @returns {string} HTML for the load filename modal.
-		 * @private
-		 */
-		_buildLoadModalBody: function () {
-			return '<p class="eff-text-muted" style="margin-bottom:12px">Enter the filename to load from the EFF storage directory.</p>'
-				+ '<input type="text" class="eff-field-input" id="eff-modal-filename-input" '
-				+ 'placeholder="e.g., my-project.eff.json" autocomplete="off" />'
-				+ '<div style="margin-top:16px;display:flex;justify-content:flex-end;gap:8px">'
-				+ '<button class="eff-btn" id="eff-modal-load-confirm">Load</button>'
-				+ '</div>';
-		},
-
-		/**
-		 * Execute an AJAX load for the given filename.
+		 * Execute an AJAX load for the given project name.
+		 * Derives the filename from the human name via _getFilename().
+		 * If the server returns created:true the project was just created; show toast.
 		 *
-		 * @param {string} filename
+		 * @param {string} name  Human-readable project name.
 		 */
-		_loadFile: function (filename) {
-			EFF.App.ajax('eff_load_file', { filename: filename })
+		_loadFile: function (name) {
+			var self     = this;
+			var filename = this._getFilename(name);
+
+			EFF.App.ajax('eff_load_file', { filename: filename, project_name: name })
 				.then(function (res) {
 					if (res.success) {
-						// Populate state from loaded data
 						EFF.state.variables  = res.data.data.variables  || [];
 						EFF.state.classes    = res.data.data.classes    || [];
 						EFF.state.components = res.data.data.components || [];
+						var _oldGroups = EFF.state.config && EFF.state.config.groups;
 						EFF.state.config     = res.data.data.config     || {};
-						EFF.state.currentFile = filename;
+						if (!EFF.state.config.groups && _oldGroups) { EFF.state.config.groups = _oldGroups; }
+					// Preserve Phase 2 category arrays from globalConfig when the file's
+					// config doesn't have them (e.g. older files saved before categories existed).
+					if (EFF.state.globalConfig) {
+						var _gc = EFF.state.globalConfig;
+						if ((!EFF.state.config.categories       || !EFF.state.config.categories.length)       && _gc.categories       && _gc.categories.length)       { EFF.state.config.categories       = _gc.categories.slice(); }
+						if ((!EFF.state.config.fontCategories   || !EFF.state.config.fontCategories.length)   && _gc.fontCategories   && _gc.fontCategories.length)   { EFF.state.config.fontCategories   = _gc.fontCategories.slice(); }
+						if ((!EFF.state.config.numberCategories || !EFF.state.config.numberCategories.length) && _gc.numberCategories && _gc.numberCategories.length) { EFF.state.config.numberCategories = _gc.numberCategories.slice(); }
+					}
+						EFF.state.currentFile = res.data.filename;
 
-						if (this._filenameInput) {
-							this._filenameInput.value = (EFF.state.config && EFF.state.config.projectName)
-						? EFF.state.config.projectName
-						: (res.data.filename || '').replace(/\.eff\.json$/i, '');
+						// Prefer the name stored inside the project file for round-trip accuracy.
+						// Strip any stale .eff extension to prevent -eff suffix on next save.
+					var displayName = (res.data.data.name || name).replace(/\.eff(?:\.json)?$/i, '');
+						EFF.state.projectName = displayName;
+						if (self._filenameInput) {
+							self._filenameInput.value = displayName;
 						}
 
-						// Refresh counts and nav
 						EFF.App.refreshCounts();
-						if (EFF.PanelLeft) {
-							EFF.PanelLeft.refresh();
-						}
-
+						if (EFF.PanelLeft) { EFF.PanelLeft.refresh(); }
 						EFF.App.setDirty(false);
 						EFF.Modal.close();
 
 						// Persist last loaded filename so auto-load can restore it on next open.
-						EFF.App.ajax('eff_save_settings', { settings: JSON.stringify({ last_file: filename }) });
+						EFF.App.ajax('eff_save_settings', {
+							settings: JSON.stringify({ last_file: res.data.filename }),
+						});
 
-						// Scan widget usage for loaded variables (async, non-blocking)
+						if (res.data.created) {
+							self._showToast('Project created');
+						}
+
+						// Scan widget usage for loaded variables (async, non-blocking).
 						EFF.App.fetchUsageCounts();
 					} else {
 						EFF.Modal.open({ title: 'Load error', body: '<p>' + (res.data.message || 'Unknown error.') + '</p>' });
 					}
-				}.bind(this))
+				})
 				.catch(function () {
 					EFF.Modal.open({ title: 'Load error', body: '<p>Network error while loading.</p>' });
 				});
@@ -147,32 +147,44 @@
 		 * Silently load a file on startup (no dirty flag, no modal on failure).
 		 * Used for auto-loading the last opened file.
 		 *
-		 * @param {string} filename
+		 * @param {string} filename  Stored .eff.json filename (not a project name).
 		 */
 		_autoLoadFile: function (filename) {
+			var self = this;
+
 			EFF.App.ajax('eff_load_file', { filename: filename })
 				.then(function (res) {
 					if (res.success) {
 						EFF.state.variables  = res.data.data.variables  || [];
 						EFF.state.classes    = res.data.data.classes    || [];
 						EFF.state.components = res.data.data.components || [];
+						var _oldGroupsAL = EFF.state.config && EFF.state.config.groups;
 						EFF.state.config     = res.data.data.config     || {};
+						if (!EFF.state.config.groups && _oldGroupsAL) { EFF.state.config.groups = _oldGroupsAL; }
+					// Preserve Phase 2 category arrays from globalConfig when the file's
+					// config doesn't have them (e.g. older files saved before categories existed).
+					if (EFF.state.globalConfig) {
+						var _gcAL = EFF.state.globalConfig;
+						if ((!EFF.state.config.categories       || !EFF.state.config.categories.length)       && _gcAL.categories       && _gcAL.categories.length)       { EFF.state.config.categories       = _gcAL.categories.slice(); }
+						if ((!EFF.state.config.fontCategories   || !EFF.state.config.fontCategories.length)   && _gcAL.fontCategories   && _gcAL.fontCategories.length)   { EFF.state.config.fontCategories   = _gcAL.fontCategories.slice(); }
+						if ((!EFF.state.config.numberCategories || !EFF.state.config.numberCategories.length) && _gcAL.numberCategories && _gcAL.numberCategories.length) { EFF.state.config.numberCategories = _gcAL.numberCategories.slice(); }
+					}
 						EFF.state.currentFile = res.data.filename;
 
-						if (this._filenameInput) {
-							this._filenameInput.value = (EFF.state.config && EFF.state.config.projectName)
-						? EFF.state.config.projectName
-						: (res.data.filename || '').replace(/\.eff\.json$/i, '');
+						var displayName = (res.data.data.name
+							|| (res.data.filename || '').replace(/\.eff\.json$/i, ''))
+							.replace(/\.eff(?:\.json)?$/i, '');
+						EFF.state.projectName = displayName;
+						if (self._filenameInput) {
+							self._filenameInput.value = displayName;
 						}
 
 						EFF.App.refreshCounts();
-						if (EFF.PanelLeft) {
-							EFF.PanelLeft.refresh();
-						}
+						if (EFF.PanelLeft) { EFF.PanelLeft.refresh(); }
 						EFF.App.fetchUsageCounts();
 					}
 					// Silent on failure — user will see empty state as expected.
-				}.bind(this))
+				})
 				.catch(function () {
 					// Silent on network error at startup.
 				});
@@ -183,31 +195,32 @@
 		// ------------------------------------------------------------------
 
 		_bindSaveBtn: function () {
-			if (!this._saveBtn) {
-				return;
-			}
+			if (!this._saveBtn) { return; }
+			var self = this;
 
 			this._saveBtn.addEventListener('click', function () {
-				var filename = this._getFilename();
-				if (!filename) {
-					EFF.Modal.open({ title: 'Name required', body: '<p>Please enter a name before saving.</p>' });
-					if (this._filenameInput) {
-						this._filenameInput.focus();
-					}
+				var name = self._filenameInput ? self._filenameInput.value.trim() : '';
+				if (!name) {
+					EFF.Modal.open({ title: 'Name required', body: '<p>Please enter a project name before saving.</p>' });
+					if (self._filenameInput) { self._filenameInput.focus(); }
 					return;
 				}
-				this._saveFile(filename);
-			}.bind(this));
+				self._saveFile(name);
+			});
 		},
 
 		/**
-		 * Execute an AJAX save for the given filename.
+		 * Execute an AJAX save for the given project name.
+		 * Derives the filename from the human name via _getFilename().
 		 *
-		 * @param {string} filename
+		 * @param {string} name  Human-readable project name.
 		 */
-		_saveFile: function (filename) {
+		_saveFile: function (name) {
+			var self     = this;
+			var filename = this._getFilename(name);
 			var data = {
 				version:    '1.0',
+				name:       name,
 				config:     EFF.state.config,
 				variables:  EFF.state.variables,
 				classes:    EFF.state.classes,
@@ -215,22 +228,26 @@
 			};
 
 			EFF.App.ajax('eff_save_file', {
-				filename: filename,
-				data:     JSON.stringify(data),
+				filename:     filename,
+				project_name: name,
+				data:         JSON.stringify(data),
 			})
 				.then(function (res) {
 					if (res.success) {
 						EFF.state.currentFile = res.data.filename;
-						if (this._filenameInput) {
-							this._filenameInput.value = (EFF.state.config && EFF.state.config.projectName)
-						? EFF.state.config.projectName
-						: (res.data.filename || '').replace(/\.eff\.json$/i, '');
+						EFF.state.projectName = name;
+						if (self._filenameInput) {
+							self._filenameInput.value = name;
 						}
 						EFF.App.setDirty(false);
+						// Keep last_file in sync so auto-load restores the correct project.
+						EFF.App.ajax('eff_save_settings', {
+							settings: JSON.stringify({ last_file: res.data.filename }),
+						});
 					} else {
 						EFF.Modal.open({ title: 'Save error', body: '<p>' + (res.data.message || 'Unknown error.') + '</p>' });
 					}
-				}.bind(this))
+				})
 				.catch(function () {
 					EFF.Modal.open({ title: 'Save error', body: '<p>Network error while saving.</p>' });
 				});
@@ -241,18 +258,21 @@
 		// ------------------------------------------------------------------
 
 		_bindSaveChangesBtn: function () {
-			if (!this._saveChangesBtn) {
-				return;
-			}
+			if (!this._saveChangesBtn) { return; }
+			var self = this;
 
 			this._saveChangesBtn.addEventListener('click', function () {
 				if (EFF.state.hasUnsavedChanges) {
-					var filename = this._getFilename() || EFF.state.currentFile;
-					if (filename) {
-						this._saveFile(filename);
+					var name = self._filenameInput ? self._filenameInput.value.trim() : '';
+					if (!name && EFF.state.currentFile) {
+						// Fall back to deriving the name from the stored filename.
+						name = EFF.state.projectName || EFF.state.currentFile.replace(/\.eff\.json$/i, '');
+					}
+					if (name) {
+						self._saveFile(name);
 					}
 				}
-			}.bind(this));
+			});
 		},
 
 		/**
@@ -262,9 +282,7 @@
 		 * (pendingSaveCount > 0) to prevent a full file save over stale state.
 		 */
 		updateSaveChangesBtn: function () {
-			if (!this._saveChangesBtn) {
-				return;
-			}
+			if (!this._saveChangesBtn) { return; }
 
 			var isPending = EFF.state.pendingSaveCount > 0;
 			var isDirty   = EFF.state.hasUnsavedChanges;
@@ -281,6 +299,138 @@
 		},
 
 		// ------------------------------------------------------------------
+		// PROJECT PICKER MODAL
+		// ------------------------------------------------------------------
+
+		/**
+		 * Open the project picker modal.
+		 * Fetches the project list from the server, then renders the picker UI.
+		 */
+		_openProjectPicker: function () {
+			var self = this;
+
+			EFF.App.ajax('eff_list_projects', {})
+				.then(function (res) {
+					if (res.success) {
+						EFF.Modal.open({
+							title:  'Load Project',
+							body:   self._buildPickerBody(res.data.projects || []),
+							footer: '',
+						});
+						self._bindPickerEvents();
+					} else {
+						EFF.Modal.open({ title: 'Error', body: '<p>' + (res.data.message || 'Could not load projects.') + '</p>' });
+					}
+				})
+				.catch(function () {
+					EFF.Modal.open({ title: 'Error', body: '<p>Network error loading project list.</p>' });
+				});
+		},
+
+		/**
+		 * Build the HTML for the project picker modal body.
+		 *
+		 * @param {Array} projects  Array of { name, filename, modified } objects.
+		 * @returns {string} HTML string.
+		 */
+		_buildPickerBody: function (projects) {
+			var html = '<div class="eff-picker-list">';
+
+			if (projects.length > 0) {
+				for (var i = 0; i < projects.length; i++) {
+					var p = projects[i];
+					html += '<div class="eff-picker-row"'
+						+ ' data-filename="' + this._escAttr(p.filename) + '"'
+						+ ' data-name="'     + this._escAttr(p.name)     + '">'
+						+ '<span class="eff-picker-row__name">'  + this._escHtml(p.name)     + '</span>'
+						+ '<span class="eff-picker-row__date">'  + this._escHtml(p.modified) + '</span>'
+						+ '<button class="eff-btn eff-btn--xs eff-picker-load"'
+						+ ' data-name="' + this._escAttr(p.name) + '">Load</button>'
+						+ '<button class="eff-icon-btn eff-picker-delete"'
+						+ ' data-filename="' + this._escAttr(p.filename) + '"'
+						+ ' aria-label="Delete project"'
+						+ ' data-eff-tooltip="Delete project">'
+						+ '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="14" height="14" fill="currentColor">'
+						+ '<path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5zm2.5.5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6z"/>'
+						+ '<path fill-rule="evenodd" d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1v1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118zM2.5 3V2h11v1h-11z"/>'
+						+ '</svg>'
+						+ '</button>'
+						+ '</div>';
+				}
+			} else {
+				html += '<p class="eff-text-muted" style="padding:8px 0">No saved projects found.</p>';
+			}
+
+			html += '</div>'; // .eff-picker-list
+
+			html += '<div class="eff-picker-create">'
+				+ '<input type="text" class="eff-field-input" id="eff-picker-name-input"'
+				+ ' placeholder="New project name\u2026" autocomplete="off" />'
+				+ '<button class="eff-btn" id="eff-picker-create-btn">Create</button>'
+			+ '</div>';
+
+		var _storageNote = (typeof EFFData !== 'undefined' && EFFData.uploadUrl)
+			? EFFData.uploadUrl.replace(/^https?:\/\/[^/]+/, '')
+			: 'wp-content/uploads/eff/';
+		html += '<p style="font-size:11px;color:var(--eff-clr-muted);margin-top:12px;padding-top:8px;border-top:1px solid var(--eff-clr-border)">'
+			+ 'Files stored in: <code style="user-select:all">' + _storageNote + '</code></p>';
+
+		return html;
+		},
+
+		/**
+		 * Bind click events inside the project picker modal.
+		 * Uses event delegation on #eff-modal-body.
+		 */
+		_bindPickerEvents: function () {
+			var self      = this;
+			var modalBody = document.getElementById('eff-modal-body');
+			if (!modalBody) { return; }
+
+			modalBody.addEventListener('click', function pickerClick(e) {
+				// Load row button
+				var loadBtn = e.target.closest('.eff-picker-load');
+				if (loadBtn) {
+					var name = loadBtn.getAttribute('data-name');
+					EFF.Modal.close();
+					if (self._filenameInput) { self._filenameInput.value = name; }
+					self._loadFile(name);
+					return;
+				}
+
+				// Delete row button
+				var delBtn = e.target.closest('.eff-picker-delete');
+				if (delBtn) {
+					var filename = delBtn.getAttribute('data-filename');
+					EFF.App.ajax('eff_delete_project', { filename: filename })
+						.then(function (res) {
+							if (res.success) {
+								var row = delBtn.closest('.eff-picker-row');
+								if (row) { row.remove(); }
+							} else {
+								EFF.Modal.open({ title: 'Delete error', body: '<p>' + (res.data.message || 'Could not delete.') + '</p>' });
+							}
+						})
+						.catch(function () {});
+					return;
+				}
+
+				// Create button
+				if (e.target.id === 'eff-picker-create-btn') {
+					var nameInput = document.getElementById('eff-picker-name-input');
+					var newName   = nameInput ? nameInput.value.trim() : '';
+					if (!newName) {
+						if (nameInput) { nameInput.focus(); }
+						return;
+					}
+					EFF.Modal.close();
+					if (self._filenameInput) { self._filenameInput.value = newName; }
+					self._saveFile(newName);
+				}
+			});
+		},
+
+		// ------------------------------------------------------------------
 		// COMMIT TO ELEMENTOR (Phase 2)
 		// ------------------------------------------------------------------
 
@@ -288,14 +438,13 @@
 		 * Bind the Commit to Elementor button.
 		 */
 		_bindCommitBtn: function () {
-			if (!this._commitBtn) {
-				return;
-			}
+			if (!this._commitBtn) { return; }
+			var self = this;
 
 			this._commitBtn.addEventListener('click', function () {
 				if (!EFF.state.hasPendingElementorCommit) { return; }
-				this._openCommitConfirmation();
-			}.bind(this));
+				self._openCommitConfirmation();
+			});
 		},
 
 		/**
@@ -429,18 +578,66 @@
 		// ------------------------------------------------------------------
 
 		/**
-		 * Get the filename derived from the name input.
-		 * If the value already ends in .eff.json it is used as-is.
-		 * Otherwise the value is treated as a project name and slugified.
+		 * Derive a .eff.json filename from a human-readable project name.
+		 * Slugifies the name: lower-case, hyphens, strips leading/trailing hyphens.
 		 *
+		 * @param {string} name  Human-readable project name.
+		 * @returns {string}     e.g. "my-e-commerce-site.eff.json"
+		 */
+		_getFilename: function (name) {
+			return (name || '').trim()
+				.replace(/\.eff\.json$/i, '')   // strip full extension if already present
+				.replace(/\.eff$/i, '')          // strip partial extension
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/^-+|-+$/g, '')
+				+ '.eff.json';
+		},
+
+		/**
+		 * Escape a string for safe insertion into HTML text content.
+		 * @param {string} str
 		 * @returns {string}
 		 */
-		_getFilename: function () {
-			if (!this._filenameInput) { return ''; }
-			var val = this._filenameInput.value.trim();
-			if (!val) { return ''; }
-			if (/\.eff\.json$/i.test(val)) { return val; }
-			return val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') + '.eff.json';
+		_escHtml: function (str) {
+			return String(str || '')
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;');
+		},
+
+		/**
+		 * Escape a string for safe use in an HTML attribute value (double-quoted).
+		 * @param {string} str
+		 * @returns {string}
+		 */
+		_escAttr: function (str) {
+			return String(str || '')
+				.replace(/&/g, '&amp;')
+				.replace(/"/g, '&quot;');
+		},
+
+		/**
+		 * Show a brief toast notification.
+		 * Auto-dismisses after 2 seconds.
+		 *
+		 * @param {string} message
+		 */
+		_showToast: function (message) {
+			var toast = document.createElement('div');
+			toast.className   = 'eff-toast';
+			toast.textContent = message;
+			document.body.appendChild(toast);
+
+			// Trigger the transition in the next frame.
+			requestAnimationFrame(function () {
+				toast.classList.add('eff-toast--visible');
+			});
+
+			setTimeout(function () {
+				toast.classList.remove('eff-toast--visible');
+				setTimeout(function () { toast.remove(); }, 300);
+			}, 2000);
 		},
 	};
 }());

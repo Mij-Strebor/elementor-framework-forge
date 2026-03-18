@@ -7,6 +7,34 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.2] — 2026-03-17
+
+### Added
+
+- **Export project** — Export button downloads the current project as a portable `.eff.json` file
+  (name derived from project name). Works client-side with no server involvement.
+- **Import project** — Import button opens a modal with a file picker; reads a `.eff.json` file,
+  populates all state (variables, classes, components, config, project name), refreshes all panels,
+  and marks the project dirty so the user can save it under a local name.
+- **Storage path in project picker** — Project picker modal footer now shows the server path
+  where `.eff.json` files are stored (relative URL to `wp-content/uploads/eff/`).
+
+### Fixed
+
+- **Save Changes button contrast** — Glowing Save Changes button now uses dark text
+  (`#2a1a0e !important`) so it is readable against the gold accent background.
+- **FONTS categories lost on file load** — When loading a `.eff.json` that predates Phase 2
+  category arrays, `fontCategories` and `numberCategories` are now copied from `globalConfig`
+  so nav items are preserved.
+- **`-eff` suffix on project name** — `_getFilename()` now strips `.eff` / `.eff.json` before
+  slugifying, preventing double-extension saves.
+- **Category CRUD wipes globalConfig categories** — Add, rename, delete, duplicate, and reorder
+  operations on font/number categories now merge into local state instead of replacing it with
+  the server response (which only contains categories stored in the file). This prevents
+  globalConfig-sourced categories (e.g. Titles, Body) from disappearing after any CRUD operation.
+
+---
+
 ## [0.2.0] — 2026-03-17
 
 ### Added — Color Picker
@@ -135,7 +163,8 @@ Initial Alpha release — distributed to LytBox Academy testers.
 |---------|---------------|
 | **0.1.0** | Preferences: default categories per set; auto-load last project on startup |
 | **0.2.0** | Pickr color picker; value format conversion (HEX ↔ RGB ↔ HSL) |
-| **1.0.0** | Full variable workflow stable; Classes management; Export/Import; Change history |
+| **0.2.2** | Export/Import; Save Changes contrast fix; category CRUD merge fix |
+| **1.0.0** | Full variable workflow stable; Classes management; Change history |
 | **2.0.0** | Components registry; Elementor Kit Manager API write-back; Bulk variable rename |
 | **Future** | Standalone Windows / Mac desktop application |
 
