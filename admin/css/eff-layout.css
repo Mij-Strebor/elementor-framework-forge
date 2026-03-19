@@ -508,6 +508,30 @@
 	text-align:  right;
 }
 
+/* Right panel — named sections */
+.eff-rp-section {
+	display:        flex;
+	flex-direction: column;
+	gap:            var(--sp-2);
+}
+
+.eff-rp-section__label {
+	font-size:      var(--fs-xs);
+	font-weight:    var(--fw-bold, 700);
+	color:          var(--eff-clr-secondary);
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	padding-bottom: var(--sp-1);
+	border-bottom:  1px solid var(--eff-clr-border);
+}
+
+/* Future (placeholder) button — visually disabled, not interactive */
+.eff-btn--future {
+	opacity:        0.35;
+	cursor:         not-allowed !important;
+	pointer-events: none;
+}
+
 /* ==========================================================================
    8. COLLAPSED LEFT PANEL — flyout stub (future phase: flyout sub-menus)
    ========================================================================== */

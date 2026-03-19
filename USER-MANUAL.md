@@ -1,5 +1,5 @@
 # EFF User Manual
-## Elementor Framework Forge — Alpha 0.2.3
+## Elementor Framework Forge — Beta 0.3.0
 
 > **Complete feature reference.** For a step-by-step first-run walkthrough, see the
 > **[Quick Start Guide →](QUICK-START.md)**
@@ -17,15 +17,16 @@
 7. [The Color Picker](#7-the-color-picker)
 8. [Category Management](#8-category-management)
 9. [Colors Expand Panel](#9-colors-expand-panel)
-10. [File Management](#10-file-management)
+10. [Save and Backups](#10-save-and-backups)
 11. [Sync from Elementor](#11-sync-from-elementor)
-12. [Commit to Elementor](#12-commit-to-elementor)
-13. [Preferences](#13-preferences)
-14. [Manage Project](#14-manage-project)
-15. [Usage Badges](#15-usage-badges)
-16. [Keyboard and Accessibility](#16-keyboard-and-accessibility)
-17. [Troubleshooting](#17-troubleshooting)
-18. [Known Limitations](#18-known-limitations)
+12. [Elementor V3 Import](#12-elementor-v3-import)
+13. [Commit to Elementor](#13-commit-to-elementor)
+14. [Preferences](#14-preferences)
+15. [Manage Project](#15-manage-project)
+16. [Usage Badges](#16-usage-badges)
+17. [Keyboard and Accessibility](#17-keyboard-and-accessibility)
+18. [Troubleshooting](#18-troubleshooting)
+19. [Known Limitations](#19-known-limitations)
 
 ---
 
@@ -47,10 +48,10 @@ EFF uses a four-panel layout that fills the WordPress admin content area.
 
 | Panel | Purpose |
 |-------|---------|
-| **Top bar** | Global actions — Preferences, Sync, Manage Project, Functions, Commit |
+| **Top bar** | Global actions — Preferences, Manage Project, Functions, Help |
 | **Left nav** | Tree navigation — Variables (Colors / Fonts / Numbers) · Classes · Components |
 | **Center edit space** | Main working area — category blocks, variable rows, inline editing |
-| **Right panel** | File management, project counts |
+| **Right panel** | All data management — active project, save & backups, Elementor sync, V3 import, export/import; plus asset counts |
 
 EFF requires a minimum screen width of 1024px. On narrower screens a restriction overlay is displayed.
 
@@ -72,13 +73,11 @@ The top bar runs the full width of the EFF panel. All buttons are icon-only; hov
 
 | Icon | Action | Description |
 |------|--------|-------------|
-| ↑ Box | Export | Export project as JSON or CSS *(placeholder — EFF 1.0.0)* |
-| ↓ Box | Import | Import a previously exported EFF dataset *(placeholder — EFF 1.0.0)* |
-| ↻ Arrows | Sync | Re-parse Elementor kit CSS and import new variables |
-| ✓ Check | Commit | Write modified variable values back to Elementor kit CSS |
+| ⏱ History | Change History | Per-session change history *(placeholder)* |
+| 🔍 Search | Search | Find variables by name or value *(placeholder)* |
 | ? Circle | Help | Quick reference *(placeholder)* |
 
-> **Save Changes vs Commit:** The right panel **Save Changes** button saves your project to a `.eff.json` file. The top bar **Commit** button pushes changed variable values back to Elementor's CSS. They are separate actions.
+> **Sync, Commit, Export, and Import** have moved to the **right panel** in Beta 0.3.0. See [Section 4](#4-right-panel), [Section 11](#11-sync-from-elementor), and [Section 13](#13-commit-to-elementor).
 
 ---
 
@@ -116,19 +115,41 @@ The top bar runs the full width of the EFF panel. All buttons are icon-only; hov
 
 ## 4. Right Panel
 
-### Project name field
+All data management controls live in the right panel. There are no hidden menus. The panel has five sections plus an asset count footer.
 
-Type a filename here (e.g., `my-project.eff.json`). This field is used by the Save and Load buttons.
+### Section 1 — Active Project
 
-### Buttons
+| Control | Function |
+|---------|----------|
+| **Project name input** | Shows the current project name; type to rename before saving |
+| **Open / Switch Project** | Opens the two-level project/backup picker (see [Section 10](#10-save-and-backups)) |
+
+### Section 2 — Save & Backups
 
 | Button | Action |
 |--------|--------|
-| **Save** | Save the current project to the named `.eff.json` file |
-| **Load** | Load the named `.eff.json` file into the edit space |
-| **Save Changes** | Save the current project (same as Save; highlights gold when changes are pending) |
+| **Save Project** | Creates a new timestamped backup snapshot for the current project |
+| **Save Changes** | Updates the current backup in-place without creating a new snapshot. Glows gold when unsaved changes are pending. |
 
-> EFF remembers the last filename you used and reloads it automatically on startup. See [File Management](#10-file-management).
+### Section 3 — Elementor Sync
+
+| Button | Action |
+|--------|--------|
+| **↓ Variables** | Pull variables from the active Elementor V4 kit. Shows a sync options dialog first (see [Section 11](#11-sync-from-elementor)) |
+| **↑ Variables** | Write EFF variable values back to the active Elementor kit CSS. Shows a commit summary dialog first (see [Section 13](#13-commit-to-elementor)). Highlights gold when uncommitted changes exist. |
+
+### Section 4 — Elementor V3 Import
+
+| Button | Action |
+|--------|--------|
+| **↓ V3 Colors** | Import V3 Global Colors from the Elementor kit post meta as EFF color variables (see [Section 12](#12-elementor-v3-import)) |
+
+### Section 5 — Export / Import
+
+| Button | Action |
+|--------|--------|
+| **Export** | Download the entire current project as a portable `.eff.json` file |
+| **Import** | Upload a `.eff.json` file; replaces the current project with its contents |
 
 ### Asset counts
 
@@ -136,9 +157,9 @@ The bottom of the right panel shows live counts:
 
 | Counter | What it counts |
 |---------|---------------|
-| Variables | Total variables across all three sets |
-| Classes | Placeholder — always 0 in Alpha |
-| Components | Placeholder — always 0 in Alpha |
+| Variables | Total variables across Colors, Fonts, and Numbers |
+| Classes | Placeholder — Phase 3 |
+| Components | Placeholder — Phase 4 |
 
 ---
 
@@ -355,37 +376,58 @@ After configuring tints, shades, and transparencies, the generated child variabl
 
 ---
 
-## 10. File Management
+## 10. Save and Backups
 
-### Saving a project
+### Save Project — creating a backup
 
-1. Type a filename in the right panel input (e.g., `my-project.eff.json`).
-2. Click **Save**.
+Click **Save Project** in the **Save & Backups** section of the right panel.
 
-EFF saves the file to `/wp-content/uploads/eff/` on your server. The file contains all variables, categories, and configuration for all three sets.
+EFF creates a timestamped snapshot under a per-project subdirectory:
 
-> Filename must end in `.eff.json`. If you omit the extension, EFF adds it.
+```
+wp-content/uploads/eff/
+  my-brand/
+    my-brand_2026-03-19_14-30-00.eff.json   ← first save
+    my-brand_2026-03-19_16-45-12.eff.json   ← second save
+```
 
-### Loading a project
+Each Save Project call adds a new file. Nothing is overwritten.
 
-1. Type the filename in the right panel input.
-2. Click **Load**.
+### Save Changes — in-place update
 
-EFF reads the file and replaces the current working state. If there are unsaved changes, EFF will warn you before loading.
+Click **Save Changes** in the right panel (or wait for it to glow gold). This updates the current backup snapshot in place — no new file is created. Use this for frequent quick-saves between deliberate checkpoints.
+
+### Auto-prune
+
+When the number of backups for a project exceeds the configured limit (default 10), the oldest backup is silently deleted. The limit is configurable in Manage Project (1–50).
+
+### Opening a project / restoring a backup
+
+Click **Open / Switch Project** in the **Active Project** section. The picker has two levels:
+
+**Level 1 — Projects:** lists all projects on this site sorted by most recent save. Each row shows the project name, backup count, and date of the latest backup. Click **Open** to drill into a project.
+
+**Level 2 — Backups:** lists all backups for the selected project, newest first. Each row shows the backup timestamp.
+- Click **Load** to restore that backup. The project loads into the edit space; further edits modify that backup until you click Save Project (which creates a new snapshot) or Save Changes (which updates it in-place).
+- Click the **🗑 trash** icon to permanently delete one backup. If all backups are deleted, the project is removed from the list.
+- Click **←** to return to Level 1 without loading anything.
 
 ### Auto-load on startup
 
-EFF remembers the last filename you loaded or saved. On the next page load, it silently reloads that file in the background. If the file no longer exists, the startup load fails silently and the edit space starts empty.
+EFF remembers the last backup you loaded or saved. On the next page load, it silently reloads that backup in the background. If the backup file no longer exists, the startup load fails silently and the edit space starts empty.
 
-You can override the default filename in **Preferences → Default Storage File**.
+### Create a new project
+
+In Level 1 of the picker, type a name in the "New project name" input and click **Create**. EFF clears all state and saves an empty project under the new name.
 
 ### Project file format
 
-`.eff.json` files are plain JSON. They contain:
+`.eff.json` files are plain JSON:
 
 ```json
 {
   "version": "1.0",
+  "name": "My Brand",
   "config": { "colorCategories": [...], "fontCategories": [...], "numberCategories": [...] },
   "variables": [
     {
@@ -401,55 +443,98 @@ You can override the default filename in **Preferences → Default Storage File*
 }
 ```
 
-The format is platform-agnostic — designed to be compatible with a future desktop application.
+The format is platform-agnostic and designed to be compatible with a future desktop application.
 
 ---
 
 ## 11. Sync from Elementor
 
+### Starting a sync
+
+Click **↓ Variables** in the **Elementor Sync** section of the right panel. A **Sync Options dialog** appears before any changes are made.
+
+### Sync options
+
+| Option | Behavior |
+|--------|----------|
+| **Sync by name** *(default)* | Add new variables from Elementor; existing EFF variables are left unchanged. Safe for incremental updates. |
+| **Clear and replace** | Remove all current EFF variables, then import everything fresh from Elementor. Discards any EFF-side edits. |
+
+Click **Sync** to proceed or **Cancel** to abort.
+
 ### What sync does
 
-Clicking **Sync** in the top bar:
-
 1. Reads your active Elementor kit CSS file (e.g., `post-67.css` in `/wp-content/uploads/elementor/css/`)
-2. Finds the Elementor v4 `:root {}` block (the second root block — not the legacy `--e-global-*` block)
+2. Finds the Elementor V4 `:root {}` block
 3. Extracts all CSS custom properties
 4. Classifies each one as Color, Font, or Number based on its value
-5. Adds any new variables to your working state; existing variables are not overwritten
+5. Applies the chosen merge strategy (sync by name or clear and replace)
 6. Runs a usage scan to update the usage badges
 
-A result modal shows the count of variables imported, the CSS file path used, and any classification warnings.
+A result modal shows the count of variables imported and the CSS file path used.
 
 ### Manual CSS path fallback
 
-If EFF cannot locate your kit CSS file automatically, a **manual path** input appears in the sync modal. Enter the full server path to the kit CSS file (e.g., `/var/www/html/wp-content/uploads/elementor/css/post-67.css`) and sync again.
+If EFF cannot locate your kit CSS file automatically, a **manual path** input appears in the error modal. Enter the full server path to the kit CSS file (e.g., `/var/www/html/wp-content/uploads/elementor/css/post-67.css`) and retry.
 
-### Sync does not delete variables
+### Sync does not delete variables (Sync by name mode)
 
-Variables already in your project are never removed by a sync. If a variable was deleted from the Elementor kit, it remains in EFF and its status changes to show it is no longer sourced from Elementor.
+In "Sync by name" mode, variables already in your project are never removed. If a variable was deleted from the Elementor kit, it remains in EFF until you manually delete it.
 
 ---
 
-## 12. Commit to Elementor
+## 12. Elementor V3 Import
+
+### What V3 Import does
+
+Elementor's legacy V3 "Global Colors" are stored as post meta on the active kit post — not in the kit CSS file. Click **↓ V3 Colors** in the **Elementor V3 Import** section of the right panel to read them and import them as EFF color variables.
+
+The import dialog confirms before proceeding. After import:
+- Each V3 color becomes a color variable named `--e-global-color-{id}` (e.g., `--e-global-color-primary`).
+- New variables are placed in **Uncategorized**. Rename and move them as needed.
+- Variables whose name already exists in EFF are skipped — existing values are not overwritten.
+- A result modal reports how many colors were imported.
+
+### When to use V3 Import
+
+Use V3 Import when migrating a site from Elementor V3 to V4. After importing, you can sync the V4 kit (Section 11), then use the commit workflow to push your revised values back.
+
+> V3 Import is read-only with respect to Elementor. It never modifies any Elementor file or post meta.
+
+---
+
+## 13. Commit to Elementor
+
+### Starting a commit
+
+Click **↑ Variables** in the **Elementor Sync** section of the right panel.
+
+### Commit summary dialog
+
+Before writing anything, EFF shows a summary of pending changes:
+- **N modified** — variables whose value differs from the last synced value
+- **M new** — variables added in EFF that do not yet exist in the Elementor kit
+- **K deleted** — variables marked for deletion
+
+If there are no pending changes, the dialog shows "Nothing to commit." Click **Commit** to proceed or **Cancel** to abort.
+
+The **↑ Variables** button highlights gold when uncommitted changes exist.
 
 ### What commit does
 
-Clicking **Commit** in the top bar writes the current values of **modified** variables back to the Elementor kit CSS file. Only variables with an orange (modified) status dot are written.
-
-After a successful commit:
-- Modified variables revert to green (synced) status
-- Elementor will serve the updated values on the next page load
-- The Commit button returns to its inactive (dimmed) state
+1. Writes the current values of modified/new/deleted variables to the Elementor kit CSS file
+2. Only the variables managed by EFF are changed — the rest of the kit CSS is untouched
+3. After a successful commit, modified variables revert to green (synced) status
+4. Elementor will serve the updated values on the next page load
 
 ### Safety notes
 
-- **Commit is not reversible** through EFF. If you commit incorrect values, you will need to restore your Elementor kit from a backup or manually correct the CSS.
-- EFF modifies only the variables it manages. The rest of the kit CSS file is untouched.
-- Always save your EFF project (Save Changes) before committing, so you have a record of the values you pushed.
+- **Commit is not reversible** through EFF. If you commit incorrect values, restore your Elementor kit from a backup or manually correct the CSS.
+- Save a project backup (Save Project) before committing so you have a clean snapshot of the values you pushed.
 
 ---
 
-## 13. Preferences
+## 14. Preferences
 
 Click the **⚙ gear icon** in the top-left to open the Preferences modal.
 
@@ -491,11 +576,11 @@ These defaults apply when you start a new file. Existing project files are not a
 
 ---
 
-## 14. Manage Project
+## 15. Manage Project
 
 Click the **▦ grid icon** in the top bar to open the Manage Project modal.
 
-Manage Project lets you edit the **subgroup category lists** for each variable set — the categories that appear in the left navigation and in the edit space.
+Manage Project lets you edit the **subgroup category lists** for each variable set and set the maximum number of backup snapshots per project.
 
 ### Actions
 
@@ -508,11 +593,15 @@ Manage Project lets you edit the **subgroup category lists** for each variable s
 
 > **Uncategorized** cannot be renamed, deleted, or reordered. It is always at the bottom of each set.
 
+### Max backups per project
+
+The **Max backups** input (default 10, range 1–50) controls how many timestamped snapshots EFF keeps per project. When the limit is exceeded, the oldest backup is silently deleted on the next Save Project.
+
 Changes in Manage Project take effect immediately and are saved with your project.
 
 ---
 
-## 15. Usage Badges
+## 16. Usage Badges
 
 Each variable row shows a small badge on the right side indicating how many Elementor widgets reference that variable via `var()`.
 
@@ -531,7 +620,7 @@ Usage scanning reads up to 500 posts' Elementor data. On large sites, the count 
 
 ---
 
-## 16. Keyboard and Accessibility
+## 17. Keyboard and Accessibility
 
 | Key | Context | Action |
 |-----|---------|--------|
@@ -549,13 +638,13 @@ EFF meets WCAG 2.1 AA contrast standards:
 
 ---
 
-## 17. Troubleshooting
+## 18. Troubleshooting
 
 **Sync finds 0 variables**
 → Go to Elementor → Site Settings → click Save Changes to regenerate the kit CSS, then Sync again. If that fails, use the manual path fallback.
 
 **"No file loaded" error when saving**
-→ Type a filename ending in `.eff.json` in the right panel before clicking Save.
+→ Enter a project name in the right panel input and click Save Project to create the initial backup.
 
 **Variables appear in the wrong set (color in Numbers, etc.)**
 → EFF classifies variables by value pattern. Drag misclassified variables to the correct category manually. This is a known limitation of pattern-based classification.
@@ -576,21 +665,19 @@ EFF meets WCAG 2.1 AA contrast standards:
 → Make sure you are grabbing the ⠿ drag handle, not the variable name or value. Dragging from anywhere else in the row does not trigger the reorder.
 
 **Left panel shows Classes or Components but clicking does nothing**
-→ These sections are placeholders in Alpha 0.2.3. They are planned for EFF 1.0.0 and EFF 2.0.0 respectively.
+→ These sections are placeholders in Beta 0.3.0. Classes are planned for Phase 3; Components for Phase 4.
 
 ---
 
-## 18. Known Limitations
+## 19. Known Limitations
 
 | Area | Status |
 |------|--------|
-| Classes panel | Navigation shown; content not built — EFF 1.0.0 |
-| Components panel | Navigation shown; content not built — EFF 2.0.0 |
-| Export / Import | Buttons present; not functional — EFF 1.0.0 |
-| Change history / Undo | Not built; use Ctrl+Z in text inputs only — EFF 1.0.0 |
-| Fonts value preview | Value editing works; live font preview — EFF 1.0.0 |
-| Auto-save | Not implemented; save manually — EFF 1.0.0 |
-| Batch format conversion | Per-variable format works; no bulk convert tool — EFF 1.0.0 |
+| Classes panel | Navigation shown; content not built — Phase 3 |
+| Components panel | Navigation shown; content not built — Phase 4 |
+| Fonts value preview | Value editing works; live font preview not yet implemented |
+| Auto-save | Not implemented; save manually with Save Changes |
+| Batch format conversion | Per-variable format change works; no "convert all" bulk tool yet |
 | Usage scan size | Scans up to 500 posts; large sites may show incomplete counts |
 | Mobile | Not supported; minimum 1024px screen required |
 

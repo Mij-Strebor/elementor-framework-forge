@@ -2,8 +2,7 @@
 ## Elementor Framework Forge — Beta 0.3.0
 
 > **LytBox Academy Testing Edition**
-> Welcome, and thank you for being an early tester. This guide gets you from zero to your first
-> organized variable set in about ten minutes.
+> Welcome, and thank you for being an early tester. This guide gets you from zero to your first organized variable set in about ten minutes.
 >
 > For a complete feature reference, see the **[User Manual →](USER-MANUAL.md)**
 
@@ -14,18 +13,17 @@
 You will need:
 
 - ✅ A working **WordPress** installation (local or live)
-- ✅ **Elementor** (free) — installed and active
-- ✅ **Elementor Pro** — installed and active
-- ✅ At least one **Elementor Kit** configured with CSS variables
-  *(If your site uses Elementor's Site Settings → Global Colors or Typography, you already have these)*
+- ✅ **Elementor** and **Elementor Pro** — installed and active
+- ✅ At least one **Elementor Kit** configured with Elementor Version 4 CSS variables *A non-production website with Elementor Version 4 active and one or more pages using atomic elements*
+- ✅ A wild bunch of crazy **Version 4 Variables** on these pages
 
-> **Beta note:** EFF is read-first and non-destructive. It will never modify your Elementor kit unless you explicitly click **Commit to Elementor**. Feel free to explore.
+> **Beta note:** EFF is read-first and non-destructive. It will never modify your Elementor kit unless you explicitly click **Commit to Elementor**. (Not yet active) Feel free to explore.
 
 ---
 
 ## Step 1 — Install EFF
 
-### Clone from GitHub (recommended)
+### Clone from GitHub
 
 Open a terminal and navigate to your WordPress plugins directory:
 
@@ -34,10 +32,12 @@ cd wp-content/plugins
 git clone https://github.com/Mij-Strebor/elementor-framework-forge.git
 ```
 
-### Or download a ZIP
+### Or download a ZIP (recommended)
 
-Click **Code → Download ZIP** on the GitHub repository page. Unzip into
-`wp-content/plugins/elementor-framework-forge/`.
+Click **Code → Download ZIP** on this GitHub repository page.
+ You can Plugins > Add Plugin > Upload Plugin > Choose file in WordPress then select and install ***elementor-framework-forge-0.3.0-Beta.zip***
+
+or unzip directly into your `wp-content/plugins/elementor-framework-forge/`.
 
 ### Activate
 
@@ -70,7 +70,7 @@ On first load, the edit space shows a placeholder. That is expected — nothing 
 |---------|-------------|
 | **Active Project** | Shows the current project name; Open / Switch Project button |
 | **Save & Backups** | Save Project (new snapshot) · Save Changes (update current) |
-| **Elementor Sync** | Pull variables from Elementor · Commit changes back to Elementor |
+| **Elementor Sync** | Pull variables from Elementor V4 Variables· Commit changes back to Elementor |
 | **Elementor V3 Import** | Import V3 Global Colors into the current project |
 | **Export / Import** | Download/upload the project as a portable `.eff.json` file |
 
@@ -84,9 +84,9 @@ In the right panel under **Elementor Sync**, click **↓ Variables**.
 
 EFF will:
 1. Locate your active Elementor kit CSS file automatically.
-2. Read the `:root {}` block containing your CSS custom properties.
+2. Read the `:root {}` block containing your V4 Variables.
 3. Classify each variable as **Color**, **Font**, or **Number** based on its value.
-4. Import variables into your project.
+4. Import all variables into your project.
 5. Run a usage scan to count how many Elementor widgets reference each variable.
 
 A summary appears when the sync completes.
@@ -101,18 +101,18 @@ After syncing, your variables appear in the left panel under:
 
 - **Variables → Colors** — hex, rgb, hsl, and rgba values
 - **Variables → Fonts** — font family values (e.g., `'Inter', sans-serif`)
-- **Variables → Numbers** — sizes, spacing, clamp() values, and unitless numbers
+- **Variables → Numbers** — sizes, spacing, clamp() values, and other numbers
 
-Click any category name in the left panel to open it in the center edit space.
+Click any category name in the left panel to open it in the center edit space. All categories will now be available in the edit space and the selected category will be open with its contents available for editing.
 
-Each variable row shows:
+Each variable row in the open category shows:
 - **⠿** Drag handle — reorder by dragging
 - **●** Status dot — green = synced, orange = modified, blue = new, red = deleted
-- **Color swatch** — live preview (Colors only); click to open the color picker
+- **Sample swatch** — live preview of variable (a color swatch for Colors variables); click to expand.
 - **Variable name** — the CSS custom property; click to rename
 - **Value** — current value; click to edit directly
 - **Format** — HEX / RGB / HSL (Colors) or REM / PX / % etc. (Numbers)
-- **›** Expand chevron — opens the tint/shade/transparency panel (Colors only)
+- **›** Expand chevron — Expanded edit (on Color variables, opens the tint/shade/transparency modal) 
 - **Usage badge** — how many Elementor widgets use this variable
 
 ---
@@ -128,11 +128,10 @@ Click any **color swatch** to open the Pickr visual color picker.
 The variable value, the swatch, and any tints/shades/transparencies all update immediately.
 
 > **Format notes:**
-> - **HEX** — `#FF5733` (opaque) or `#FF573380` (with alpha)
-> - **RGB** — `rgb(r, g, b)`; alpha auto-switches to `rgba()` when opacity < 1
-> - **HSL** — `hsl(h, s%, l%)`; alpha auto-switches to `hsla()` when opacity < 1
+> - **HEX** — `#FF5733` (opaque) or `#FF573380` (with alpha) You can omit the '#' on your entry. The three or four digit shorthand expands:  `fff` → `#FFFFFF` and  `f00a` → `#FF0000AA`
+> - **RGB** — `rgb(r, g, b)`; alpha auto-switches to `rgba()` when opacity < 1 You can enter three or four integers as shorthand: '30, 37 103' → rgb(30, 37, 103)
+> - **HSL** — `hsl(h, s%, l%)`; alpha auto-switches to `hsla()` when opacity < 1 You can enter three or four integers as shorthand: '51, 100 50' → hsl(51, 100%, 50%)
 >
-> Typing a 4-digit shorthand expands it: `f00a` → `#FF0000AA`
 
 ---
 
@@ -257,9 +256,9 @@ Your preference is saved to your WordPress user account.
 |------|--------|
 | Classes panel | Navigation visible — content coming in Phase 3 |
 | Components panel | Navigation visible — content coming in Phase 4 |
-| Sync options dialog (Sync by name / Clear and replace) | Planned — coming soon |
-| Commit summary dialog | Planned — coming soon |
-| Elementor V3 Global Colors import | Planned — coming soon |
+| Sync options dialog (Sync by name / Clear and replace) | ✅ Implemented |
+| Commit summary dialog | ✅ Implemented |
+| Elementor V3 Global Colors import | ✅ Implemented |
 | Mobile devices | Not supported (min 1024px screen required) |
 | Batch format conversion | Per-variable format change works; batch "convert all" planned for 1.0 |
 
@@ -291,9 +290,9 @@ Your testing feedback directly shapes EFF's development. When reporting:
 1. **What you were doing** — Which panel, which action
 2. **What you expected** — What you thought would happen
 3. **What happened** — What actually occurred (include browser console errors if possible)
-4. **Your setup** — WordPress version, Elementor version, browser
+4. **Your setup** — WordPress version, Elementor version, EFF version, browser
 
-Report to Jim Roberts in the **LytBox Academy** community portal.
+Report to Jim Roberts in the **LytBox Academy** community portal or (better) post in GitHub Issues.
 
 ---
 
@@ -301,13 +300,13 @@ Report to Jim Roberts in the **LytBox Academy** community portal.
 
 Once you're comfortable with the basics:
 
-- Click the **color swatch expand panel** (›) to generate tints, shades, and transparency variants
+- Click the **color variables expand** on a Colors Variables entry to generate tints, shades, and transparency variants
 - Use **Manage Project** to configure default category lists for your workflow
 - Try **Save Project** several times and practice **restoring an older backup** via Open / Switch Project
-- Try **Export** to download a portable copy of your project
+- Try **Export** to download a portable copy of your project to have a "hard" backup and to move your set of variables to another website.
 
 For everything else, see the **[User Manual →](USER-MANUAL.md)**
 
 ---
 
-*© Jim Roberts / [JimRForge](https://jimrforge.com) — Distributed through [LytBox Academy](https://lytbox.com)*
+*© Jim Roberts / [JimRForge](https://jimrforge.com)

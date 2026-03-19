@@ -45,6 +45,8 @@ class EFF_Ajax_Handler {
 			'eff_save_baseline',
 			'eff_get_baseline',
 			'eff_commit_to_elementor',
+			// Elementor V3 Import
+			'eff_sync_v3_global_colors',
 		);
 
 		foreach ( $actions as $action ) {
@@ -1243,5 +1245,69 @@ class EFF_Ajax_Handler {
 				403
 			);
 		}
+	}
+
+	// -----------------------------------------------------------------------
+	// ENDPOINT: Sync V3 Global Colors
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Read Elementor V3 Global Colors from the active kit post meta and return
+	 * them as an array of { name, value } objects for import into EFF.
+	 *
+	 * V3 Global Colors are stored in `_elementor_page_settings` → `system_colors`
+	 * and `custom_colors` as arrays of { _id, title, color } objects.
+	 * The CSS variable name is derived as `--e-global-color-{_id}`.
+	 */
+	public function ajax_eff_sync_v3_global_colors(): void {
+		$this->verify_request();
+
+		$kit_id = (int) get_option( 'elementor_active_kit', 0 );
+		if ( ! $kit_id ) {
+			wp_send_json_error( array(
+				'message' => __( 'No active Elementor kit found.', 'elementor-framework-forge' ),
+			) );
+		}
+
+		$settings = get_post_meta( $kit_id, '_elementor_page_settings', true );
+		if ( ! is_array( $settings ) ) {
+			wp_send_json_error( array(
+				'message' => __( 'Could not read Elementor kit settings. Make sure the kit has been saved at least once.', 'elementor-framework-forge' ),
+			) );
+		}
+
+		$color_groups = array();
+		if ( ! empty( $settings['system_colors'] ) && is_array( $settings['system_colors'] ) ) {
+			$color_groups[] = $settings['system_colors'];
+		}
+		if ( ! empty( $settings['custom_colors'] ) && is_array( $settings['custom_colors'] ) ) {
+			$color_groups[] = $settings['custom_colors'];
+		}
+
+		$imported = array();
+		foreach ( $color_groups as $group ) {
+			foreach ( $group as $color ) {
+				if ( empty( $color['_id'] ) || empty( $color['color'] ) ) {
+					continue;
+				}
+				$var_name = '--e-global-color-' . sanitize_key( $color['_id'] );
+				$value    = sanitize_text_field( $color['color'] );
+				// Ensure value starts with '#' for bare hex values (Elementor stores
+				// them without the leading hash in older kit data).
+				if ( preg_match( '/^[0-9a-fA-F]{3,8}$/', $value ) ) {
+					$value = '#' . $value;
+				}
+				$imported[] = array(
+					'name'  => $var_name,
+					'value' => $value,
+					'title' => isset( $color['title'] ) ? sanitize_text_field( $color['title'] ) : '',
+				);
+			}
+		}
+
+		wp_send_json_success( array(
+			'imported' => $imported,
+			'count'    => count( $imported ),
+		) );
 	}
 }

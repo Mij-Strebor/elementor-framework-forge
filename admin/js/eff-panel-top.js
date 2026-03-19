@@ -215,7 +215,6 @@
 				'eff-btn-manage-project': self._openManageProject.bind(self),
 				'eff-btn-export':         self._openExport.bind(self),
 				'eff-btn-import':         self._openImport.bind(self),
-				'eff-btn-sync':           self._syncFromElementor.bind(self),
 				'eff-btn-history':        self._openHistory.bind(self),
 				'eff-btn-search':         self._openSearch.bind(self),
 				'eff-btn-help':           self._openHelp.bind(self),
@@ -736,7 +735,7 @@
 
 		_syncFromElementor: function (options) {
 			var silent = options && options.silent;
-			var btn = document.getElementById('eff-btn-sync');
+			var btn = document.getElementById('eff-btn-sync-variables');
 			if (btn) {
 				btn.style.opacity = '0.5';
 				btn.disabled      = true;
@@ -878,7 +877,7 @@
 		 */
 		_retrySyncWithPath: function (cssPath) {
 			var self = this;
-			var btn  = document.getElementById('eff-btn-sync');
+			var btn  = document.getElementById('eff-btn-sync-variables');
 			if (btn) { btn.style.opacity = '0.5'; btn.disabled = true; }
 
 			EFF.App.ajax('eff_sync_from_elementor', { css_file_path: cssPath })

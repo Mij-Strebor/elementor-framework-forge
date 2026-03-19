@@ -75,14 +75,6 @@
 			if (EFF.PanelRight) {
 				EFF.PanelRight.updateCommitBtn();
 			}
-			var syncBtn = document.getElementById('eff-btn-sync');
-			if (syncBtn) {
-				if (hasPending) {
-					syncBtn.classList.add('eff-btn--accent');
-				} else {
-					syncBtn.classList.remove('eff-btn--accent');
-				}
-			}
 		},
 
 		/**

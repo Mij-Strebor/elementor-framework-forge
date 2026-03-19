@@ -1,11 +1,12 @@
 /**
- * EFF Panel Right — File Management and Asset Counts
+ * EFF Panel Right — Data Management Controls and Asset Counts
  *
  * Manages:
- *  - Project name input (human-readable; derives filename via _getFilename)
- *  - Load / Save project buttons
- *  - Project Picker modal (opens when Load is clicked with empty input)
- *  - Save Changes button (inactive/active state driven by EFF.state.hasUnsavedChanges)
+ *  - Active Project section (name input, Open / Switch Project)
+ *  - Save & Backups section (Save Project, Save Changes)
+ *  - Elementor Sync section (pull ↓ Variables, commit ↑ Variables)
+ *  - Elementor V3 Import section (↓ V3 Colors)
+ *  - Export / Import section (bound via eff-panel-top.js by element ID)
  *  - Live asset count display (variables, classes, components)
  *
  * @package ElementorFrameworkForge
@@ -28,9 +29,11 @@
 		/** @type {HTMLElement|null} */
 		_saveChangesBtn: null,
 		/** @type {HTMLElement|null} */
-		_unsyncedIndicator: null,
+		_syncVariablesBtn: null,
 		/** @type {HTMLElement|null} */
-		_commitBtn: null,
+		_commitVariablesBtn: null,
+		/** @type {HTMLElement|null} */
+		_v3ColorsBtn: null,
 		/** @type {string|null} Current project slug shown in Level 2 picker */
 		_pickerCurrentSlug: null,
 
@@ -38,17 +41,20 @@
 		 * Initialize the right panel.
 		 */
 		init: function () {
-			this._filenameInput     = document.getElementById('eff-filename');
-			this._loadBtn           = document.getElementById('eff-btn-load');
-			this._saveBtn           = document.getElementById('eff-btn-save');
-			this._saveChangesBtn    = document.getElementById('eff-btn-save-changes');
-			this._unsyncedIndicator = document.getElementById('eff-unsynced-indicator');
-			this._commitBtn         = document.getElementById('eff-btn-commit');
+			this._filenameInput       = document.getElementById('eff-filename');
+			this._loadBtn             = document.getElementById('eff-btn-load');
+			this._saveBtn             = document.getElementById('eff-btn-save');
+			this._saveChangesBtn      = document.getElementById('eff-btn-save-changes');
+			this._syncVariablesBtn    = document.getElementById('eff-btn-sync-variables');
+			this._commitVariablesBtn  = document.getElementById('eff-btn-commit-variables');
+			this._v3ColorsBtn         = document.getElementById('eff-btn-v3-colors');
 
 			this._bindLoadBtn();
 			this._bindSaveBtn();
 			this._bindSaveChangesBtn();
-			this._bindCommitBtn();
+			this._bindSyncVariablesBtn();
+			this._bindCommitVariablesBtn();
+			this._bindV3ColorsBtn();
 			this._bindFilenameInput();
 		},
 
@@ -521,42 +527,126 @@
 		},
 
 		// ------------------------------------------------------------------
-		// COMMIT TO ELEMENTOR (Phase 2)
+		// ELEMENTOR SYNC — pull variables from Elementor
 		// ------------------------------------------------------------------
 
 		/**
-		 * Bind the Commit to Elementor button.
+		 * Bind the ↓ Variables (sync from Elementor) button.
+		 * Shows a sync-options dialog before executing.
 		 */
-		_bindCommitBtn: function () {
-			if (!this._commitBtn) { return; }
+		_bindSyncVariablesBtn: function () {
+			if (!this._syncVariablesBtn) { return; }
 			var self = this;
 
-			this._commitBtn.addEventListener('click', function () {
-				if (!EFF.state.hasPendingElementorCommit) { return; }
-				self._openCommitConfirmation();
+			this._syncVariablesBtn.addEventListener('click', function () {
+				self._openSyncOptionsDialog();
 			});
 		},
 
 		/**
-		 * Open a confirmation modal before committing.
-		 *
-		 * After user confirms, sends all EFF variables to the commit endpoint.
+		 * Open the Sync Options dialog (Sync by name / Clear and replace).
 		 */
-		_openCommitConfirmation: function () {
+		_openSyncOptionsDialog: function () {
+			EFF.Modal.open({
+				title: 'Sync from Elementor',
+				body:  '<p style="margin-bottom:12px">Choose how EFF should handle existing variables when importing from the Elementor kit.</p>'
+					+ '<div style="display:flex;flex-direction:column;gap:10px">'
+					+ '<label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">'
+					+ '<input type="radio" name="eff-sync-mode" value="name" checked style="margin-top:3px;flex-shrink:0" />'
+					+ '<span><strong>Sync by name</strong><br>'
+					+ '<span style="font-size:12px;color:var(--eff-clr-muted)">Add new variables; keep existing EFF values unchanged. Safe for incremental updates.</span></span>'
+					+ '</label>'
+					+ '<label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">'
+					+ '<input type="radio" name="eff-sync-mode" value="clear" style="margin-top:3px;flex-shrink:0" />'
+					+ '<span><strong>Clear and replace</strong><br>'
+					+ '<span style="font-size:12px;color:var(--eff-clr-muted)">Remove all existing variables and import fresh from Elementor. Discards EFF edits.</span></span>'
+					+ '</label>'
+					+ '</div>',
+				footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
+					+ '<button class="eff-btn eff-btn--secondary" id="eff-sync-cancel">Cancel</button>'
+					+ '<button class="eff-btn" id="eff-sync-confirm">Sync</button>'
+					+ '</div>',
+			});
+
+			document.addEventListener('click', function syncHandler(e) {
+				if (e.target.id === 'eff-sync-cancel') {
+					EFF.Modal.close();
+					document.removeEventListener('click', syncHandler);
+				} else if (e.target.id === 'eff-sync-confirm') {
+					var modeInput = document.querySelector('input[name="eff-sync-mode"]:checked');
+					var clearMode = modeInput && modeInput.value === 'clear';
+					EFF.Modal.close();
+					document.removeEventListener('click', syncHandler);
+					if (clearMode) {
+						EFF.state.variables = [];
+					}
+					if (EFF.PanelTop && EFF.PanelTop._syncFromElementor) {
+						EFF.PanelTop._syncFromElementor({});
+					}
+				}
+			});
+		},
+
+		// ------------------------------------------------------------------
+		// ELEMENTOR SYNC — commit variables to Elementor
+		// ------------------------------------------------------------------
+
+		/**
+		 * Bind the ↑ Variables (commit to Elementor) button.
+		 */
+		_bindCommitVariablesBtn: function () {
+			if (!this._commitVariablesBtn) { return; }
 			var self = this;
+
+			this._commitVariablesBtn.addEventListener('click', function () {
+				self._openCommitSummaryDialog();
+			});
+		},
+
+		/**
+		 * Build a summary of pending variable changes and open a confirmation dialog.
+		 */
+		_openCommitSummaryDialog: function () {
+			var self     = this;
+			var modified = 0;
+			var added    = 0;
+			var deleted  = 0;
+
+			for (var i = 0; i < EFF.state.variables.length; i++) {
+				var s = EFF.state.variables[i].status;
+				if (s === 'modified') { modified++; }
+				else if (s === 'new') { added++; }
+				else if (s === 'deleted') { deleted++; }
+			}
+
+			var total = modified + added + deleted;
+
+			if (total === 0) {
+				EFF.Modal.open({
+					title: 'Nothing to commit',
+					body:  '<p>All variables are already in sync with Elementor. No changes to commit.</p>',
+				});
+				return;
+			}
+
+			var summaryLines = [];
+			if (modified > 0) { summaryLines.push(modified + ' modified'); }
+			if (added > 0)    { summaryLines.push(added    + ' new'); }
+			if (deleted > 0)  { summaryLines.push(deleted  + ' deleted'); }
 
 			EFF.Modal.open({
 				title: 'Commit to Elementor',
-				body:  '<p style="margin-bottom:8px">This will write your EFF color variable values directly to the Elementor kit CSS file.</p>'
-					+ '<p style="margin-bottom:8px"><strong>This operation modifies Elementor\'s files.</strong> Elementor CSS will be regenerated automatically.</p>'
-					+ '<p>Are you sure you want to continue?</p>',
+				body:  '<p style="margin-bottom:8px">The following changes will be written to the Elementor kit CSS file:</p>'
+					+ '<ul style="margin:0 0 12px 16px;list-style:disc">'
+					+ summaryLines.map(function (l) { return '<li>' + l + '</li>'; }).join('')
+					+ '</ul>'
+					+ '<p style="font-size:12px;color:var(--eff-clr-muted)"><strong>This modifies Elementor\'s files.</strong> Save a backup first if you haven\'t already.</p>',
 				footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
 					+ '<button class="eff-btn eff-btn--secondary" id="eff-commit-cancel">Cancel</button>'
 					+ '<button class="eff-btn" id="eff-commit-confirm">Commit</button>'
 					+ '</div>',
 			});
 
-			// Bind modal action buttons.
 			document.addEventListener('click', function commitHandler(e) {
 				if (e.target.id === 'eff-commit-cancel') {
 					EFF.Modal.close();
@@ -620,20 +710,112 @@
 		},
 
 		/**
-		 * Show or hide the "Unsynced changes" indicator.
+		 * Toggle the accent highlight on the ↑ Variables (commit) button.
 		 *
-		 * Called from EFF.App.setPendingCommit(). When there are pending commits
-		 * the indicator is shown; when cleared it is hidden.
+		 * Called from EFF.App.setPendingCommit(). Adds .eff-btn--accent when
+		 * there are pending commits so the button pulses; removes it when clear.
 		 */
 		updateCommitBtn: function () {
-			if (!this._unsyncedIndicator) { return; }
+			if (!this._commitVariablesBtn) { return; }
 
 			var hasPending = EFF.state.hasPendingElementorCommit;
 			if (hasPending) {
-				this._unsyncedIndicator.removeAttribute('hidden');
+				this._commitVariablesBtn.classList.add('eff-btn--accent');
 			} else {
-				this._unsyncedIndicator.setAttribute('hidden', '');
+				this._commitVariablesBtn.classList.remove('eff-btn--accent');
 			}
+		},
+
+		// ------------------------------------------------------------------
+		// ELEMENTOR V3 IMPORT — import V3 Global Colors
+		// ------------------------------------------------------------------
+
+		/**
+		 * Bind the ↓ V3 Colors button.
+		 */
+		_bindV3ColorsBtn: function () {
+			if (!this._v3ColorsBtn) { return; }
+			var self = this;
+
+			this._v3ColorsBtn.addEventListener('click', function () {
+				self._openV3ImportDialog();
+			});
+		},
+
+		/**
+		 * Open the V3 Import confirmation dialog, then execute.
+		 */
+		_openV3ImportDialog: function () {
+			var self = this;
+
+			EFF.Modal.open({
+				title: 'Import V3 Global Colors',
+				body:  '<p style="margin-bottom:8px">This will read the V3 Global Colors stored in your Elementor kit post meta and import them as EFF color variables.</p>'
+					+ '<p style="font-size:12px;color:var(--eff-clr-muted)">Existing EFF variables with the same name will not be overwritten. New colors will be added to <em>Uncategorized</em>.</p>',
+				footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
+					+ '<button class="eff-btn eff-btn--secondary" id="eff-v3-cancel">Cancel</button>'
+					+ '<button class="eff-btn" id="eff-v3-confirm">Import</button>'
+					+ '</div>',
+			});
+
+			document.addEventListener('click', function v3Handler(e) {
+				if (e.target.id === 'eff-v3-cancel') {
+					EFF.Modal.close();
+					document.removeEventListener('click', v3Handler);
+				} else if (e.target.id === 'eff-v3-confirm') {
+					EFF.Modal.close();
+					document.removeEventListener('click', v3Handler);
+					self._executeV3Import();
+				}
+			});
+		},
+
+		/**
+		 * Execute the V3 colors import AJAX call.
+		 */
+		_executeV3Import: function () {
+			EFF.App.ajax('eff_sync_v3_global_colors', {})
+				.then(function (res) {
+					if (res.success) {
+						var imported = res.data.imported || [];
+
+						imported.forEach(function (v) {
+							var existing = EFF.state.variables.filter(function (ev) { return ev.name === v.name; });
+							if (existing.length === 0) {
+								EFF.state.variables.push({
+									id:          '',
+									name:        v.name,
+									value:       v.value,
+									source:      'elementor-v3',
+									type:        'color',
+									group:       'Variables',
+									subgroup:    'Colors',
+									category:    'Uncategorized',
+									category_id: '',
+									modified:    false,
+									status:      'new',
+									created_at:  new Date().toISOString(),
+									updated_at:  new Date().toISOString(),
+								});
+							}
+						});
+
+						EFF.App.refreshCounts();
+						if (EFF.Colors && EFF.Colors._ensureUncategorized) { EFF.Colors._ensureUncategorized(); }
+						if (EFF.PanelLeft) { EFF.PanelLeft.refresh(); }
+						if (imported.length > 0) { EFF.App.setDirty(true); }
+
+						var msg = imported.length > 0
+							? imported.length + ' V3 color' + (imported.length !== 1 ? 's' : '') + ' imported.'
+							: 'No V3 Global Colors found in the active Elementor kit.';
+						EFF.Modal.open({ title: 'V3 Import complete', body: '<p>' + msg + '</p>' });
+					} else {
+						EFF.Modal.open({ title: 'V3 Import error', body: '<p>' + ((res.data && res.data.message) || 'Unknown error.') + '</p>' });
+					}
+				})
+				.catch(function () {
+					EFF.Modal.open({ title: 'V3 Import error', body: '<p>Network error during V3 import.</p>' });
+				});
 		},
 
 		// ------------------------------------------------------------------

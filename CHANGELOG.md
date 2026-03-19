@@ -17,12 +17,19 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **Max backups setting** — Configurable per project in the Manage Project modal (default 10, max 50).
 - **Multi-project support** — Multiple independent named projects per WordPress site.
 - **Create = blank project** — The "Create" button in the picker now clears all state before saving, producing a genuinely empty project.
+- **Right panel reorganized** — Five named sections replace the old flat layout: Active Project · Save & Backups · Elementor Sync · Elementor V3 Import · Export / Import.
+- **Sync moved to right panel** — The **↓ Variables** button (Elementor Sync section) replaces the top-bar Sync icon. Before syncing, a **Sync Options dialog** prompts: "Sync by name" (add new variables, preserve existing EFF edits) or "Clear and replace" (wipe all variables and reimport fresh from Elementor).
+- **Commit moved to right panel** — The **↑ Variables** button (Elementor Sync section) replaces the old unsynced-indicator Commit button. Before writing to Elementor, a **commit summary dialog** shows counts of modified / new / deleted variables; shows "nothing to commit" when zero changes are pending. Highlights with accent color when uncommitted changes exist.
+- **Export / Import moved to right panel** — Buttons relocated from top bar to the Export / Import section. Behavior unchanged.
+- **Elementor V3 Global Colors import** — New **↓ V3 Colors** button (Elementor V3 Import section) reads `system_colors` and `custom_colors` from the active Elementor kit post meta (`_elementor_page_settings`) and imports them as EFF color variables (skipping names that already exist).
+- **`eff_sync_v3_global_colors` AJAX endpoint** — Server-side handler returns `{ name, value, title }` for each V3 Global Color found in the kit.
 - **Data management specification** — `docs/specification/EFF-Spec-Data-Management.md` documents all four data channels (Elementor V4 Sync, Elementor V3 Import, Backup/Restore, Export/Import).
 
 ### Changed
 
 - **README.md** — Updated to Beta 0.3.0; data management model section; updated feature table and roadmap.
 - **QUICK-START.md** — Rewritten to reflect the versioned backup workflow, right-panel-centric data management, and Beta status. Removed stale Alpha limitations.
+- **USER-MANUAL.md** — Revised to Beta 0.3.0; right panel section rewritten; new Elementor V3 Import section; sync and commit sections updated; known limitations updated.
 - **Version** — Bumped to 0.3.0-beta across plugin header and `EFF_VERSION` constant.
 
 ---
@@ -198,8 +205,8 @@ Initial Alpha release — distributed to LytBox Academy testers.
 | **0.2.0** | Pickr color picker; value format conversion (HEX ↔ RGB ↔ HSL) |
 | **0.2.2** | Export/Import; Save Changes contrast fix; category CRUD merge fix |
 | **0.2.3** | Elementor sync lowercase names; Manage Project select-all; stacked `.eff` suffix fix |
-| **0.3.0-beta** | Versioned backup system; multi-project; two-level picker; data management spec |
-| **1.0.0** | Sync options dialog; V3 Global Colors import; Classes management |
+| **0.3.0-beta** | Versioned backup system; multi-project; two-level picker; right panel reorganization; sync options dialog; commit summary dialog; V3 Global Colors import |
+| **1.0.0** | Classes management; Components registry |
 | **2.0.0** | Components registry; Elementor Kit Manager API write-back; Bulk variable rename |
 | **Future** | Standalone Windows / Mac desktop application |
 

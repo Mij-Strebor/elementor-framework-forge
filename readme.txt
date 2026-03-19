@@ -4,7 +4,7 @@ Tags:              elementor, css variables, design system, developer tools, ato
 Requires at least: 5.8
 Tested up to:      6.7
 Requires PHP:      7.4
-Stable tag:        0.2.3
+Stable tag:        0.3.0-beta
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,14 +22,19 @@ EFF allows developers to organize, edit, and persist the three core asset types 
 
 **Requires Elementor and Elementor Pro.**
 
-=== Key Features (v1) ===
+=== Key Features (Beta 0.3.0) ===
 
-* **Sync from Elementor** — Reads the Elementor kit CSS file and imports v4 atomic CSS variables automatically. Normalizes known issues (e.g., `lamp()` → `clamp()`).
-* **Four-panel interface** — Top menu bar, collapsible left navigation tree, center edit space, right file management panel.
-* **Project organization** — Variables organized into Colors / Fonts / Numbers subgroups. Subgroups are user-configurable via Manage Project.
-* **File persistence** — Save/load project data as `.eff.json` files in your uploads directory.
+* **Sync from Elementor** — Reads the Elementor V4 kit CSS file and imports CSS variables automatically. Sync options dialog: "Sync by name" or "Clear and replace".
+* **Versioned backup system** — Every Save Project creates a timestamped snapshot; restore any backup from the two-level project/backup picker. Up to 50 backups per project (configurable).
+* **Multi-project support** — Multiple independent named projects per WordPress site.
+* **Commit to Elementor** — Write modified variable values back to the active kit CSS. Commit summary shows modified / new / deleted counts before writing.
+* **Elementor V3 Global Colors import** — Import V3 system and custom colors into EFF as color variables.
+* **Export / Import** — Download the current project as a portable `.eff.json` file; import on any WordPress site running EFF.
+* **Four-panel interface** — Top menu bar, collapsible left navigation tree, center edit space, right data management panel.
+* **Project organization** — Variables organized into Colors / Fonts / Numbers. Categories are user-configurable per set.
+* **Color picker** — Visual Pickr color picker (HEX / RGB / HSL + alpha) with live palette refresh.
+* **Tint / shade / transparency generator** — Generate up to 10 tints, 10 shades, and 9 transparency variants per color variable.
 * **Light / Dark mode** — Per-user theme preference, persisted to WordPress usermeta.
-* **Accessible** — WCAG 2.1 AA/AAA compliant. Keyboard navigation, focus management, aria attributes throughout.
 
 === Architecture ===
 
@@ -46,7 +51,7 @@ EFF is built for future portability. The data layer contains no WordPress depend
 
 = Does EFF modify my Elementor CSS files? =
 
-No. EFF is strictly read-only with respect to Elementor's compiled CSS output. It reads variables for import but never writes to Elementor's files.
+Not by default. EFF is read-first and non-destructive — it reads your Elementor kit CSS but never modifies it unless you explicitly click **↑ Variables** (Commit to Elementor) in the right panel. A summary dialog shows exactly what will be written before you confirm.
 
 = Where are .eff.json files stored? =
 
@@ -58,13 +63,33 @@ Elementor v4+ (atomic widget architecture) and Elementor Pro.
 
 == Changelog ==
 
-= 1.0.0 =
-* Initial release — framework, four-panel layout, CSS parser, variable sync, file save/load, light/dark mode.
+= 0.3.0-beta =
+* Versioned backup system with timestamped snapshots and two-level project/backup picker.
+* Right panel reorganized into five named sections: Active Project, Save & Backups, Elementor Sync, Elementor V3 Import, Export / Import.
+* Sync options dialog (Sync by name / Clear and replace) before pulling from Elementor.
+* Commit summary dialog showing modified / new / deleted counts before writing to Elementor.
+* Elementor V3 Global Colors import from kit post meta.
+* Export and Import moved from top bar to right panel.
+* Multi-project support with per-project backup limits (default 10, max 50).
+
+= 0.2.3 =
+* Auto-select project name in Manage Project modal.
+* Elementor sync now lowercases all variable names on import.
+* Fixed stacked .eff suffix in filenames.
+
+= 0.2.0 =
+* Pickr visual color picker (HEX / RGB / HSL + alpha).
+* Tint / shade / transparency generator.
+* Export / Import project as .eff.json.
+* USER-MANUAL.md added.
+
+= 0.0.1-alpha =
+* Initial release — Variables (Colors, Fonts, Numbers), Sync, Organize, Save, Commit, Dark Mode.
 
 == Upgrade Notice ==
 
-= 1.0.0 =
-Initial release.
+= 0.3.0-beta =
+Right panel reorganized; sync and commit buttons moved from top bar to right panel. Versioned backup system replaces single-file saves.
 
 == Credits ==
 

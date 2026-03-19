@@ -85,9 +85,9 @@ Please report issues in the LytBox Academy community. Your feedback directly sha
 | Import project from `.eff.json` | ✅ Working |
 | Classes management | 🔜 Phase 3 |
 | Components registry | 🔜 Phase 4 |
-| Sync options dialog (Sync by name / Clear and replace) | 🔲 Planned |
-| Commit summary dialog | 🔲 Planned |
-| Elementor V3 Global Colors import | 🔲 Planned |
+| Sync options dialog (Sync by name / Clear and replace) | ✅ Working |
+| Commit summary dialog | ✅ Working |
+| Elementor V3 Global Colors import | ✅ Working |
 
 ---
 
@@ -96,7 +96,7 @@ Please report issues in the LytBox Academy community. Your feedback directly sha
 ![EFF Numbers](docs/images/numbers.png)
 
 **Four panels:**
-- **Top bar** — Preferences, Manage Project, Sync, Functions, Export, Help
+- **Top bar** — Preferences, Manage Project, Functions, History, Search, Help
 - **Left nav** — Collapsible tree: Variables (Colors / Fonts / Numbers) · Classes *(Phase 3)* · Components *(Phase 4)*
 - **Center edit space** — Category blocks, variable rows, inline editing
 - **Right panel** — All data management: active project, save & backups, Elementor sync, V3 import, export/import
@@ -157,7 +157,7 @@ ln -s /path/to/eff /path/to/wp/wp-content/plugins/elementor-framework-forge
 The short version:
 
 1. Activate the plugin and open **EFF** in the WordPress admin sidebar.
-2. In the right panel, click **Sync Variables** to pull your variables from Elementor.
+2. In the right panel under **Elementor Sync**, click **↓ Variables** to pull your variables from Elementor.
 3. Variables appear under **Colors**, **Fonts**, and **Numbers** in the left panel.
 4. Click any category to open it in the edit space. Edit values inline; click a swatch to open the color picker.
 5. Click **Save Project** in the right panel to create your first backup snapshot.
@@ -242,8 +242,8 @@ elementor-framework-forge/
 | **0.2.0** | Pickr color picker (HEX / RGB / HSL + alpha). Live palette refresh. |
 | **0.2.2** | Export / Import. Undo / Redo. |
 | **0.2.3** | Sync name normalization. Manage Project auto-select. Stacked suffix fix. |
-| **0.3.0-beta** *(this release)* | Versioned backup system. Two-level project/backup picker. Multi-project. |
-| **1.0.0** | Sync options dialog. V3 Global Colors import. Classes management. |
+| **0.3.0-beta** *(this release)* | Versioned backup system. Two-level picker. Multi-project. Right panel reorganization. Sync options dialog. Commit summary dialog. V3 Global Colors import. |
+| **1.0.0** | Classes management. Components registry. |
 | **2.0.0** | Components registry. Elementor Kit Manager API write-back. |
 | **Future** | Standalone Windows / Mac desktop application. |
 
@@ -261,6 +261,7 @@ All endpoints require `manage_options` capability and a valid `eff_admin_nonce`.
 | `eff_list_backups` | List all backups for a project (Level 2 picker) |
 | `eff_delete_project` | Delete one backup; remove project dir if empty |
 | `eff_sync_from_elementor` | Parse Elementor V4 kit CSS; return variables |
+| `eff_sync_v3_global_colors` | Read V3 Global Colors from kit post meta; return color list |
 | `eff_save_color` | Save one variable (add or update) |
 | `eff_delete_color` | Delete a variable by ID |
 | `eff_add_category` / `eff_delete_category` / `eff_rename_category` | Category management |
