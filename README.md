@@ -2,10 +2,10 @@
 
 # Elementor V4 Framework Forge
 
-**A professional management interface for Elementor Version 4 CSS Variables.**
+**A professional management interface for Elementor Version 4 CSS assets.**
 
-[![Alpha](https://img.shields.io/badge/status-Alpha%200.2.3-e07a40?style=flat-square&labelColor=2a1a0e)](https://github.com/Mij-Strebor/elementor-framework-forge/releases)
-[![Version](https://img.shields.io/badge/version-0.2.3-f4c542?style=flat-square&labelColor=3d2f1f)](https://github.com/Mij-Strebor/elementor-framework-forge/releases)
+[![Beta](https://img.shields.io/badge/status-Beta%200.3.0-e07a40?style=flat-square&labelColor=2a1a0e)](https://github.com/Mij-Strebor/elementor-framework-forge/releases)
+[![Version](https://img.shields.io/badge/version-0.3.0--beta-f4c542?style=flat-square&labelColor=3d2f1f)](https://github.com/Mij-Strebor/elementor-framework-forge/releases)
 [![WordPress](https://img.shields.io/badge/WordPress-5.8%2B-21759b?style=flat-square)](https://wordpress.org)
 [![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4?style=flat-square)](https://php.net)
 [![Requires](https://img.shields.io/badge/requires-Elementor%20Pro-cc2b5e?style=flat-square)](https://elementor.com/pro)
@@ -26,48 +26,68 @@
 
 ## What is EFF?
 
-Elementor Framework Forge (EFF) is a WordPress developer tool that gives you a purpose-built management interface for the CSS custom properties introduced by **Elementor Version 4** (the new atomic widget architecture). Instead of hunting through Elementor's generated CSS by hand, EFF reads your kit file automatically, organizes your variables into labeled categories, and lets you manage them as a structured project.
+Elementor Framework Forge (EFF) is a WordPress developer tool that gives you a purpose-built management interface for the CSS custom properties introduced by **Elementor Version 4** (the new atomic widget architecture).
 
-EFF is a **read-first, non-destructive** tool — it never modifies Elementor's compiled CSS output unless you explicitly commit changes back.
+Instead of hunting through Elementor's generated CSS by hand, EFF reads your kit file, organizes your variables into labeled categories, and lets you manage them as a structured, multi-project workspace with full backup and version history.
+
+**EFF is a read-first, non-destructive tool.** It never modifies Elementor's CSS unless you explicitly commit changes back.
 
 ---
 
-## Alpha Status
+## Data Management Model
 
-This is **Alpha 0.2.3** — distributed exclusively to LytBox Academy members. The core variable workflow (Colors, Fonts, Numbers) is fully functional. This release adds the Pickr visual color picker with HEX / RGB / HSL support, alpha auto-detection, and live tint/shade/transparency palette refresh. Previous releases added default categories per set, auto-load last project on startup, and the Functions dropdown.
+EFF manages Elementor V4 assets through four distinct, user-controlled data channels. All controls live in the **right panel**.
+
+| Channel | Into EFF | Out of EFF |
+|---------|----------|------------|
+| **Elementor V4 Sync** | Pull variables from Elementor kit | Commit EFF variables back to Elementor kit |
+| **Elementor V3 Import** | Import V3 Global Colors into current project | Not supported — V3 is read-only |
+| **Backup / Restore** | Restore a saved project snapshot | Save Project — creates a timestamped backup |
+| **External File** | Import an `.eff.json` from disk | Export current project to `.eff.json` |
+
+**The only automatic operation is startup auto-load** — EFF reloads the last active project when you open the plugin. Everything else is user-initiated.
+
+---
+
+## Beta Status
+
+This is **Beta 0.3.0** — distributed exclusively to LytBox Academy members. The complete Variables workflow is fully functional and ready for systematic testing. Classes and Components management are planned for future phases.
 
 Please report issues in the LytBox Academy community. Your feedback directly shapes the next release.
 
 ---
 
-## What Works in Alpha 0.2.3
+## What Works in Beta 0.3.0
 
 | Feature | Status |
 |---------|--------|
-| Sync CSS variables from Elementor kit | ✅ Working |
-| Manual CSS path fallback when sync auto-detect fails | ✅ Working |
+| Sync CSS variables from Elementor V4 kit | ✅ Working |
 | Auto-classify variables into Colors / Fonts / Numbers | ✅ Working |
 | Organize variables into named categories | ✅ Working |
-| Inline rename variables | ✅ Working |
+| Inline rename variables and categories | ✅ Working |
 | Drag-and-drop reorder within and across categories | ✅ Working |
-| Color swatch preview | ✅ Working |
-| Add / rename / delete / duplicate categories | ✅ Working |
-| Save and load `.eff.json` project files | ✅ Working |
-| Auto-load last used project file on startup | ✅ Working |
-| Usage count scan (how many widgets use each variable) | ✅ Working |
-| Commit variable values back to Elementor kit CSS | ✅ Working |
-| Expand panel — tint/shade/transparency generator | ✅ Working |
-| Light / Dark interface theme | ✅ Working |
-| Fonts and Numbers variable sets | ✅ Working |
+| Color swatch — click to open Pickr visual color picker | ✅ Working |
+| Color picker — HEX / RGB / HSL + alpha | ✅ Working |
+| Expand panel — tint / shade / transparency generator | ✅ Working |
+| Add / rename / delete / duplicate / reorder categories | ✅ Working |
+| Manual CSS path fallback when sync auto-detect fails | ✅ Working |
 | Default categories per variable set (configurable) | ✅ Working |
-| Default type per variable set (configurable) | ✅ Working |
-| Functions menu (Convert V3, Change Types — placeholders) | ✅ Working |
-| Color picker (Pickr) — HEX / RGB / HSL + alpha | ✅ Working |
-| Value format per variable (HEX / RGB / HSL / REM / PX / etc.) | ✅ Working |
-| Classes management | 🔜 EFF 1.0.0 |
-| Components registry | 🔜 EFF 2.0.0 |
-| Export / Import | 🔜 EFF 1.0.0 |
-| Change history / Undo | 🔜 EFF 1.0.0 |
+| Usage count scan (how many widgets use each variable) | ✅ Working |
+| Commit variable values back to Elementor V4 kit CSS | ✅ Working |
+| Undo / Redo — Ctrl+Z / Ctrl+Y (50-step history) | ✅ Working |
+| Light / Dark interface theme | ✅ Working |
+| Auto-load last used project on startup | ✅ Working |
+| Multiple named projects per site | ✅ Working |
+| Save Project — creates timestamped backup snapshot | ✅ Working |
+| Restore from backup — two-level project / backup picker | ✅ Working |
+| Auto-prune — oldest backups removed at configurable limit | ✅ Working |
+| Export project to `.eff.json` | ✅ Working |
+| Import project from `.eff.json` | ✅ Working |
+| Classes management | 🔜 Phase 3 |
+| Components registry | 🔜 Phase 4 |
+| Sync options dialog (Sync by name / Clear and replace) | 🔲 Planned |
+| Commit summary dialog | 🔲 Planned |
+| Elementor V3 Global Colors import | 🔲 Planned |
 
 ---
 
@@ -77,9 +97,9 @@ Please report issues in the LytBox Academy community. Your feedback directly sha
 
 **Four panels:**
 - **Top bar** — Preferences, Manage Project, Sync, Functions, Export, Help
-- **Left nav** — Collapsible tree: Variables (Colors / Fonts / Numbers) · Classes · Components
+- **Left nav** — Collapsible tree: Variables (Colors / Fonts / Numbers) · Classes *(Phase 3)* · Components *(Phase 4)*
 - **Center edit space** — Category blocks, variable rows, inline editing
-- **Right panel** — File management, asset counts, save/load
+- **Right panel** — All data management: active project, save & backups, Elementor sync, V3 import, export/import
 
 ---
 
@@ -132,29 +152,32 @@ ln -s /path/to/eff /path/to/wp/wp-content/plugins/elementor-framework-forge
 
 > ### [Read the Quick Start Guide →](QUICK-START.md)
 >
-> The Quick Start walks through every step: installation, syncing variables, organizing into categories, and saving your project. Takes about ten minutes. Start there.
+> The Quick Start walks through installation, syncing variables, organizing into categories, saving your project, and using the backup system. Takes about ten minutes.
 
 The short version:
 
 1. Activate the plugin and open **EFF** in the WordPress admin sidebar.
-2. Click **Sync** (circular arrows, top bar) to import variables from Elementor.
+2. In the right panel, click **Sync Variables** to pull your variables from Elementor.
 3. Variables appear under **Colors**, **Fonts**, and **Numbers** in the left panel.
-4. Click any category to open it in the edit space. Edit values inline; click the swatch to open the color picker.
-5. Type a filename in the right panel and click **Save**.
-
----
-
-## User Manual
-
-> ### [Read the User Manual →](USER-MANUAL.md)
->
-> Complete reference covering every panel, button, and workflow — the color picker, expand panel, category management, file management, Preferences, and more.
+4. Click any category to open it in the edit space. Edit values inline; click a swatch to open the color picker.
+5. Click **Save Project** in the right panel to create your first backup snapshot.
 
 ---
 
 ## Project File Format
 
-EFF stores your work in `.eff.json` files inside `/wp-content/uploads/eff/`. The format is plain JSON — portable between installations and designed to support a future desktop application.
+EFF stores projects in `uploads/eff/{project-slug}/` as timestamped `.eff.json` snapshots:
+
+```
+uploads/eff/
+  my-brand/
+    my-brand_2026-03-19_14-30-00.eff.json
+    my-brand_2026-03-19_16-45-12.eff.json
+  client-theme/
+    client-theme_2026-03-18_09-00-00.eff.json
+```
+
+The format is plain JSON — portable between installations and designed to support a future desktop application.
 
 ---
 
@@ -187,7 +210,7 @@ elementor-framework-forge/
 │       ├── eff-edit-space.js            # Edit space router
 │       ├── eff-modal.js                 # Modal system with focus trap
 │       ├── eff-panel-left.js            # Left nav tree
-│       ├── eff-panel-right.js           # File management panel
+│       ├── eff-panel-right.js           # Data management panel
 │       ├── eff-panel-top.js             # Top bar, tooltips, sync, preferences
 │       └── eff-theme.js                 # Light/dark toggle & persistence
 ├── assets/
@@ -200,7 +223,9 @@ elementor-framework-forge/
 
 ### Design Principles
 
-**Non-destructive by default.** EFF reads Elementor's CSS and never modifies it unless you click **Commit to Elementor**. Your Elementor configuration is always the source of truth.
+**Non-destructive by default.** EFF reads Elementor's CSS and never modifies it unless you click **Commit to Elementor**. Your Elementor configuration is always the source of truth until you deliberately push changes back.
+
+**User-controlled data flow.** Every sync, commit, export, import, save, and restore is an explicit user action. The only automatic operation is reloading the last active project on startup.
 
 **Platform-portable data layer.** `EFF_Data_Store` contains zero WordPress dependencies in its core methods. The data layer is designed to be ported to a standalone desktop application in a future phase.
 
@@ -212,11 +237,14 @@ elementor-framework-forge/
 
 | Version | Scope |
 |---------|-------|
-| **0.0.1-alpha** | Variables module — Colors, Fonts, Numbers. Sync, organize, save, commit. |
-| **0.1.0** | Default categories/types per set. Auto-load last project. Functions menu. Sync manual-path fallback. |
-| **0.2.3** *(this release)* | Pickr color picker (HEX / RGB / HSL + alpha). Per-variable format selector. Live palette refresh. |
-| **1.0.0** | Full variable workflow stable. Classes management. Export / Import. Change history. |
-| **2.0.0** | Components registry. Elementor Kit Manager API write-back. Bulk variable rename. |
+| **0.0.1-alpha** | Variables — Colors, Fonts, Numbers. Sync, organize, save, commit. |
+| **0.1.0** | Default categories/types per set. Auto-load last project. Functions menu. |
+| **0.2.0** | Pickr color picker (HEX / RGB / HSL + alpha). Live palette refresh. |
+| **0.2.2** | Export / Import. Undo / Redo. |
+| **0.2.3** | Sync name normalization. Manage Project auto-select. Stacked suffix fix. |
+| **0.3.0-beta** *(this release)* | Versioned backup system. Two-level project/backup picker. Multi-project. |
+| **1.0.0** | Sync options dialog. V3 Global Colors import. Classes management. |
+| **2.0.0** | Components registry. Elementor Kit Manager API write-back. |
 | **Future** | Standalone Windows / Mac desktop application. |
 
 ---
@@ -227,18 +255,17 @@ All endpoints require `manage_options` capability and a valid `eff_admin_nonce`.
 
 | Action | Description |
 |--------|-------------|
-| `eff_save_file` | Save project data to a `.eff.json` file |
-| `eff_load_file` | Load project data from a `.eff.json` file |
-| `eff_sync_from_elementor` | Parse Elementor kit CSS; return v4 variables |
-| `eff_save_color` | Save a single variable (add or update) |
+| `eff_save_file` | Save full project state to a new timestamped backup |
+| `eff_load_file` | Load a backup into the working store |
+| `eff_list_projects` | List all projects (Level 1 picker) |
+| `eff_list_backups` | List all backups for a project (Level 2 picker) |
+| `eff_delete_project` | Delete one backup; remove project dir if empty |
+| `eff_sync_from_elementor` | Parse Elementor V4 kit CSS; return variables |
+| `eff_save_color` | Save one variable (add or update) |
 | `eff_delete_color` | Delete a variable by ID |
-| `eff_reorder_colors` | Persist drag-and-drop order |
-| `eff_add_category` | Add a category to a variable set |
-| `eff_rename_category` | Rename a category |
-| `eff_delete_category` | Delete a category (orphans move to Uncategorized) |
-| `eff_reorder_categories` | Persist category order |
-| `eff_duplicate_category` | Deep-copy a category and all its variables |
-| `eff_commit_to_elementor` | Write modified variable values back to kit CSS |
+| `eff_add_category` / `eff_delete_category` / `eff_rename_category` | Category management |
+| `eff_reorder_categories` / `eff_duplicate_category` | Category ordering |
+| `eff_commit_to_elementor` | Write EFF variable values to Elementor kit CSS |
 | `eff_get_usage_counts` | Scan widget data for `var()` references |
 | `eff_save_user_theme` | Persist light/dark preference to usermeta |
 | `eff_get_config` / `eff_save_config` | Read/write subgroup configuration |

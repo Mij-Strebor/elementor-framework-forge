@@ -7,6 +7,26 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.0-beta] — 2026-03-19
+
+### Added
+
+- **Versioned backup system** — Every "Save Project" creates a timestamped snapshot file instead of overwriting a single file. Storage layout: `uploads/eff/{slug}/{slug}_YYYY-MM-DD_HH-II-SS.eff.json`.
+- **Two-level project / backup picker** — "Open / Switch Project" modal shows Level 1 (all projects: name · backup count · latest date) and Level 2 (all backups for a project: timestamp · Load · Delete). Back arrow returns to Level 1.
+- **Auto-prune** — Oldest backups are silently removed when the per-project count exceeds the limit.
+- **Max backups setting** — Configurable per project in the Manage Project modal (default 10, max 50).
+- **Multi-project support** — Multiple independent named projects per WordPress site.
+- **Create = blank project** — The "Create" button in the picker now clears all state before saving, producing a genuinely empty project.
+- **Data management specification** — `docs/specification/EFF-Spec-Data-Management.md` documents all four data channels (Elementor V4 Sync, Elementor V3 Import, Backup/Restore, Export/Import).
+
+### Changed
+
+- **README.md** — Updated to Beta 0.3.0; data management model section; updated feature table and roadmap.
+- **QUICK-START.md** — Rewritten to reflect the versioned backup workflow, right-panel-centric data management, and Beta status. Removed stale Alpha limitations.
+- **Version** — Bumped to 0.3.0-beta across plugin header and `EFF_VERSION` constant.
+
+---
+
 ## [0.2.3] — 2026-03-18
 
 ### Added
@@ -178,7 +198,8 @@ Initial Alpha release — distributed to LytBox Academy testers.
 | **0.2.0** | Pickr color picker; value format conversion (HEX ↔ RGB ↔ HSL) |
 | **0.2.2** | Export/Import; Save Changes contrast fix; category CRUD merge fix |
 | **0.2.3** | Elementor sync lowercase names; Manage Project select-all; stacked `.eff` suffix fix |
-| **1.0.0** | Full variable workflow stable; Classes management; Change history |
+| **0.3.0-beta** | Versioned backup system; multi-project; two-level picker; data management spec |
+| **1.0.0** | Sync options dialog; V3 Global Colors import; Classes management |
 | **2.0.0** | Components registry; Elementor Kit Manager API write-back; Bulk variable rename |
 | **Future** | Standalone Windows / Mac desktop application |
 

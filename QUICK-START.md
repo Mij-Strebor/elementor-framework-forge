@@ -1,5 +1,5 @@
 # EFF Quick Start Guide
-## Elementor Framework Forge — Alpha 0.2.3
+## Elementor Framework Forge — Beta 0.3.0
 
 > **LytBox Academy Testing Edition**
 > Welcome, and thank you for being an early tester. This guide gets you from zero to your first
@@ -19,7 +19,7 @@ You will need:
 - ✅ At least one **Elementor Kit** configured with CSS variables
   *(If your site uses Elementor's Site Settings → Global Colors or Typography, you already have these)*
 
-> **Alpha note:** EFF is read-only-safe. It will never modify your Elementor kit unless you explicitly click **Commit to Elementor**. Feel free to explore.
+> **Beta note:** EFF is read-first and non-destructive. It will never modify your Elementor kit unless you explicitly click **Commit to Elementor**. Feel free to explore.
 
 ---
 
@@ -51,32 +51,53 @@ Click **Code → Download ZIP** on the GitHub repository page. Unzip into
 
 ## Step 2 — Open EFF
 
-Click **EFF** in the WordPress admin sidebar. You will see the four-panel interface.
+Click **EFF** in the WordPress admin sidebar. You will see the four-panel interface:
 
-On first load, the edit space shows a placeholder banner. That's expected — nothing has been loaded yet.
+- **Top bar** — Preferences, Manage Project, Sync, Functions
+- **Left panel** — Variable tree: Colors / Fonts / Numbers
+- **Center** — Edit space (variables and categories)
+- **Right panel** — All data management controls
+
+On first load, the edit space shows a placeholder. That is expected — nothing has been loaded yet.
 
 ---
 
-## Step 3 — Sync Your Variables from Elementor
+## Step 3 — Understand the Right Panel
 
-Click the **Sync** button in the top bar (circular arrows icon ↻).
+**All data operations live in the right panel.** There are no hidden menus. The right panel has five sections:
+
+| Section | What it does |
+|---------|-------------|
+| **Active Project** | Shows the current project name; Open / Switch Project button |
+| **Save & Backups** | Save Project (new snapshot) · Save Changes (update current) |
+| **Elementor Sync** | Pull variables from Elementor · Commit changes back to Elementor |
+| **Elementor V3 Import** | Import V3 Global Colors into the current project |
+| **Export / Import** | Download/upload the project as a portable `.eff.json` file |
+
+> **The only automatic operation is startup auto-load.** EFF reloads your last active project when you open the plugin. Everything else requires a deliberate action from you.
+
+---
+
+## Step 4 — Pull Your Variables from Elementor
+
+In the right panel under **Elementor Sync**, click **↓ Variables**.
 
 EFF will:
 1. Locate your active Elementor kit CSS file automatically.
 2. Read the `:root {}` block containing your CSS custom properties.
 3. Classify each variable as **Color**, **Font**, or **Number** based on its value.
-4. Add new variables to your working state (existing ones are never overwritten).
+4. Import variables into your project.
 5. Run a usage scan to count how many Elementor widgets reference each variable.
 
-A summary modal shows how many variables were imported and which CSS file was used.
+A summary appears when the sync completes.
 
-> **If the sync finds 0 variables:** Your Elementor kit may not have custom CSS variables defined yet, or Elementor may not have generated its kit CSS file. Go to **Elementor → Site Settings → Save Changes** to regenerate it, then try Sync again.
+> **If the sync finds 0 variables:** Your Elementor kit may not have custom CSS variables yet, or the kit CSS may not have been generated. Go to **Elementor → Site Settings → Save Changes** to regenerate it, then try again.
 
 ---
 
-## Step 4 — Explore Your Variables
+## Step 5 — Explore Your Variables
 
-After syncing, your variables appear organized in the left panel under:
+After syncing, your variables appear in the left panel under:
 
 - **Variables → Colors** — hex, rgb, hsl, and rgba values
 - **Variables → Fonts** — font family values (e.g., `'Inter', sans-serif`)
@@ -86,175 +107,180 @@ Click any category name in the left panel to open it in the center edit space.
 
 Each variable row shows:
 - **⠿** Drag handle — reorder by dragging
-- **●** Status dot — green = synced from Elementor, orange = modified, blue = new
-- **Color swatch** — live preview of the color value (Colors only); click to open the color picker
-- **Variable name** — the CSS custom property name; click to rename
-- **Value** — the current value; click to edit directly
+- **●** Status dot — green = synced, orange = modified, blue = new, red = deleted
+- **Color swatch** — live preview (Colors only); click to open the color picker
+- **Variable name** — the CSS custom property; click to rename
+- **Value** — current value; click to edit directly
 - **Format** — HEX / RGB / HSL (Colors) or REM / PX / % etc. (Numbers)
-- **›** Expand chevron — opens the full detail panel (Colors only)
-- **Usage badge** — how many Elementor widgets use this variable (gold = used, gray = unused)
+- **›** Expand chevron — opens the tint/shade/transparency panel (Colors only)
+- **Usage badge** — how many Elementor widgets use this variable
 
 ---
 
-## Step 4a — Use the Color Picker
+## Step 5a — Use the Color Picker
 
-Each color variable row has a **colored swatch** button. Click it to open the Pickr visual color picker.
+Click any **color swatch** to open the Pickr visual color picker.
 
-**In the color picker:**
 - Drag the color field and hue slider to choose a color
-- Use the opacity slider if you need a semi-transparent color
-- The bottom input shows the current color value in your selected format
-- Click **Save** to apply the color and close the picker
+- Use the opacity slider for semi-transparent colors
+- Click **Save** to apply
 
-The variable value, the swatch, and the tints/shades/transparencies all update immediately when you save a color.
+The variable value, the swatch, and any tints/shades/transparencies all update immediately.
 
 > **Format notes:**
-> - **HEX** — 6-digit (`#FF5733`) or 8-digit (`#FF573380`) for semi-transparency
-> - **RGB** — `rgb(r, g, b)` for opaque; `rgba(r, g, b, a)` auto-added if alpha < 1
-> - **HSL** — `hsl(h, s%, l%)` for opaque; `hsla(h, s%, l%, a)` auto-added if alpha < 1
+> - **HEX** — `#FF5733` (opaque) or `#FF573380` (with alpha)
+> - **RGB** — `rgb(r, g, b)`; alpha auto-switches to `rgba()` when opacity < 1
+> - **HSL** — `hsl(h, s%, l%)`; alpha auto-switches to `hsla()` when opacity < 1
 >
-> Typing a 4-digit HEX shorthand expands each digit: `f00a` → `#FF0000AA`
+> Typing a 4-digit shorthand expands it: `f00a` → `#FF0000AA`
 
 ---
 
-## Step 5 — Organize into Categories
+## Step 6 — Organize into Categories
 
-Variables land in **Uncategorized** by default. Create your own categories to organize them logically (Brand, Background, Text, etc.).
+Variables arrive in **Uncategorized** by default. Organize them into categories that reflect your design system.
 
-### Add a category
+**Add a category** — click the **⊕** button in the filter bar (top of the edit space).
 
-Click the **⊕** circle button at the bottom-left of the edit space (below all the category blocks). Type a name and press Enter.
+**Move a variable** — drag it by the **⠿** handle and drop it into the target category.
 
-### Move a variable to a category
+**Add a variable manually** — each category has an **⊕ Add Variable** button at its bottom-left.
 
-Open a variable's expand panel (click the **›** chevron), then use the **Move to Category** dropdown at the bottom of the panel.
+**Category actions** (buttons in each category header):
+- **Copy** — duplicate the category and all its variables
+- **↑ / ↓** — move the category up or down
+- **Trash** — delete the category; variables move to Uncategorized
+- **Chevron** — collapse / expand the rows
 
-You can also drag any variable row by its **⠿** handle and drop it into the target category.
-
-### Add a variable manually
-
-Each category block has an **⊕ Add Variable** button at its bottom-left. Click it to create a new variable inside that category.
-
-### Category actions
-
-Each category header has action buttons on the right:
-- **Copy** — Duplicate the category and all its variables
-- **Trash** — Delete the category (variables move to Uncategorized)
-- **Chevron** — Collapse / expand the category
-
-### Sort a category
-
-Click the **Name** or **Value** sort arrows in the column header row to sort variables alphabetically or by value.
+**Sort variables** — click the **A↑ A↓** buttons in the filter bar to sort alphabetically.
 
 ---
 
-## Step 6 — Explore the Expand Panel (Colors)
+## Step 7 — Explore the Expand Panel (Colors)
 
-Click the **›** chevron at the right of any color row to open the full detail panel.
+Click the **›** chevron at the right of any color row.
 
 Inside the expand panel:
-- **Header row** — Edit name, value, and format; click the swatch to open the color picker
-- **Tints** — Generate up to 10 progressively lighter tints; set the count with the number input
-- **Shades** — Generate up to 10 progressively darker shades
-- **Transparencies** — Toggle on to generate 9 fixed-alpha transparency variants
+- **Header** — edit name, value, format; click the swatch for the color picker
+- **Tints** — generate up to 10 progressively lighter tints
+- **Shades** — generate up to 10 progressively darker shades
+- **Transparencies** — toggle on to generate 9 fixed-alpha transparency variants
 
-All palette strips update live when you change the color.
-
-When you're ready to push changes to Elementor, click **Commit** in the top bar.
+All preview bars update live when you change the color.
 
 ---
 
-## Step 7 — Save Your Project
+## Step 8 — Save Your Project (Create a Backup)
 
-Type a filename in the **right panel** input box (e.g., `my-project.eff.json`) and click **Save**.
+In the right panel under **Save & Backups**, click **Save Project**.
 
-EFF saves your project as a `.eff.json` file in:
+EFF creates a timestamped snapshot:
+
 ```
-/wp-content/uploads/eff/my-project.eff.json
+/wp-content/uploads/eff/my-project/my-project_2026-03-19_14-30-00.eff.json
 ```
 
-> EFF remembers your last used filename and reloads it automatically on the next startup.
+Every **Save Project** adds a new snapshot — nothing is overwritten. You can accumulate up to 10 snapshots per project (configurable in Manage Project).
 
-To reload your project in a future session:
-1. Type the filename in the right panel
-2. Click **Load**
+**Save Changes** updates the current snapshot in place — use this for quick saves between checkpoints.
 
-> **Save often.** In Alpha, auto-save is not implemented. Changes not saved to a `.eff.json` file will be lost if you navigate away or refresh the page.
+> EFF remembers your last active project and reloads it automatically on the next startup.
 
 ---
 
-## Step 8 — Commit to Elementor (Optional)
+## Step 9 — Open a Project or Restore a Backup
 
-If you edit a variable's value and want to push it back to Elementor's kit CSS:
+Click **Open / Switch Project** in the right panel.
 
-1. Edit a variable value in the edit space.
-2. The **Commit** button in the top bar becomes active.
-3. Click **Commit** to write your changes back to the Elementor kit CSS file.
-4. Go back into Elementor to see the updated values reflected site-wide.
+**Level 1 — Projects:** shows all projects on this site. Click **Open** on any project.
 
-> **Important:** Committing modifies your Elementor kit CSS file. This is safe but
-> irreversible without Elementor's own version history. Commit only when you're confident
-> in your values.
+**Level 2 — Backups:** shows all snapshots for that project, newest first. Click **Load** to restore a snapshot. Click the trash icon to delete one.
+
+Click **←** to return to the project list without loading anything.
+
+---
+
+## Step 10 — Commit to Elementor (Optional)
+
+When you are ready to push your edited values back to Elementor:
+
+1. Edit a variable value in the edit space — the status dot turns orange (modified).
+2. Click **↑ Variables** under **Elementor Sync** in the right panel.
+3. A summary shows how many variables will be updated / added / deleted.
+4. Click **Commit** to write to Elementor's kit CSS.
+5. Open Elementor to see the updated values reflected site-wide.
+
+> **Important:** Committing modifies your Elementor kit CSS. This is reversible by restoring a backup in EFF, but it is good practice to Save Project first so you have a clean snapshot before you commit.
+
+---
+
+## Export and Import
+
+**Export** — downloads the entire current project as a `.eff.json` file to your disk. Use this to share a project between WordPress sites or to keep an off-server copy.
+
+**Import** — uploads a `.eff.json` file and replaces the current project with its contents. You will be warned if the current project has unsaved changes.
+
+Export and import are **complete replacements**, not merges.
 
 ---
 
 ## Preferences
 
-Click the **⚙ gear icon** in the top-left to open Preferences:
+Click the **⚙ gear icon** in the top bar to open Preferences:
 
 | Setting | What it does |
 |---------|-------------|
 | **Interface Theme** | Switch between Light and Dark mode |
-| **Default Storage File** | Filename to pre-fill in the right panel on startup |
 | **Show Tooltips** | Enable / disable hover tooltips on all buttons |
 | **Extended Tooltips** | Show longer descriptions in tooltips |
+
+**Manage Project** (grid icon in top bar):
+- Edit the default category lists for Colors, Fonts, and Numbers
+- Set the maximum number of backups per project (default 10)
 
 ---
 
 ## Interface Theme
 
-EFF ships with two themes built on the JimRForge brand palette (warm brown + gold):
+EFF ships with two themes built on the JimRForge brand palette:
 
 - **Light** — Deep brown on warm cream
 - **Dark** — Light cream on warm charcoal brown
 
-Your preference is saved automatically to your WordPress user account.
+Your preference is saved to your WordPress user account.
 
 ---
 
-## Known Alpha Limitations
+## What's Not in Beta Yet
 
 | Area | Status |
 |------|--------|
-| Classes and Components panels | Navigation shown but content not yet built |
-| Export / Import | Placeholder only — coming in a future release |
-| Change history / Undo | Not yet built — use Ctrl+Z within an input field only |
-| Fonts variable editing | Value input works; font preview forthcoming |
-| Auto-save | Not implemented — save manually and often |
+| Classes panel | Navigation visible — content coming in Phase 3 |
+| Components panel | Navigation visible — content coming in Phase 4 |
+| Sync options dialog (Sync by name / Clear and replace) | Planned — coming soon |
+| Commit summary dialog | Planned — coming soon |
+| Elementor V3 Global Colors import | Planned — coming soon |
 | Mobile devices | Not supported (min 1024px screen required) |
-| Batch format conversion | Per-variable format change works; batch "convert all" coming in 1.0 |
+| Batch format conversion | Per-variable format change works; batch "convert all" planned for 1.0 |
 
 ---
 
 ## Troubleshooting
 
 **Sync finds 0 variables**
-→ Go to Elementor → Site Settings → click Save Changes to regenerate the kit CSS, then Sync again.
-
-**"No file loaded" error when saving**
-→ Type a filename first, then click Save. The filename must end in `.eff.json`.
+→ Go to Elementor → Site Settings → click Save Changes to regenerate the kit CSS, then sync again.
 
 **Variables appear in the wrong set (e.g., a color in Numbers)**
-→ EFF uses value patterns to classify variables. You can drag a variable to the correct category manually.
+→ EFF uses value patterns to classify variables. Drag the variable to the correct category manually.
 
-**Color picker opens but the swatch shows black**
-→ Try a hard refresh (Ctrl+Shift+R). The Pickr library loads from a CDN — if it fails to load, the swatch won't display correctly.
+**Color picker swatch shows black**
+→ Try a hard refresh (Ctrl+Shift+R). Pickr loads from a CDN — a failed load causes the blank swatch.
 
 **After committing, Elementor variables look wrong**
-→ Go to Elementor → Site Settings and regenerate the CSS file. If values look corrupted, restore from a backup and report the issue in LytBox Academy.
+→ Restore a backup in EFF, then commit again. If values look corrupted, report the issue in LytBox Academy with the browser console log.
 
 **The panel looks broken or unstyled**
-→ Try a hard refresh (Ctrl+Shift+R). If the issue persists, clear your browser cache.
+→ Hard refresh (Ctrl+Shift+R). If the issue persists, clear your browser cache.
 
 ---
 
@@ -264,10 +290,10 @@ Your testing feedback directly shapes EFF's development. When reporting:
 
 1. **What you were doing** — Which panel, which action
 2. **What you expected** — What you thought would happen
-3. **What happened** — What actually occurred (include any browser console errors if possible)
+3. **What happened** — What actually occurred (include browser console errors if possible)
 4. **Your setup** — WordPress version, Elementor version, browser
 
-Report to me, Jim Roberts, in the **LytBox Academy** community portal.
+Report to Jim Roberts in the **LytBox Academy** community portal.
 
 ---
 
@@ -275,11 +301,10 @@ Report to me, Jim Roberts, in the **LytBox Academy** community portal.
 
 Once you're comfortable with the basics:
 
-- Try the **color swatch expand panel** — click the **›** chevron at the right of any color row to generate tints, shades, and transparency variants.
-- Click a **color swatch** to open the Pickr visual color picker and choose colors with precision.
-- Use the **Manage Project** button (grid icon, top bar) to edit the default category lists.
-- Try **Preferences → Dark mode** for a different look.
-- Explore **usage badges** — gold pills mean the variable is referenced in at least one Elementor widget. Gray outline means unused — possibly safe to clean up.
+- Click the **color swatch expand panel** (›) to generate tints, shades, and transparency variants
+- Use **Manage Project** to configure default category lists for your workflow
+- Try **Save Project** several times and practice **restoring an older backup** via Open / Switch Project
+- Try **Export** to download a portable copy of your project
 
 For everything else, see the **[User Manual →](USER-MANUAL.md)**
 
