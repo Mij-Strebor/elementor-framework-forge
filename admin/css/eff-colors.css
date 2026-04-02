@@ -60,10 +60,10 @@
 
 /* Set name label (replaces .eff-colors-view-title in the top row) */
 .eff-filter-bar-set-name {
-	font-size:      24px;
-	font-weight:    700;
+	font-size:      var(--fs-xxl);
+	font-weight:    var(--fw-bold);
 	color:          var(--eff-clr-primary);
-	text-transform: uppercase;
+	text-transform: capitalize;
 	user-select:    none;
 	padding-left:   40px;
 }
@@ -638,17 +638,8 @@ button.eff-pickr-btn:focus-visible {
 	width:         min(92vw, 860px);
 	transform:     translate(-50%, -50%) scale(0.04);
 	opacity:       0;
-	/* Always solid white — no alpha, regardless of page theme */
-	background:    #ffffff;
-	color:         #1a1a1a;
-	/* Force light-mode tokens inside the modal */
-	--eff-bg-card:       #ffffff;
-	--eff-bg-panel:      #f5f5f5;
-	--eff-bg-field:      #f0f0f1;
-	--eff-clr-primary:   #1a1a1a;
-	--eff-clr-secondary: #374151;
-	--eff-clr-muted:     #6b7280;
-	--eff-clr-border:    #e5e7eb;
+	background:    var(--eff-bg-card);
+	color:         var(--eff-clr-primary);
 	border-radius: 16px;
 	box-shadow:    0 32px 80px rgba(0, 0, 0, 0.40), 0 8px 24px rgba(0, 0, 0, 0.20);
 	overflow:      hidden;

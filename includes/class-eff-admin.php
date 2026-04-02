@@ -14,9 +14,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class EFF_Admin {
 
-	const MENU_SLUG       = 'elementor-framework-forge';
-	const NONCE_ACTION    = 'eff_admin_nonce';
-	const USER_META_THEME = 'eff_theme_preference';
+	const MENU_SLUG = 'elementor-framework-forge';
 
 	/**
 	 * Register all WordPress hooks.
@@ -83,18 +81,26 @@ class EFF_Admin {
 			$this->asset_version( 'admin/css/eff-variables.css' )
 		);
 
-		// Pickr color picker — CDN, loaded before EFF JS modules.
+		// Preferences CSS: accessibility overrides and preferences panel layout.
+		wp_enqueue_style(
+			'eff-preferences',
+			EFF_PLUGIN_URL . 'admin/css/eff-preferences.css',
+			array( 'eff-variables' ),
+			$this->asset_version( 'admin/css/eff-preferences.css' )
+		);
+
+		// Pickr color picker — local vendor copy (no CDN dependency).
 		wp_enqueue_style(
 			'pickr-classic',
-			'https://cdn.jsdelivr.net/npm/@simonwep/pickr@1.9.0/dist/themes/classic.min.css',
+			EFF_PLUGIN_URL . 'assets/vendor/pickr/classic.min.css',
 			array( 'eff-colors' ),
-			null
+			'1.9.0'
 		);
 		wp_enqueue_script(
 			'pickr',
-			'https://cdn.jsdelivr.net/npm/@simonwep/pickr@1.9.0/dist/pickr.min.js',
+			EFF_PLUGIN_URL . 'assets/vendor/pickr/pickr.min.js',
 			array(),
-			null,
+			'1.9.0',
 			true
 		);
 
@@ -111,12 +117,16 @@ class EFF_Admin {
 			'eff-app'         => 'admin/js/eff-app.js',
 		);
 
-		$deps = array( 'pickr' );
+		$deps = array();
 		foreach ( $js_modules as $handle => $file ) {
+			$module_deps = $deps;
+			if ( 'eff-colors' === $handle ) {
+				$module_deps[] = 'pickr';
+			}
 			wp_enqueue_script(
 				$handle,
 				EFF_PLUGIN_URL . $file,
-				$deps,
+				$module_deps,
 				$this->asset_version( $file ),
 				true // Load in footer.
 			);
@@ -129,7 +139,7 @@ class EFF_Admin {
 			'EFFData',
 			array(
 				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
-				'nonce'     => wp_create_nonce( self::NONCE_ACTION ),
+				'nonce'     => wp_create_nonce( EFF_NONCE_ACTION ),
 				'theme'     => $this->get_user_theme(),
 				'version'   => EFF_VERSION,
 				'uploadUrl' => $this->get_eff_upload_dir_url(),
@@ -157,7 +167,7 @@ class EFF_Admin {
 	 */
 	public function get_user_theme(): string {
 		$user_id = get_current_user_id();
-		$theme   = get_user_meta( $user_id, self::USER_META_THEME, true );
+		$theme   = get_user_meta( $user_id, EFF_USER_META_THEME, true );
 		return in_array( $theme, array( 'light', 'dark' ), true ) ? $theme : 'light';
 	}
 
@@ -187,6 +197,20 @@ class EFF_Admin {
 			return file_exists( $abs ) ? (string) filemtime( $abs ) : EFF_VERSION;
 		}
 		return EFF_VERSION;
+	}
+
+	/**
+	 * Safely inline an SVG icon file.
+	 *
+	 * @param string $name Icon filename without .svg extension.
+	 * @return string SVG markup or empty string if file not found.
+	 */
+	public static function get_icon( string $name ): string {
+		$file = EFF_PLUGIN_DIR . 'assets/icons/' . $name . '.svg';
+		if ( file_exists( $file ) ) {
+			return file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+		}
+		return '';
 	}
 
 	/**

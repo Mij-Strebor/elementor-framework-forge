@@ -78,38 +78,7 @@ class EFF_Data_Store {
 		}
 
 		$merged = $this->merge_with_defaults( $decoded );
-
-		// Phase 2 migration: convert legacy `modified` boolean to `status` enum.
-		// v1.0.0 files use `modified: true/false`; Phase 2 uses `status` enum.
-		if ( isset( $merged['variables'] ) && is_array( $merged['variables'] ) ) {
-			foreach ( $merged['variables'] as &$var ) {
-				if ( ! isset( $var['status'] ) ) {
-					$var['status'] = ( isset( $var['modified'] ) && true === $var['modified'] )
-						? 'modified'
-						: 'synced';
-				}
-				// Backfill other Phase 2 fields if absent.
-				if ( ! isset( $var['original_value'] ) ) {
-					$var['original_value'] = $var['value'] ?? '';
-				}
-				if ( ! array_key_exists( 'pending_rename_from', $var ) ) {
-					$var['pending_rename_from'] = null;
-				}
-				if ( ! array_key_exists( 'parent_id', $var ) ) {
-					$var['parent_id'] = null;
-				}
-				if ( ! isset( $var['format'] ) ) {
-					$var['format'] = 'HEX';
-				}
-				if ( ! isset( $var['category_id'] ) ) {
-					$var['category_id'] = '';
-				}
-				if ( ! isset( $var['order'] ) ) {
-					$var['order'] = 0;
-				}
-			}
-			unset( $var );
-		}
+		$this->migrate_data( $merged );
 
 		$this->data         = $merged;
 		$this->current_file = $file_path;
@@ -208,22 +177,21 @@ class EFF_Data_Store {
 	 * @return bool True if found and updated.
 	 */
 	public function update_variable( string $id, array $data ): bool {
-		foreach ( $this->data['variables'] as &$var ) {
-			if ( $var['id'] === $id ) {
-				$data['updated_at'] = gmdate( 'c' );
-				$data['modified']   = true;
-				// Phase 2: update status to 'modified' unless caller explicitly sets it.
-				if ( ! isset( $data['status'] ) ) {
-					$data['status'] = 'modified';
-				}
-				$var         = array_merge( $var, $data );
-				$this->dirty = true;
-				return true;
-			}
+		$k = $this->find_item_key( $this->data['variables'], 'id', $id );
+		if ( $k === null ) {
+			return false;
 		}
-		unset( $var );
 
-		return false;
+		$data['updated_at'] = gmdate( 'c' );
+		$data['modified']   = true;
+		// Phase 2: update status to 'modified' unless caller explicitly sets it.
+		if ( ! isset( $data['status'] ) ) {
+			$data['status'] = 'modified';
+		}
+		$this->data['variables'][ $k ] = array_merge( $this->data['variables'][ $k ], $data );
+		$this->dirty = true;
+
+		return true;
 	}
 
 	/**
@@ -234,19 +202,13 @@ class EFF_Data_Store {
 	 * @return bool True if found and deleted.
 	 */
 	public function delete_variable( string $id, bool $delete_children = false ): bool {
-		$found = false;
-		foreach ( $this->data['variables'] as $k => $var ) {
-			if ( $var['id'] === $id ) {
-				array_splice( $this->data['variables'], $k, 1 );
-				$this->dirty = true;
-				$found       = true;
-				break;
-			}
-		}
-
-		if ( ! $found ) {
+		$k = $this->find_item_key( $this->data['variables'], 'id', $id );
+		if ( $k === null ) {
 			return false;
 		}
+
+		array_splice( $this->data['variables'], $k, 1 );
+		$this->dirty = true;
 
 		if ( $delete_children ) {
 			$this->data['variables'] = array_values( array_filter(
@@ -255,7 +217,6 @@ class EFF_Data_Store {
 					return ! isset( $v['parent_id'] ) || $v['parent_id'] !== $id;
 				}
 			) );
-			$this->dirty = true;
 		}
 
 		return true;
@@ -268,13 +229,8 @@ class EFF_Data_Store {
 	 * @return array|null Variable array or null if not found.
 	 */
 	public function find_variable_by_name( string $name ): ?array {
-		foreach ( $this->data['variables'] as $var ) {
-			if ( $var['name'] === $name ) {
-				return $var;
-			}
-		}
-
-		return null;
+		$k = $this->find_item_key( $this->data['variables'], 'name', $name );
+		return $k !== null ? $this->data['variables'][ $k ] : null;
 	}
 
 	// -----------------------------------------------------------------------
@@ -287,7 +243,7 @@ class EFF_Data_Store {
 	 * @return array[]
 	 */
 	public function get_categories(): array {
-		return $this->data['config']['categories'] ?? array();
+		return $this->get_categories_for_subgroup( 'Colors' );
 	}
 
 	/**
@@ -297,18 +253,7 @@ class EFF_Data_Store {
 	 * @return string UUID-style ID.
 	 */
 	public function add_category( array $cat ): string {
-		$id        = $this->generate_id();
-		$cat['id'] = $id;
-		$cat       = array_merge( $this->category_defaults(), $cat );
-
-		if ( ! isset( $this->data['config']['categories'] ) ) {
-			$this->data['config']['categories'] = array();
-		}
-
-		$this->data['config']['categories'][] = $cat;
-		$this->dirty                          = true;
-
-		return $id;
+		return $this->add_category_for_subgroup( 'Colors', $cat );
 	}
 
 	/**
@@ -319,49 +264,17 @@ class EFF_Data_Store {
 	 * @return bool True if found and updated.
 	 */
 	public function update_category( string $id, array $data ): bool {
-		if ( ! isset( $this->data['config']['categories'] ) ) {
-			return false;
-		}
-
-		foreach ( $this->data['config']['categories'] as &$cat ) {
-			if ( $cat['id'] === $id ) {
-				// Never allow changing the locked flag via this method.
-				unset( $data['locked'] );
-				$cat         = array_merge( $cat, $data );
-				$this->dirty = true;
-				return true;
-			}
-		}
-		unset( $cat );
-
-		return false;
+		return $this->update_category_for_subgroup( 'Colors', $id, $data );
 	}
 
 	/**
 	 * Delete a category by ID.
 	 *
-	 * Refuses to delete locked categories (e.g., Uncategorized).
-	 *
 	 * @param string $id Category UUID.
 	 * @return bool True if found and deleted.
 	 */
 	public function delete_category( string $id ): bool {
-		if ( ! isset( $this->data['config']['categories'] ) ) {
-			return false;
-		}
-
-		foreach ( $this->data['config']['categories'] as $k => $cat ) {
-			if ( $cat['id'] === $id ) {
-				if ( ! empty( $cat['locked'] ) ) {
-					return false; // Cannot delete locked categories.
-				}
-				array_splice( $this->data['config']['categories'], $k, 1 );
-				$this->dirty = true;
-				return true;
-			}
-		}
-
-		return false;
+		return $this->delete_category_for_subgroup( 'Colors', $id );
 	}
 
 	/**
@@ -371,28 +284,7 @@ class EFF_Data_Store {
 	 * @return bool True on success.
 	 */
 	public function reorder_categories( array $ordered_ids ): bool {
-		if ( ! isset( $this->data['config']['categories'] ) ) {
-			return false;
-		}
-
-		$index = array_flip( $ordered_ids );
-
-		foreach ( $this->data['config']['categories'] as &$cat ) {
-			if ( isset( $index[ $cat['id'] ] ) ) {
-				$cat['order'] = $index[ $cat['id'] ];
-			}
-		}
-		unset( $cat );
-
-		usort(
-			$this->data['config']['categories'],
-			static function ( array $a, array $b ): int {
-				return $a['order'] <=> $b['order'];
-			}
-		);
-
-		$this->dirty = true;
-		return true;
+		return $this->reorder_categories_for_subgroup( 'Colors', $ordered_ids );
 	}
 
 	// -----------------------------------------------------------------------
@@ -470,17 +362,16 @@ class EFF_Data_Store {
 			return false;
 		}
 
-		foreach ( $this->data['config'][ $key ] as &$cat ) {
-			if ( $cat['id'] === $id ) {
-				unset( $data['locked'] ); // Never allow changing the locked flag.
-				$cat         = array_merge( $cat, $data );
-				$this->dirty = true;
-				return true;
-			}
+		$k = $this->find_item_key( $this->data['config'][ $key ], 'id', $id );
+		if ( $k === null ) {
+			return false;
 		}
-		unset( $cat );
 
-		return false;
+		unset( $data['locked'] ); // Never allow changing the locked flag.
+		$this->data['config'][ $key ][ $k ] = array_merge( $this->data['config'][ $key ][ $k ], $data );
+		$this->dirty = true;
+
+		return true;
 	}
 
 	/**
@@ -499,18 +390,19 @@ class EFF_Data_Store {
 			return false;
 		}
 
-		foreach ( $this->data['config'][ $key ] as $k => $cat ) {
-			if ( $cat['id'] === $id ) {
-				if ( ! empty( $cat['locked'] ) ) {
-					return false; // Cannot delete locked categories.
-				}
-				array_splice( $this->data['config'][ $key ], $k, 1 );
-				$this->dirty = true;
-				return true;
-			}
+		$k = $this->find_item_key( $this->data['config'][ $key ], 'id', $id );
+		if ( $k === null ) {
+			return false;
 		}
 
-		return false;
+		if ( ! empty( $this->data['config'][ $key ][ $k ]['locked'] ) ) {
+			return false; // Cannot delete locked categories.
+		}
+
+		array_splice( $this->data['config'][ $key ], $k, 1 );
+		$this->dirty = true;
+
+		return true;
 	}
 
 	/**
@@ -621,6 +513,55 @@ class EFF_Data_Store {
 	// -----------------------------------------------------------------------
 
 	/**
+	 * Return the numeric key of the first item where $item[$field] === $value, or null.
+	 *
+	 * Eliminates the repetitive by-reference foreach pattern used throughout the
+	 * CRUD methods and removes the easy-to-forget unset($var) after such loops.
+	 *
+	 * @param array  $items Array to search.
+	 * @param string $field Field name to match on.
+	 * @param string $value Value to match.
+	 * @return int|null Array key, or null if not found.
+	 */
+	private function find_item_key( array $items, string $field, string $value ): ?int {
+		foreach ( $items as $k => $item ) {
+			if ( isset( $item[ $field ] ) && $item[ $field ] === $value ) {
+				return $k;
+			}
+		}
+		return null;
+	}
+
+	/**
+	 * Upgrade legacy data structures to the current schema in-place.
+	 *
+	 * Converts v1.0.0 boolean `modified` field to the Phase 2 `status` enum
+	 * and backfills any other Phase 2 fields absent from older files.
+	 * Idempotent — safe to call on already-migrated data.
+	 *
+	 * @param array $data Decoded project data (modified in-place).
+	 */
+	private function migrate_data( array &$data ): void {
+		if ( ! isset( $data['variables'] ) || ! is_array( $data['variables'] ) ) {
+			return;
+		}
+		foreach ( $data['variables'] as &$var ) {
+			if ( ! isset( $var['status'] ) ) {
+				$var['status'] = ( isset( $var['modified'] ) && true === $var['modified'] )
+					? 'modified'
+					: 'synced';
+			}
+			if ( ! isset( $var['original_value'] ) )           { $var['original_value']      = $var['value'] ?? ''; }
+			if ( ! array_key_exists( 'pending_rename_from', $var ) ) { $var['pending_rename_from'] = null; }
+			if ( ! array_key_exists( 'parent_id', $var ) )    { $var['parent_id']            = null; }
+			if ( ! isset( $var['format'] ) )                   { $var['format']               = 'HEX'; }
+			if ( ! isset( $var['category_id'] ) )              { $var['category_id']          = ''; }
+			if ( ! isset( $var['order'] ) )                    { $var['order']                = 0; }
+		}
+		unset( $var );
+	}
+
+	/**
 	 * Merge loaded data with the default structure so new keys are present.
 	 *
 	 * @param array $data Decoded JSON data.
@@ -636,17 +577,10 @@ class EFF_Data_Store {
 	 * @return string
 	 */
 	private function generate_id(): string {
-		return sprintf(
-			'%04x%04x-%04x-%04x-%04x-%04x%04x%04x',
-			mt_rand( 0, 0xffff ),
-			mt_rand( 0, 0xffff ),
-			mt_rand( 0, 0xffff ),
-			mt_rand( 0, 0x0fff ) | 0x4000,
-			mt_rand( 0, 0x3fff ) | 0x8000,
-			mt_rand( 0, 0xffff ),
-			mt_rand( 0, 0xffff ),
-			mt_rand( 0, 0xffff )
-		);
+		$bytes = random_bytes( 16 );
+		$bytes[6] = chr( ( ord( $bytes[6] ) & 0x0f ) | 0x40 ); // version 4
+		$bytes[8] = chr( ( ord( $bytes[8] ) & 0x3f ) | 0x80 ); // variant bits
+		return vsprintf( '%s%s-%s-%s-%s-%s%s%s', str_split( bin2hex( $bytes ), 4 ) );
 	}
 
 	/**

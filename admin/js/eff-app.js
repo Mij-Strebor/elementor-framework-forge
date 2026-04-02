@@ -45,6 +45,45 @@
 	};
 
 	// -----------------------------------------------------------------------
+	// UTILITIES
+	// -----------------------------------------------------------------------
+
+	EFF.Utils = {
+
+		/**
+		 * Return true if the trimmed string is a recognisable CSS color value.
+		 * Covers: #rgb, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla().
+		 *
+		 * @param {string} str
+		 * @returns {boolean}
+		 */
+		isColorValue: function (str) {
+			var lc = (str || '').trim().toLowerCase();
+			if (!lc) { return false; }
+			// Hex: 3, 6, or 8 hex digits after '#'
+			if (/^#([0-9a-f]{3}|[0-9a-f]{6}|[0-9a-f]{8})$/.test(lc)) { return true; }
+			// Functional color notations
+			return lc.indexOf('rgb(') === 0
+				|| lc.indexOf('rgba(') === 0
+				|| lc.indexOf('hsl(') === 0
+				|| lc.indexOf('hsla(') === 0;
+		},
+
+		/**
+		 * HTML-escape a string for safe insertion as text or attribute value.
+		 *
+		 * @param {*} str
+		 * @returns {string}
+		 */
+		escHtml: function (str) {
+			if (typeof str !== 'string') { return String(str || ''); }
+			var div = document.createElement('div');
+			div.textContent = str;
+			return div.innerHTML;
+		},
+	};
+
+	// -----------------------------------------------------------------------
 	// CORE APP API
 	// -----------------------------------------------------------------------
 
@@ -144,6 +183,71 @@
 			}).catch(function () {
 				// Non-critical — usage counts are best-effort
 			});
+		},
+
+		/**
+		 * Apply accessibility/UI preferences from saved settings to #eff-app.
+		 * Sets data attributes that drive CSS overrides in eff-preferences.css.
+		 * Call on startup after settings load, and after any preference change.
+		 *
+		 * @param {Object} settings  Saved settings object.
+		 */
+		applyA11y: function (settings) {
+			var app = document.getElementById('eff-app');
+			if (!app || !settings) { return; }
+
+			// Font size (attribute absent = default 16px)
+			var fs = parseInt(settings.ui_font_size, 10) || 16;
+			if (fs !== 16) {
+				app.setAttribute('data-eff-font-size', String(fs));
+			} else {
+				app.removeAttribute('data-eff-font-size');
+			}
+
+			// Color contrast
+			if (settings.ui_contrast === 'high') {
+				app.setAttribute('data-eff-contrast', 'high');
+			} else {
+				app.removeAttribute('data-eff-contrast');
+			}
+
+			// Button size
+			if (settings.ui_btn_size && settings.ui_btn_size !== 'normal') {
+				app.setAttribute('data-eff-btn-size', settings.ui_btn_size);
+			} else {
+				app.removeAttribute('data-eff-btn-size');
+			}
+
+			// Button contrast
+			if (settings.ui_btn_contrast === 'high') {
+				app.setAttribute('data-eff-btn-contrast', 'high');
+			} else {
+				app.removeAttribute('data-eff-btn-contrast');
+			}
+
+			// Layout density
+			if (settings.layout_density && settings.layout_density !== 'normal') {
+				app.setAttribute('data-eff-density', settings.layout_density);
+			} else {
+				app.removeAttribute('data-eff-density');
+			}
+
+			// Reduced motion
+			if (settings.reduced_motion) {
+				app.setAttribute('data-eff-motion', 'reduced');
+			} else {
+				app.removeAttribute('data-eff-motion');
+			}
+
+			// Tooltip state — sync to PanelTop
+			if (EFF.PanelTop) {
+				if (typeof settings.show_tooltips !== 'undefined') {
+					EFF.PanelTop._showTooltips = !!settings.show_tooltips;
+				}
+				if (typeof settings.extended_tooltips !== 'undefined') {
+					EFF.PanelTop._extendedTooltips = !!settings.extended_tooltips;
+				}
+			}
 		},
 
 		/**
@@ -328,6 +432,7 @@
 			EFF.App.ajax('eff_get_settings', {}).then(function (res) {
 				if (res.success && res.data && res.data.settings) {
 					EFF.state.settings = res.data.settings;
+					EFF.App.applyA11y(res.data.settings);
 				}
 				var lf = res.success && res.data && res.data.settings && res.data.settings.last_file;
 				if (lf && EFF.PanelRight) {

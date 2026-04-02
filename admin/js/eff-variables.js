@@ -27,7 +27,6 @@
  *   — Category AJAX endpoints receive a subgroup param
  *   — Value cell rendering delegated to cfg.renderValueCell(v)
  *
- * JS standard: ES5 IIFE, 'use strict', var only, no arrow functions.
  *
  * @package ElementorFrameworkForge
  * @version 1.0.0

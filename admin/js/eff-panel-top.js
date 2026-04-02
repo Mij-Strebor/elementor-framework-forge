@@ -332,95 +332,22 @@
 		// ------------------------------------------------------------------
 
 		_openPreferences: function () {
-			var currentTheme = EFF.Theme.current;
+			var settings = (EFF.state && EFF.state.settings && Object.keys(EFF.state.settings).length)
+				? EFF.state.settings
+				: null;
 
-			var body = '<div style="display:flex;flex-direction:column;gap:16px">'
-
-				// Theme toggle
-				+ '<div>'
-				+ '<p class="eff-field-label">Interface theme</p>'
-				+ '<div style="display:flex;gap:8px">'
-				+ '<button class="eff-btn" id="eff-pref-theme-light" '
-				+ (currentTheme === 'light' ? 'style="outline:2px solid var(--eff-clr-accent)"' : '') + '>'
-				+ 'Light</button>'
-				+ '<button class="eff-btn" id="eff-pref-theme-dark" '
-				+ (currentTheme === 'dark' ? 'style="outline:2px solid var(--eff-clr-accent)"' : '') + '>'
-				+ 'Dark</button>'
-				+ '</div>'
-				+ '</div>'
-
-				// Default file path
-				+ '<div>'
-				+ '<label class="eff-field-label" for="eff-pref-filepath">Default storage file</label>'
-				+ '<input type="text" class="eff-field-input" id="eff-pref-filepath" '
-				+ 'placeholder="e.g., my-project.eff.json" />'
-			+ '</div>'
-
-			// Tooltip preferences
-			+ '<div>'
-			+ '<p class="eff-field-label">Tooltips</p>'
-			+ '<div style="display:flex;flex-direction:column;gap:8px">'
-			+ '<label style="display:flex;align-items:center;gap:8px;cursor:pointer">'
-			+ '<input type="checkbox" id="eff-pref-tooltips-show"'
-			+ (this._showTooltips ? ' checked' : '') + '> Show tooltips</label>'
-			+ '<label style="display:flex;align-items:center;gap:8px;cursor:pointer">'
-			+ '<input type="checkbox" id="eff-pref-tooltips-extended"'
-			+ (this._extendedTooltips ? ' checked' : '') + '> Extended mode (show detailed descriptions)</label>'
-			+ '</div>'
-				+ '</div>'
-
-				+ '</div>';
-
-			EFF.Modal.open({
-				title:   'Preferences',
-				body:    body,
-				onClose: null,
-			});
-
-			// Bind theme toggle buttons after modal renders
-			requestAnimationFrame(function () {
-				// Tooltip preference checkboxes
-			var showChk = document.getElementById('eff-pref-tooltips-show');
-			var extChk  = document.getElementById('eff-pref-tooltips-extended');
-			if (showChk) {
-				showChk.addEventListener('change', function () {
-					EFF.PanelTop._showTooltips = showChk.checked;
-					EFF.App.ajax('eff_save_settings', { settings: JSON.stringify({ show_tooltips: showChk.checked }) });
-				});
-			}
-			if (extChk) {
-				extChk.addEventListener('change', function () {
-					EFF.PanelTop._extendedTooltips = extChk.checked;
-					EFF.App.ajax('eff_save_settings', { settings: JSON.stringify({ extended_tooltips: extChk.checked }) });
-				});
+			if (settings) {
+				if (EFF.EditSpace) { EFF.EditSpace.showPreferences(settings); }
+				return;
 			}
 
-			var lightBtn = document.getElementById('eff-pref-theme-light');
-				var darkBtn  = document.getElementById('eff-pref-theme-dark');
-
-				if (lightBtn) {
-					lightBtn.addEventListener('click', function () {
-						EFF.Theme.set('light');
-						EFF.Modal.close();
-					});
-				}
-
-				if (darkBtn) {
-					darkBtn.addEventListener('click', function () {
-						EFF.Theme.set('dark');
-						EFF.Modal.close();
-					});
-				}
-
-				// Load saved settings and populate fields
-				EFF.App.ajax('eff_get_settings', {}).then(function (res) {
-					var s = res.success && res.data && res.data.settings ? res.data.settings : {};
-
-					if (s.default_file_path) {
-						var fpInput = document.getElementById('eff-pref-filepath');
-						if (fpInput) { fpInput.value = s.default_file_path; }
-					}
-			});
+			// Settings not cached yet — fetch first, then show.
+			EFF.App.ajax('eff_get_settings', {}).then(function (res) {
+				var s = (res.success && res.data && res.data.settings) ? res.data.settings : {};
+				EFF.state.settings = s;
+				if (EFF.EditSpace) { EFF.EditSpace.showPreferences(s); }
+			}).catch(function () {
+				if (EFF.EditSpace) { EFF.EditSpace.showPreferences({}); }
 			});
 		},
 
@@ -448,7 +375,7 @@
 				+ ' value="' + value + '" style="width:100%" autocomplete="off" spellcheck="false">'
 				+ '</div>';
 		}
-		var projNameEscaped = this._escapeHtml(projName);
+		var projNameEscaped = EFF.Utils.escHtml(projName);
 		var body = '<div style="margin-bottom:20px">'
 			+ '<label class="eff-field-label" for="eff-proj-name">Project name</label>'
 			+ '<input type="text" class="eff-field-input" id="eff-proj-name"'
@@ -458,9 +385,9 @@
 			+ 'Used as the project file name: <em>project-name.eff.json</em></p>'
 			+ '</div>'
 			+ '<div style="border-top:1px solid var(--eff-clr-border,#d6ccc2);padding-top:16px">'
-			+ _catPanel('Colors',  'eff-proj-cat-colors',  this._escapeHtml(colorsStr))
-			+ _catPanel('Fonts',   'eff-proj-cat-fonts',   this._escapeHtml(fontsStr))
-			+ _catPanel('Numbers', 'eff-proj-cat-numbers', this._escapeHtml(numbersStr))
+			+ _catPanel('Colors',  'eff-proj-cat-colors',  EFF.Utils.escHtml(colorsStr))
+			+ _catPanel('Fonts',   'eff-proj-cat-fonts',   EFF.Utils.escHtml(fontsStr))
+			+ _catPanel('Numbers', 'eff-proj-cat-numbers', EFF.Utils.escHtml(numbersStr))
 			+ '</div>'
 			+ '<div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--eff-clr-border,#d6ccc2)">'
 			+ '<label class="eff-field-label" for="eff-proj-max-backups"'
@@ -760,7 +687,7 @@
 						vars.forEach(function (v) {
 							if (!existingNames.includes(v.name)) {
 							var lc = (v.value || '').trim().toLowerCase();
-							var isColor = lc.charAt(0) === '#' || lc.indexOf('rgb(') === 0 || lc.indexOf('rgba(') === 0 || lc.indexOf('hsl(') === 0 || lc.indexOf('hsla(') === 0;
+							var isColor = EFF.Utils.isColorValue(lc);
 							var isFont   = !isColor && /\b(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-sans-serif|ui-serif|ui-monospace)\b/.test(lc);
 							var isNumber = !isColor && !isFont && (/^\d/.test(lc) || lc.indexOf('clamp(') === 0 || lc.indexOf('calc(') === 0 || lc.indexOf('min(') === 0 || lc.indexOf('max(') === 0 || /\d+(px|rem|em|%|vw|vh|ch|fr|pt|deg|ms)\b/.test(lc));
 							var subgroup = isColor ? 'Colors' : (isFont ? 'Fonts' : (isNumber ? 'Numbers' : ''));
@@ -836,10 +763,10 @@
 			var hint         = data.hint         || '';
 			var expectedFile = data.expected_file || '';
 
-			var body = '<p style="margin-bottom:8px">' + this._escapeHtml(message) + '</p>';
+			var body = '<p style="margin-bottom:8px">' + EFF.Utils.escHtml(message) + '</p>';
 			if (hint) {
 				body += '<p style="font-size:12px;color:var(--eff-clr-muted);margin-bottom:12px">'
-					+ this._escapeHtml(hint) + '</p>';
+					+ EFF.Utils.escHtml(hint) + '</p>';
 			}
 			body += '<div style="border-top:1px solid var(--eff-clr-border);padding-top:14px;margin-top:4px">'
 				+ '<label class="eff-field-label" for="eff-sync-css-path"'
@@ -848,7 +775,7 @@
 				+ 'Must be inside <code>wp-content/uploads/elementor/css/</code></p>'
 				+ '<input type="text" class="eff-field-input" id="eff-sync-css-path"'
 				+ ' placeholder="...uploads/elementor/css/post-67.css"'
-				+ ' value="' + this._escapeHtml(expectedFile) + '"'
+				+ ' value="' + EFF.Utils.escHtml(expectedFile) + '"'
 				+ ' autocomplete="off" spellcheck="false" style="width:100%;margin-bottom:8px">'
 				+ '<button class="eff-btn" id="eff-sync-retry-btn">Retry with this file</button>'
 				+ '</div>';
@@ -890,7 +817,7 @@
 						vars.forEach(function (v) {
 							if (!existingNames.includes(v.name)) {
 								var lc      = (v.value || '').trim().toLowerCase();
-								var isColor  = lc.charAt(0) === '#' || lc.indexOf('rgb(') === 0 || lc.indexOf('rgba(') === 0 || lc.indexOf('hsl(') === 0 || lc.indexOf('hsla(') === 0;
+								var isColor  = EFF.Utils.isColorValue(lc);
 								var isFont   = !isColor && /\b(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-sans-serif|ui-serif|ui-monospace)\b/.test(lc);
 								var isNumber = !isColor && !isFont && (/^\d/.test(lc) || lc.indexOf('clamp(') === 0 || lc.indexOf('calc(') === 0 || /\d+(px|rem|em|%|vw|vh|ch|fr|pt|deg|ms)\b/.test(lc));
 								var subgroup = isColor ? 'Colors' : (isFont ? 'Fonts' : (isNumber ? 'Numbers' : ''));
@@ -1094,18 +1021,9 @@
 		},
 
 		_openHelp: function () {
-			EFF.Modal.open({
-				title: 'Help',
-				body:  '<p><strong>Elementor Framework Forge v' + (EFFData && EFFData.version ? EFFData.version : '1.0.0') + '</strong></p>'
-					+ '<p>EFF is a developer tool for managing Elementor v4 atomic widget assets.</p>'
-					+ '<ul style="margin:12px 0;padding-left:20px;font-size:14px;line-height:1.6">'
-					+ '<li><strong>Sync</strong> — import variables from your Elementor kit CSS file</li>'
-					+ '<li><strong>Save / Load</strong> — persist your project data to a .eff.json file</li>'
-					+ '<li><strong>Manage Project</strong> — customize subgroup names in the left panel</li>'
-					+ '<li><strong>Preferences</strong> — toggle light/dark mode and set defaults</li>'
-					+ '</ul>'
-					+ '<p><a href="https://jimrforge.com" target="_blank" rel="noopener">Jim R Forge</a></p>',
-			});
+			if (EFF.EditSpace && EFF.EditSpace.showInfoPanel) {
+				EFF.EditSpace.showInfoPanel();
+			}
 		},
 
 		// ------------------------------------------------------------------
@@ -1135,9 +1053,9 @@
 			for (var i = 0; i < cats.length; i++) {
 				var cat    = cats[i];
 				var locked = !!(cat.locked || cat.name === 'Uncategorized');
-				html += '<div class="eff-cats-row" data-cat-id="' + self._escapeHtml(cat.id || cat.name) + '"'
+				html += '<div class="eff-cats-row" data-cat-id="' + EFF.Utils.escHtml(cat.id || cat.name) + '"'
 					+ ' style="display:flex;align-items:center;gap:8px;margin-bottom:6px">'
-					+ '<input class="eff-field-input eff-cats-name-input" value="' + self._escapeHtml(cat.name) + '"'
+					+ '<input class="eff-field-input eff-cats-name-input" value="' + EFF.Utils.escHtml(cat.name) + '"'
 					+ (locked ? ' disabled' : '')
 					+ ' style="flex:1' + (locked ? ';opacity:0.6' : '') + '">'
 					+ (locked
@@ -1189,17 +1107,5 @@
 				.filter(function (l) { return l.length > 0; });
 		},
 
-		/**
-		 * Escape HTML special characters.
-		 *
-		 * @param {string} str
-		 * @returns {string}
-		 * @private
-		 */
-		_escapeHtml: function (str) {
-			var div = document.createElement('div');
-			div.textContent = str;
-			return div.innerHTML;
-		},
 	};
 }());

@@ -20,17 +20,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Helper: safely inline an SVG icon file.
+ * Template helper: proxy to EFF_Admin::get_icon().
  *
  * @param string $name Icon filename without .svg extension.
  * @return string SVG markup or empty string if file not found.
  */
 function eff_icon( string $name ): string {
-	$file = EFF_PLUGIN_DIR . 'assets/icons/' . $name . '.svg';
-	if ( file_exists( $file ) ) {
-		return file_get_contents( $file ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
-	}
-	return '';
+	return EFF_Admin::get_icon( $name );
 }
 ?>
 <!-- Mobile restriction overlay — shown below 1024px -->
@@ -264,64 +260,53 @@ function eff_icon( string $name ): string {
 				       placeholder="<?php esc_attr_e( 'Project name', 'elementor-framework-forge' ); ?>"
 				       autocomplete="off"
 				       spellcheck="false" />
-				<button class="eff-btn" id="eff-btn-load"
-				        aria-label="<?php esc_attr_e( 'Open or switch project', 'elementor-framework-forge' ); ?>"
-				        data-eff-tooltip="<?php esc_attr_e( 'Open / Switch Project', 'elementor-framework-forge' ); ?>"
-				        data-eff-tooltip-long="<?php esc_attr_e( 'Open the project picker to load a saved project or restore a backup snapshot', 'elementor-framework-forge' ); ?>">
-					<?php esc_html_e( 'Open / Switch Project', 'elementor-framework-forge' ); ?>
-				</button>
-			</div><!-- Active Project -->
-
-			<!-- 2. Save & Backups -->
-			<div class="eff-rp-section">
-				<div class="eff-rp-section__label"><?php esc_html_e( 'Save &amp; Backups', 'elementor-framework-forge' ); ?></div>
-				<button class="eff-btn" id="eff-btn-save"
-				        aria-label="<?php esc_attr_e( 'Save project — create a new timestamped backup', 'elementor-framework-forge' ); ?>"
-				        data-eff-tooltip="<?php esc_attr_e( 'Save Project', 'elementor-framework-forge' ); ?>"
-				        data-eff-tooltip-long="<?php esc_attr_e( 'Save Project — creates a new timestamped backup snapshot on the server', 'elementor-framework-forge' ); ?>">
-					<?php esc_html_e( 'Save Project', 'elementor-framework-forge' ); ?>
-				</button>
 				<button class="eff-btn eff-save-changes-btn"
 				        id="eff-btn-save-changes"
-				        aria-label="<?php esc_attr_e( 'Save changes to the current backup', 'elementor-framework-forge' ); ?>"
+				        aria-label="<?php esc_attr_e( 'Save changes to the current project', 'elementor-framework-forge' ); ?>"
 				        data-eff-tooltip="<?php esc_attr_e( 'Save Changes', 'elementor-framework-forge' ); ?>"
 				        data-eff-tooltip-long="<?php esc_attr_e( 'Save Changes — updates the current backup snapshot in place (no new file)', 'elementor-framework-forge' ); ?>"
 				        disabled
 				        aria-disabled="true">
 					<?php esc_html_e( 'Save Changes', 'elementor-framework-forge' ); ?>
 				</button>
-			</div><!-- Save & Backups -->
+				<button class="eff-btn" id="eff-btn-load"
+				        aria-label="<?php esc_attr_e( 'Open or switch project', 'elementor-framework-forge' ); ?>"
+				        data-eff-tooltip="<?php esc_attr_e( 'Open/Switch Project', 'elementor-framework-forge' ); ?>"
+				        data-eff-tooltip-long="<?php esc_attr_e( 'Open the project picker to load a saved project or restore a backup snapshot', 'elementor-framework-forge' ); ?>">
+					<?php esc_html_e( 'Open/Switch Project', 'elementor-framework-forge' ); ?>
+				</button>
+			</div><!-- Active Project -->
 
-			<!-- 3. Elementor Sync -->
+			<!-- 2. Save -->
 			<div class="eff-rp-section">
-				<div class="eff-rp-section__label"><?php esc_html_e( 'Elementor Sync', 'elementor-framework-forge' ); ?></div>
+				<div class="eff-rp-section__label"><?php esc_html_e( 'Save', 'elementor-framework-forge' ); ?></div>
+				<button class="eff-btn" id="eff-btn-save"
+				        aria-label="<?php esc_attr_e( 'Save project — create a new timestamped backup', 'elementor-framework-forge' ); ?>"
+				        data-eff-tooltip="<?php esc_attr_e( 'Save Project', 'elementor-framework-forge' ); ?>"
+				        data-eff-tooltip-long="<?php esc_attr_e( 'Save Project — creates a new timestamped backup snapshot on the server', 'elementor-framework-forge' ); ?>">
+					<?php esc_html_e( 'Save Project', 'elementor-framework-forge' ); ?>
+				</button>
+			</div><!-- Save -->
+
+			<!-- 3. Elementor 4 Sync -->
+			<div class="eff-rp-section">
+				<div class="eff-rp-section__label"><?php esc_html_e( 'Elementor 4 Sync', 'elementor-framework-forge' ); ?></div>
 				<button class="eff-btn" id="eff-btn-sync-variables"
-				        aria-label="<?php esc_attr_e( 'Pull variables from Elementor', 'elementor-framework-forge' ); ?>"
-				        data-eff-tooltip="<?php esc_attr_e( '↓ Variables', 'elementor-framework-forge' ); ?>"
-				        data-eff-tooltip-long="<?php esc_attr_e( 'Pull variables from the active Elementor V4 kit into EFF', 'elementor-framework-forge' ); ?>">
-					<?php esc_html_e( '↓ Variables', 'elementor-framework-forge' ); ?>
+				        aria-label="<?php esc_attr_e( 'Fetch variables from Elementor v4 kit', 'elementor-framework-forge' ); ?>"
+				        data-eff-tooltip="<?php esc_attr_e( 'Fetch Elementor', 'elementor-framework-forge' ); ?>"
+				        data-eff-tooltip-long="<?php esc_attr_e( 'Fetch Elementor — pull variables from the active Elementor V4 kit into EFF', 'elementor-framework-forge' ); ?>">
+					<?php esc_html_e( 'Fetch Elementor', 'elementor-framework-forge' ); ?>
 				</button>
 				<button class="eff-btn" id="eff-btn-commit-variables"
-				        aria-label="<?php esc_attr_e( 'Commit EFF variables to Elementor kit', 'elementor-framework-forge' ); ?>"
-				        data-eff-tooltip="<?php esc_attr_e( '↑ Variables', 'elementor-framework-forge' ); ?>"
-				        data-eff-tooltip-long="<?php esc_attr_e( 'Write EFF variable values back to the active Elementor kit CSS file', 'elementor-framework-forge' ); ?>">
-					<?php esc_html_e( '↑ Variables', 'elementor-framework-forge' ); ?>
+				        aria-label="<?php esc_attr_e( 'Write EFF variables to Elementor kit', 'elementor-framework-forge' ); ?>"
+				        data-eff-tooltip="<?php esc_attr_e( 'Write to Elementor', 'elementor-framework-forge' ); ?>"
+				        data-eff-tooltip-long="<?php esc_attr_e( 'Write to Elementor — commit EFF variable values back to the active Elementor kit CSS file', 'elementor-framework-forge' ); ?>">
+					<?php esc_html_e( 'Write to Elementor', 'elementor-framework-forge' ); ?>
 				</button>
-			</div><!-- Elementor Sync -->
+			</div><!-- Elementor 4 Sync -->
 
-			<!-- 4. Elementor V3 Import -->
-			<div class="eff-rp-section">
-				<div class="eff-rp-section__label"><?php esc_html_e( 'Elementor V3 Import', 'elementor-framework-forge' ); ?></div>
-				<button class="eff-btn" id="eff-btn-v3-colors"
-				        aria-label="<?php esc_attr_e( 'Import V3 Global Colors', 'elementor-framework-forge' ); ?>"
-				        data-eff-tooltip="<?php esc_attr_e( '↓ V3 Colors', 'elementor-framework-forge' ); ?>"
-				        data-eff-tooltip-long="<?php esc_attr_e( 'Import V3 Global Colors from the Elementor kit post meta into EFF as color variables', 'elementor-framework-forge' ); ?>">
-					<?php esc_html_e( '↓ V3 Colors', 'elementor-framework-forge' ); ?>
-				</button>
-			</div><!-- Elementor V3 Import -->
-
-			<!-- 5. Export / Import -->
-			<div class="eff-rp-section">
+			<!-- 4. Export / Import -->
+			<div class="eff-rp-section eff-rp-section--mt">
 				<div class="eff-rp-section__label"><?php esc_html_e( 'Export / Import', 'elementor-framework-forge' ); ?></div>
 				<button class="eff-btn" id="eff-btn-export"
 				        aria-label="<?php esc_attr_e( 'Export project as .eff.json', 'elementor-framework-forge' ); ?>"

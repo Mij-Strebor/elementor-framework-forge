@@ -31,6 +31,15 @@ class EFF_Settings {
 		'fonts_default_categories'   => array( 'Titles', 'Text' ),
 		'numbers_default_categories' => array( 'Spacing', 'Gaps', 'Grids', 'Radius' ),
 		'max_backups'                => 10,
+		// Accessibility / UI preferences
+		'ui_font_size'               => 14,       // Body font size in px (14–18).
+		'ui_contrast'                => 'standard', // 'standard' | 'high'
+		'ui_btn_size'                => 'normal',   // 'compact' | 'normal' | 'large'
+		'ui_btn_contrast'            => 'standard', // 'standard' | 'high'
+		'reduced_motion'             => false,
+		'layout_density'             => 'normal',   // 'compact' | 'normal' | 'comfortable'
+		'show_tooltips'              => true,
+		'extended_tooltips'          => false,
 	);
 
 	/**

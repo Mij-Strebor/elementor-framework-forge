@@ -33,7 +33,7 @@ class EFF_CSS_Parser {
 	 *
 	 * @var string[]
 	 */
-	const SYSTEM_PREFIXES = array(
+	public const SYSTEM_PREFIXES = array(
 		'--e-global-',
 		'--e-a-',
 		'--e-one-',
@@ -176,7 +176,7 @@ class EFF_CSS_Parser {
 	 *
 	 * @return int|null
 	 */
-	private function get_active_kit_id(): ?int {
+	public static function get_active_kit_id(): ?int {
 		$kit_id = (int) get_option( 'elementor_active_kit', 0 );
 		return $kit_id > 0 ? $kit_id : null;
 	}

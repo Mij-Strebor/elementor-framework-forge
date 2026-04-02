@@ -386,6 +386,12 @@
 	display: none;
 }
 
+/* Placeholder uses display:flex which overrides the UA [hidden] rule.
+   This explicit rule restores the expected hide behaviour. */
+.eff-placeholder[hidden] {
+	display: none;
+}
+
 /* ==========================================================================
    7. RIGHT STATUS PANEL
    ========================================================================== */
@@ -747,28 +753,35 @@
 }
 
 /* ==========================================================================
-   12. SAVE CHANGES GLOW — pulses the Save Changes button when dirty
+   12. SAVE CHANGES INDICATOR — pulses gold-to-red shadow when dirty
    ========================================================================== */
 
-@keyframes eff-save-glow {
-	0%, 100% { opacity: 0.45; box-shadow: none; }
-	50%       { opacity: 1;    box-shadow: 0 0 10px 3px var(--eff-clr-accent); }
+@keyframes eff-save-pulse {
+	0%, 100% { box-shadow: 0 0 6px 2px var(--eff-clr-accent); }
+	50%       { box-shadow: 0 0 16px 5px #dc2626; }
 }
 
-/* Save Changes — full-width button below Load/Save row */
+/* Save Changes — full-width indicator, ~1rem below project name input.
+   gap on .eff-rp-section is --sp-2 (8px); adding --sp-2 margin-top = 16px ≈ 1rem total. */
 #eff-btn-save-changes {
 	width:      100%;
-	margin-top: var(--sp-1);
+	margin-top: var(--sp-2);
 }
 #eff-btn-save-changes:disabled {
-	opacity: 0.4;
+	opacity: 0.45;
 	cursor:  not-allowed;
+	filter:  grayscale(0.4);
 }
 
 .eff-save-changes-btn.has-changes {
-	animation:   eff-save-glow 2.4s ease-in-out infinite;
+	animation:   eff-save-pulse 2s ease-in-out infinite;
 	color:       #2a1a0e !important;
 	font-weight: var(--fw-bold, 700);
+}
+
+/* Export / Import — extra 1rem top gap to visually separate from Elementor sync */
+.eff-rp-section--mt {
+	margin-top: var(--sp-4);
 }
 
 /* ==========================================================================
@@ -857,4 +870,262 @@
 .eff-toast--visible {
 	opacity:   1;
 	transform: translateX(-50%) translateY(0);
+}
+
+/* ==========================================================================
+   15. INFO PANEL — Help button fills the edit space with EFF about content
+   ========================================================================== */
+
+.eff-info-panel {
+	max-width:   800px;
+	margin:      0 auto;
+	padding:     var(--sp-2) var(--sp-4);
+	display:     flex;
+	flex-direction: column;
+	gap:         var(--sp-8);
+}
+
+/* Header */
+.eff-info-header {
+	text-align:     center;
+	padding-bottom: var(--sp-6);
+	border-bottom:  2px solid var(--eff-clr-accent);
+}
+
+.eff-info-title {
+	font-size:   var(--fs-xxxl);
+	font-weight: var(--fw-bold);
+	color:       var(--eff-clr-primary);
+	margin:      0 0 var(--sp-2) 0;
+	line-height: var(--fl-md);
+	display:     flex;
+	align-items: center;
+	justify-content: center;
+	gap:         var(--sp-3);
+	flex-wrap:   wrap;
+}
+
+.eff-info-badge {
+	display:       inline-block;
+	background:    var(--eff-clr-accent);
+	color:         var(--eff-clr-primary);
+	font-size:     var(--fs-sm);
+	font-weight:   var(--fw-semibold);
+	padding:       2px var(--sp-2);
+	border-radius: 4px;
+	vertical-align: middle;
+	letter-spacing: 0.02em;
+}
+
+.eff-info-tagline {
+	font-size:  var(--fs-lg);
+	color:      var(--eff-clr-secondary);
+	margin:     var(--sp-2) 0 0 0;
+	font-weight: var(--fw-normal);
+}
+
+/* Sections */
+.eff-info-section {
+	display:        flex;
+	flex-direction: column;
+	gap:            var(--sp-3);
+}
+
+.eff-info-section__title {
+	font-size:      var(--fs-xl);
+	font-weight:    var(--fw-bold);
+	color:          var(--eff-clr-primary);
+	margin:         0;
+	padding-bottom: var(--sp-2);
+	border-bottom:  1px solid var(--eff-clr-border);
+}
+
+.eff-info-section p {
+	font-size:   var(--fs-md);
+	color:       var(--eff-clr-secondary);
+	line-height: var(--fl-lg);
+	margin:      0;
+}
+
+.eff-info-section code {
+	font-family:    monospace;
+	font-size:      0.9em;
+	background:     var(--eff-bg-card);
+	border:         1px solid var(--eff-clr-border);
+	border-radius:  3px;
+	padding:        1px 5px;
+	color:          var(--eff-clr-primary);
+}
+
+.eff-info-section a {
+	color:           var(--eff-clr-link);
+	text-decoration: none;
+	font-style:      italic;
+}
+
+.eff-info-section a:hover {
+	color:           var(--eff-clr-link-hov);
+	text-decoration: underline;
+}
+
+/* Lists */
+.eff-info-list {
+	margin:      0;
+	padding:     0 0 0 var(--sp-5);
+	display:     flex;
+	flex-direction: column;
+	gap:         var(--sp-2);
+}
+
+.eff-info-list li {
+	font-size:   var(--fs-md);
+	color:       var(--eff-clr-secondary);
+	line-height: var(--fl-lg);
+}
+
+.eff-info-list--ordered {
+	list-style: decimal;
+}
+
+/* Phase badges */
+.eff-info-phase {
+	display:       inline-block;
+	font-size:     var(--fs-xs);
+	font-weight:   var(--fw-semibold);
+	border-radius: 4px;
+	padding:       1px var(--sp-2);
+	margin-right:  var(--sp-2);
+	vertical-align: middle;
+}
+
+.eff-info-phase--current {
+	background: var(--eff-clr-accent);
+	color:      var(--eff-clr-primary);
+}
+
+.eff-info-phase--next {
+	background: var(--eff-bg-card);
+	color:      var(--eff-clr-secondary);
+	border:     1px solid var(--eff-clr-border);
+}
+
+.eff-info-phase--future {
+	background: transparent;
+	color:      var(--eff-clr-muted);
+	border:     1px solid var(--eff-clr-border);
+}
+
+/* Divider */
+.eff-info-divider {
+	border:     none;
+	border-top: 2px solid var(--eff-clr-border);
+	margin:     0;
+}
+
+/* Related plugins list */
+.eff-info-related {
+	list-style:     none;
+	margin:         0;
+	padding:        0;
+	display:        flex;
+	flex-direction: column;
+	gap:            var(--sp-3);
+}
+
+.eff-info-related li {
+	display:       grid;
+	grid-template-columns: 180px 1fr auto;
+	align-items:   center;
+	gap:           var(--sp-3);
+	padding:       var(--sp-3);
+	background:    var(--eff-bg-card);
+	border:        1px solid var(--eff-clr-border);
+	border-radius: 6px;
+}
+
+.eff-info-related__name {
+	font-size:   var(--fs-sm);
+	font-weight: var(--fw-semibold);
+	color:       var(--eff-clr-primary);
+}
+
+.eff-info-related__desc {
+	font-size:  var(--fs-sm);
+	color:      var(--eff-clr-secondary);
+	line-height: var(--fl-lg);
+}
+
+.eff-info-related__status {
+	font-size:     var(--fs-xs);
+	font-weight:   var(--fw-semibold);
+	border-radius: 4px;
+	padding:       2px var(--sp-2);
+	white-space:   nowrap;
+}
+
+.eff-info-related__status--available {
+	background:      var(--clr-success-bg, #ecfdf5);
+	color:           var(--clr-success, #059669);
+	text-decoration: none;
+}
+
+a.eff-info-related__status--available:hover {
+	text-decoration: underline;
+}
+
+.eff-info-related__status--coming {
+	background: var(--clr-info-bg, #dbeafe);
+	color:      var(--clr-info, #3b82f6);
+}
+
+.eff-info-related__status--dev {
+	background: var(--clr-warning-bg, #fef3c7);
+	color:      var(--clr-warning, #f59e0b);
+}
+
+/* Support section */
+.eff-info-section--support {
+	background:    var(--eff-bg-card);
+	border:        1px solid var(--eff-clr-border);
+	border-radius: 8px;
+	padding:       var(--sp-6);
+}
+
+.eff-info-support-links {
+	display:   flex;
+	gap:       var(--sp-3);
+	flex-wrap: wrap;
+	margin-top: var(--sp-3);
+}
+
+.eff-info-support-btn {
+	display:       inline-flex;
+	align-items:   center;
+	gap:           var(--sp-2);
+	background:    var(--eff-clr-accent);
+	color:         var(--eff-clr-primary);
+	font-size:     var(--fs-sm);
+	font-weight:   var(--fw-semibold);
+	padding:       var(--sp-2) var(--sp-5);
+	border-radius: 8px;
+	text-decoration: none;
+	transition:    background 0.15s ease, transform 0.15s ease;
+}
+
+.eff-info-support-btn:hover {
+	background: var(--eff-clr-accent-hov);
+	transform:  translate(-2px, -2px);
+	text-decoration: none;
+	color:      var(--eff-clr-primary);
+}
+
+.eff-info-support-btn--secondary {
+	background: var(--eff-bg-card);
+	color:      var(--eff-clr-secondary);
+	border:     1px solid var(--eff-clr-border);
+}
+
+.eff-info-support-btn--secondary:hover {
+	background: var(--eff-bg-panel);
+	color:      var(--eff-clr-primary);
 }

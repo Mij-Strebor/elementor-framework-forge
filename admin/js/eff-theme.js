@@ -63,19 +63,11 @@
 		 * @private
 		 */
 		_persist: function (theme) {
-			if (typeof EFFData === 'undefined') {
+			if (typeof EFF === 'undefined' || !EFF.App || !EFF.App.ajax) {
 				return;
 			}
 
-			fetch(EFFData.ajaxUrl, {
-				method:  'POST',
-				headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-				body:    new URLSearchParams({
-					action: 'eff_save_user_theme',
-					nonce:  EFFData.nonce,
-					theme:  theme,
-				}),
-			}).catch(function () {
+			EFF.App.ajax('eff_save_user_theme', { theme: theme }).catch(function () {
 				// Silently fail — theme toggle is non-critical
 			});
 		},

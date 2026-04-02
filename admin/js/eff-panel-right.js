@@ -2,10 +2,9 @@
  * EFF Panel Right — Data Management Controls and Asset Counts
  *
  * Manages:
- *  - Active Project section (name input, Open / Switch Project)
- *  - Save & Backups section (Save Project, Save Changes)
- *  - Elementor Sync section (pull ↓ Variables, commit ↑ Variables)
- *  - Elementor V3 Import section (↓ V3 Colors)
+ *  - Active Project section (name input, Save Changes indicator, Open / Switch Project)
+ *  - Save section (Save Project)
+ *  - Elementor 4 Sync section (Fetch Elementor Data, Write to Elementor)
  *  - Export / Import section (bound via eff-panel-top.js by element ID)
  *  - Live asset count display (variables, classes, components)
  *
@@ -32,8 +31,6 @@
 		_syncVariablesBtn: null,
 		/** @type {HTMLElement|null} */
 		_commitVariablesBtn: null,
-		/** @type {HTMLElement|null} */
-		_v3ColorsBtn: null,
 		/** @type {string|null} Current project slug shown in Level 2 picker */
 		_pickerCurrentSlug: null,
 
@@ -47,14 +44,12 @@
 			this._saveChangesBtn      = document.getElementById('eff-btn-save-changes');
 			this._syncVariablesBtn    = document.getElementById('eff-btn-sync-variables');
 			this._commitVariablesBtn  = document.getElementById('eff-btn-commit-variables');
-			this._v3ColorsBtn         = document.getElementById('eff-btn-v3-colors');
 
 			this._bindLoadBtn();
 			this._bindSaveBtn();
 			this._bindSaveChangesBtn();
 			this._bindSyncVariablesBtn();
 			this._bindCommitVariablesBtn();
-			this._bindV3ColorsBtn();
 			this._bindFilenameInput();
 		},
 
@@ -547,8 +542,9 @@
 		 * Open the Sync Options dialog (Sync by name / Clear and replace).
 		 */
 		_openSyncOptionsDialog: function () {
+			var syncHandler;
 			EFF.Modal.open({
-				title: 'Sync from Elementor',
+				title: 'Fetch Elementor Data',
 				body:  '<p style="margin-bottom:12px">Choose how EFF should handle existing variables when importing from the Elementor kit.</p>'
 					+ '<div style="display:flex;flex-direction:column;gap:10px">'
 					+ '<label style="display:flex;gap:10px;align-items:flex-start;cursor:pointer">'
@@ -566,9 +562,10 @@
 					+ '<button class="eff-btn eff-btn--secondary" id="eff-sync-cancel">Cancel</button>'
 					+ '<button class="eff-btn" id="eff-sync-confirm">Sync</button>'
 					+ '</div>',
+				onClose: function () { document.removeEventListener('click', syncHandler); },
 			});
 
-			document.addEventListener('click', function syncHandler(e) {
+			syncHandler = function (e) {
 				if (e.target.id === 'eff-sync-cancel') {
 					EFF.Modal.close();
 					document.removeEventListener('click', syncHandler);
@@ -584,7 +581,8 @@
 						EFF.PanelTop._syncFromElementor({});
 					}
 				}
-			});
+			};
+			document.addEventListener('click', syncHandler);
 		},
 
 		// ------------------------------------------------------------------
@@ -634,8 +632,9 @@
 			if (added > 0)    { summaryLines.push(added    + ' new'); }
 			if (deleted > 0)  { summaryLines.push(deleted  + ' deleted'); }
 
+			var commitHandler;
 			EFF.Modal.open({
-				title: 'Commit to Elementor',
+				title: 'Write to Elementor',
 				body:  '<p style="margin-bottom:8px">The following changes will be written to the Elementor kit CSS file:</p>'
 					+ '<ul style="margin:0 0 12px 16px;list-style:disc">'
 					+ summaryLines.map(function (l) { return '<li>' + l + '</li>'; }).join('')
@@ -645,9 +644,10 @@
 					+ '<button class="eff-btn eff-btn--secondary" id="eff-commit-cancel">Cancel</button>'
 					+ '<button class="eff-btn" id="eff-commit-confirm">Commit</button>'
 					+ '</div>',
+				onClose: function () { document.removeEventListener('click', commitHandler); },
 			});
 
-			document.addEventListener('click', function commitHandler(e) {
+			commitHandler = function (e) {
 				if (e.target.id === 'eff-commit-cancel') {
 					EFF.Modal.close();
 					document.removeEventListener('click', commitHandler);
@@ -656,7 +656,8 @@
 					document.removeEventListener('click', commitHandler);
 					self._executeCommit();
 				}
-			});
+			};
+			document.addEventListener('click', commitHandler);
 		},
 
 		/**

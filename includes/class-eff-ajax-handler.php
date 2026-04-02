@@ -14,8 +14,6 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class EFF_Ajax_Handler {
 
-	const NONCE_ACTION = 'eff_admin_nonce';
-
 	/**
 	 * Register all wp_ajax_{action} hooks.
 	 */
@@ -61,9 +59,7 @@ class EFF_Ajax_Handler {
 	public function ajax_eff_save_file(): void {
 		$this->verify_request();
 
-		$project_name = isset( $_POST['project_name'] )
-			? sanitize_text_field( wp_unslash( $_POST['project_name'] ) )
-			: '';
+		$project_name = $this->post_param( 'project_name' );
 
 		$data_raw = isset( $_POST['data'] ) ? wp_unslash( $_POST['data'] ) : '';
 
@@ -71,10 +67,7 @@ class EFF_Ajax_Handler {
 			wp_send_json_error( array( 'message' => __( 'Project name is required.', 'elementor-framework-forge' ) ) );
 		}
 
-		$decoded = json_decode( $data_raw, true );
-		if ( JSON_ERROR_NONE !== json_last_error() ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid data format.', 'elementor-framework-forge' ) ) );
-		}
+		$decoded = $this->safe_json_decode( $data_raw, __( 'Invalid data format.', 'elementor-framework-forge' ) );
 
 		$slug  = EFF_Data_Store::sanitize_project_slug( $project_name );
 		$dir   = EFF_Data_Store::get_project_dir( $slug );
@@ -102,9 +95,7 @@ class EFF_Ajax_Handler {
 	public function ajax_eff_load_file(): void {
 		$this->verify_request();
 
-		$raw = isset( $_POST['filename'] )
-			? sanitize_text_field( wp_unslash( $_POST['filename'] ) )
-			: '';
+		$raw = $this->post_param( 'filename' );
 
 		if ( empty( $raw ) ) {
 			wp_send_json_error( array( 'message' => __( 'Filename is required.', 'elementor-framework-forge' ) ) );
@@ -170,9 +161,7 @@ class EFF_Ajax_Handler {
 		$css_file = null;
 
 		// Optional manual override — user-supplied path validated against the uploads/elementor/css/ dir.
-		$manual_path = isset( $_POST['css_file_path'] )
-			? sanitize_text_field( wp_unslash( $_POST['css_file_path'] ) )
-			: '';
+		$manual_path = $this->post_param( 'css_file_path' );
 
 		if ( $manual_path ) {
 			$upload_dir   = wp_upload_dir();
@@ -200,7 +189,7 @@ class EFF_Ajax_Handler {
 		if ( ! $css_file ) {
 			$upload_dir  = wp_upload_dir();
 			$css_dir     = $upload_dir['basedir'] . '/elementor/css/';
-			$kit_id      = (int) get_option( 'elementor_active_kit', 0 );
+			$kit_id      = EFF_CSS_Parser::get_active_kit_id();
 			$expected    = $kit_id ? $css_dir . 'post-' . $kit_id . '.css' : $css_dir . 'post-?.css';
 			wp_send_json_error( array(
 				'message'       => __( 'Elementor kit CSS file not found.', 'elementor-framework-forge' ),
@@ -227,14 +216,12 @@ class EFF_Ajax_Handler {
 	public function ajax_eff_save_user_theme(): void {
 		$this->verify_request();
 
-		$theme = isset( $_POST['theme'] )
-			? sanitize_text_field( wp_unslash( $_POST['theme'] ) )
-			: 'light';
+		$theme = $this->post_param( 'theme', 'light' );
 
 		$theme   = in_array( $theme, array( 'light', 'dark' ), true ) ? $theme : 'light';
 		$user_id = get_current_user_id();
 
-		update_user_meta( $user_id, EFF_Admin::USER_META_THEME, $theme );
+		update_user_meta( $user_id, EFF_USER_META_THEME, $theme );
 
 		wp_send_json_success( array( 'theme' => $theme ) );
 	}
@@ -276,11 +263,7 @@ class EFF_Ajax_Handler {
 		$this->verify_request();
 
 		$config_raw = isset( $_POST['config'] ) ? wp_unslash( $_POST['config'] ) : '';
-		$config     = json_decode( $config_raw, true );
-
-		if ( JSON_ERROR_NONE !== json_last_error() ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid config format.', 'elementor-framework-forge' ) ) );
-		}
+		$config     = $this->safe_json_decode( $config_raw, __( 'Invalid config format.', 'elementor-framework-forge' ) );
 
 		update_option( 'eff_project_config', $config );
 
@@ -295,11 +278,7 @@ class EFF_Ajax_Handler {
 		$this->verify_request();
 
 		$settings_raw = isset( $_POST['settings'] ) ? wp_unslash( $_POST['settings'] ) : '';
-		$settings     = json_decode( $settings_raw, true );
-
-		if ( JSON_ERROR_NONE !== json_last_error() ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid settings format.', 'elementor-framework-forge' ) ) );
-		}
+		$settings     = $this->safe_json_decode( $settings_raw, __( 'Invalid settings format.', 'elementor-framework-forge' ) );
 
 		EFF_Settings::set( $settings );
 
@@ -314,17 +293,13 @@ class EFF_Ajax_Handler {
 		$this->verify_request();
 
 		$names_raw = isset( $_POST['variable_names'] ) ? wp_unslash( $_POST['variable_names'] ) : '[]';
-		$names     = json_decode( $names_raw, true );
-
-		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $names ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid variable names format.', 'elementor-framework-forge' ) ) );
-		}
+		$names     = $this->safe_json_decode( $names_raw, __( 'Invalid variable names format.', 'elementor-framework-forge' ) );
 
 		// Sanitize: allow only valid CSS custom property names (--identifier)
 		$names = array_values( array_filter(
 			array_map( 'sanitize_text_field', $names ),
-			static function ( string $n ): bool {
-				return preg_match( '/^--[\w-]+$/', $n ) === 1;
+			function ( string $n ): bool {
+				return $this->is_valid_css_var( $n );
 			}
 		) );
 
@@ -369,9 +344,7 @@ class EFF_Ajax_Handler {
 	public function ajax_eff_list_backups(): void {
 		$this->verify_request();
 
-		$slug    = isset( $_POST['project_slug'] )
-			? sanitize_text_field( wp_unslash( $_POST['project_slug'] ) )
-			: '';
+		$slug    = $this->post_param( 'project_slug' );
 		$slug    = EFF_Data_Store::sanitize_project_slug( $slug );
 		$dir     = EFF_Data_Store::get_wp_storage_dir();
 		$backups = EFF_Data_Store::list_project_backups( $dir, $slug );
@@ -386,9 +359,7 @@ class EFF_Ajax_Handler {
 	public function ajax_eff_delete_project(): void {
 		$this->verify_request();
 
-		$raw = isset( $_POST['filename'] )
-			? sanitize_text_field( wp_unslash( $_POST['filename'] ) )
-			: '';
+		$raw = $this->post_param( 'filename' );
 
 		if ( empty( $raw ) ) {
 			wp_send_json_error( array( 'message' => __( 'Filename is required.', 'elementor-framework-forge' ) ) );
@@ -429,47 +400,32 @@ class EFF_Ajax_Handler {
 	 *              category (JSON: {id?, name, order?, locked?})
 	 */
 	public function ajax_eff_save_category(): void {
-		$this->verify_request();
-
-		$filename     = $this->get_filename_param();
 		$subgroup     = $this->get_subgroup_param();
 		$category_raw = isset( $_POST['category'] ) ? wp_unslash( $_POST['category'] ) : '';
-		$category     = json_decode( $category_raw, true );
+		$category     = $this->safe_json_decode( $category_raw, __( 'Invalid category data.', 'elementor-framework-forge' ) );
 
-		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $category ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid category data.', 'elementor-framework-forge' ) ) );
+		$name = isset( $category['name'] ) ? sanitize_text_field( $category['name'] ) : '';
+		if ( empty( $name ) ) {
+			wp_send_json_error( array( 'message' => __( 'Category name is required.', 'elementor-framework-forge' ) ) );
 		}
 
-		$store = $this->load_store( $filename );
-
-		if ( ! empty( $category['id'] ) ) {
-			// Update existing.
-			$name = isset( $category['name'] ) ? sanitize_text_field( $category['name'] ) : '';
-			if ( empty( $name ) ) {
-				wp_send_json_error( array( 'message' => __( 'Category name is required.', 'elementor-framework-forge' ) ) );
+		$this->with_store( function ( $store ) use ( $subgroup, $category, $name ) {
+			if ( ! empty( $category['id'] ) ) {
+				if ( ! $store->update_category_for_subgroup( $subgroup, $category['id'], array( 'name' => $name ) ) ) {
+					throw new \Exception( __( 'Category not found.', 'elementor-framework-forge' ) );
+				}
+				$id = $category['id'];
+			} else {
+				$id = $store->add_category_for_subgroup( $subgroup, array( 'name' => $name ) );
 			}
-			$updated = $store->update_category_for_subgroup( $subgroup, $category['id'], array( 'name' => $name ) );
-			if ( ! $updated ) {
-				wp_send_json_error( array( 'message' => __( 'Category not found.', 'elementor-framework-forge' ) ) );
-			}
-			$id = $category['id'];
-		} else {
-			// Add new.
-			$name = isset( $category['name'] ) ? sanitize_text_field( $category['name'] ) : '';
-			if ( empty( $name ) ) {
-				wp_send_json_error( array( 'message' => __( 'Category name is required.', 'elementor-framework-forge' ) ) );
-			}
-			$id = $store->add_category_for_subgroup( $subgroup, array( 'name' => $name ) );
-		}
 
-		$this->save_store( $store, $filename );
-
-		wp_send_json_success( array(
-			'id'         => $id,
-			'categories' => $store->get_categories_for_subgroup( $subgroup ),
-			/* translators: %s: category name */
-			'message'    => sprintf( __( 'Category "%s" saved.', 'elementor-framework-forge' ), sanitize_text_field( $category['name'] ?? '' ) ),
-		) );
+			return array(
+				'id'         => $id,
+				'categories' => $store->get_categories_for_subgroup( $subgroup ),
+				/* translators: %s: category name */
+				'message'    => sprintf( __( 'Category "%s" saved.', 'elementor-framework-forge' ), $name ),
+			);
+		} );
 	}
 
 	/**
@@ -479,30 +435,22 @@ class EFF_Ajax_Handler {
 	 */
 	public function ajax_eff_delete_category(): void {
 		$this->verify_request();
-
-		$filename    = $this->get_filename_param();
 		$subgroup    = $this->get_subgroup_param();
-		$category_id = isset( $_POST['category_id'] )
-			? sanitize_text_field( wp_unslash( $_POST['category_id'] ) )
-			: '';
+		$category_id = $this->post_param( 'category_id' );
 
 		if ( empty( $category_id ) ) {
 			wp_send_json_error( array( 'message' => __( 'Category ID is required.', 'elementor-framework-forge' ) ) );
 		}
 
-		$store   = $this->load_store( $filename );
-		$deleted = $store->delete_category_for_subgroup( $subgroup, $category_id );
-
-		if ( ! $deleted ) {
-			wp_send_json_error( array( 'message' => __( 'Category not found or cannot be deleted.', 'elementor-framework-forge' ) ) );
-		}
-
-		$this->save_store( $store, $filename );
-
-		wp_send_json_success( array(
-			'categories' => $store->get_categories_for_subgroup( $subgroup ),
-			'message'    => __( 'Category deleted.', 'elementor-framework-forge' ),
-		) );
+		$this->with_store( function ( $store ) use ( $subgroup, $category_id ) {
+			if ( ! $store->delete_category_for_subgroup( $subgroup, $category_id ) ) {
+				throw new \Exception( __( 'Category not found or cannot be deleted.', 'elementor-framework-forge' ) );
+			}
+			return array(
+				'categories' => $store->get_categories_for_subgroup( $subgroup ),
+				'message'    => __( 'Category deleted.', 'elementor-framework-forge' ),
+			);
+		} );
 	}
 
 	/**
@@ -513,15 +461,9 @@ class EFF_Ajax_Handler {
 	 */
 	public function ajax_eff_reorder_categories(): void {
 		$this->verify_request();
-
-		$filename    = $this->get_filename_param();
 		$subgroup    = $this->get_subgroup_param();
 		$ids_raw     = isset( $_POST['ordered_ids'] ) ? wp_unslash( $_POST['ordered_ids'] ) : '[]';
-		$ordered_ids = json_decode( $ids_raw, true );
-
-		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $ordered_ids ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid ordered IDs format.', 'elementor-framework-forge' ) ) );
-		}
+		$ordered_ids = $this->safe_json_decode( $ids_raw, __( 'Invalid ordered IDs format.', 'elementor-framework-forge' ) );
 
 		// Sanitize: each ID must be a non-empty string.
 		$ordered_ids = array_values( array_filter(
@@ -531,14 +473,13 @@ class EFF_Ajax_Handler {
 			}
 		) );
 
-		$store = $this->load_store( $filename );
-		$store->reorder_categories_for_subgroup( $subgroup, $ordered_ids );
-		$this->save_store( $store, $filename );
-
-		wp_send_json_success( array(
-			'categories' => $store->get_categories_for_subgroup( $subgroup ),
-			'message'    => __( 'Categories reordered.', 'elementor-framework-forge' ),
-		) );
+		$this->with_store( function ( $store ) use ( $subgroup, $ordered_ids ) {
+			$store->reorder_categories_for_subgroup( $subgroup, $ordered_ids );
+			return array(
+				'categories' => $store->get_categories_for_subgroup( $subgroup ),
+				'message'    => __( 'Categories reordered.', 'elementor-framework-forge' ),
+			);
+		} );
 	}
 
 	/**
@@ -548,73 +489,62 @@ class EFF_Ajax_Handler {
 	 */
 	public function ajax_eff_save_color(): void {
 		$this->verify_request();
-
-		$filename     = $this->get_filename_param();
 		$variable_raw = isset( $_POST['variable'] ) ? wp_unslash( $_POST['variable'] ) : '';
-		$variable     = json_decode( $variable_raw, true );
+		$variable     = $this->safe_json_decode( $variable_raw, __( 'Invalid variable data.', 'elementor-framework-forge' ) );
 
-		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $variable ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid variable data.', 'elementor-framework-forge' ) ) );
-		}
-
-		$store = $this->load_store( $filename );
-
-		if ( ! empty( $variable['id'] ) ) {
-			// Update existing variable.
-			$allowed_fields = array(
-				'name', 'value', 'original_value', 'format', 'category', 'category_id',
-				'order', 'status', 'pending_rename_from', 'type', 'subgroup', 'group',
-			);
-			$update = array();
-			foreach ( $allowed_fields as $field ) {
-				if ( array_key_exists( $field, $variable ) ) {
-					$update[ $field ] = is_string( $variable[ $field ] )
-						? sanitize_text_field( $variable[ $field ] )
-						: $variable[ $field ];
+		$this->with_store( function ( $store ) use ( $variable ) {
+			if ( ! empty( $variable['id'] ) ) {
+				// Update existing variable.
+				$allowed_fields = array(
+					'name', 'value', 'original_value', 'format', 'category', 'category_id',
+					'order', 'status', 'pending_rename_from', 'type', 'subgroup', 'group',
+				);
+				$update = array();
+				foreach ( $allowed_fields as $field ) {
+					if ( array_key_exists( $field, $variable ) ) {
+						$update[ $field ] = is_string( $variable[ $field ] )
+							? sanitize_text_field( $variable[ $field ] )
+							: $variable[ $field ];
+					}
 				}
-			}
-			// pending_rename_from may be null — preserve as-is.
-			if ( array_key_exists( 'pending_rename_from', $variable ) ) {
-				$update['pending_rename_from'] = is_null( $variable['pending_rename_from'] )
-					? null
-					: sanitize_text_field( $variable['pending_rename_from'] );
+				// pending_rename_from may be null — preserve as-is.
+				if ( array_key_exists( 'pending_rename_from', $variable ) ) {
+					$update['pending_rename_from'] = is_null( $variable['pending_rename_from'] )
+						? null
+						: sanitize_text_field( $variable['pending_rename_from'] );
+				}
+
+				if ( ! $store->update_variable( $variable['id'], $update ) ) {
+					throw new \Exception( __( 'Variable not found.', 'elementor-framework-forge' ) );
+				}
+				$id = $variable['id'];
+			} else {
+				// Add new variable.
+				$name = isset( $variable['name'] ) ? sanitize_text_field( $variable['name'] ) : '';
+				if ( empty( $name ) || ! $this->is_valid_css_var( $name ) ) {
+					throw new \Exception( __( 'Valid CSS custom property name required (e.g., --my-color).', 'elementor-framework-forge' ) );
+				}
+
+				$id = $store->add_variable( array(
+					'name'        => $name,
+					'value'       => isset( $variable['value'] )       ? sanitize_text_field( $variable['value'] )       : '',
+					'type'        => isset( $variable['type'] )        ? sanitize_text_field( $variable['type'] )        : 'color',
+					'subgroup'    => isset( $variable['subgroup'] )    ? sanitize_text_field( $variable['subgroup'] )    : 'Colors',
+					'category'    => isset( $variable['category'] )    ? sanitize_text_field( $variable['category'] )    : '',
+					'category_id' => isset( $variable['category_id'] ) ? sanitize_text_field( $variable['category_id'] ) : '',
+					'format'      => isset( $variable['format'] )      ? sanitize_text_field( $variable['format'] )      : 'HEX',
+					'status'      => 'new',
+					'source'      => 'user-defined',
+				) );
 			}
 
-			$updated = $store->update_variable( $variable['id'], $update );
-			if ( ! $updated ) {
-				wp_send_json_error( array( 'message' => __( 'Variable not found.', 'elementor-framework-forge' ) ) );
-			}
-			$id = $variable['id'];
-		} else {
-			// Add new variable.
-			$name = isset( $variable['name'] ) ? sanitize_text_field( $variable['name'] ) : '';
-			if ( empty( $name ) || ! preg_match( '/^--[\w-]+$/', $name ) ) {
-				wp_send_json_error( array( 'message' => __( 'Valid CSS custom property name required (e.g., --my-color).', 'elementor-framework-forge' ) ) );
-			}
-
-			$new_var = array(
-				'name'        => $name,
-				'value'       => isset( $variable['value'] )       ? sanitize_text_field( $variable['value'] )       : '',
-				'type'        => isset( $variable['type'] )        ? sanitize_text_field( $variable['type'] )        : 'color',
-				'subgroup'    => isset( $variable['subgroup'] )    ? sanitize_text_field( $variable['subgroup'] )    : 'Colors',
-				'category'    => isset( $variable['category'] )    ? sanitize_text_field( $variable['category'] )    : '',
-				'category_id' => isset( $variable['category_id'] ) ? sanitize_text_field( $variable['category_id'] ) : '',
-				'format'      => isset( $variable['format'] )      ? sanitize_text_field( $variable['format'] )      : 'HEX',
-				'status'      => 'new',
-				'source'      => 'user-defined',
+			return array(
+				'id'      => $id,
+				'data'    => $store->get_all_data(),
+				'counts'  => $store->get_counts(),
+				'message' => __( 'Color variable saved.', 'elementor-framework-forge' ),
 			);
-
-			$id = $store->add_variable( $new_var );
-		}
-
-		$this->save_store( $store, $filename );
-
-		wp_send_json_success( array(
-			'id'      => $id,
-			'data'    => $store->get_all_data(),
-			'counts'  => $store->get_counts(),
-			'message' => __( 'Color variable saved.', 'elementor-framework-forge' ),
-		) );
+		} );
 	}
 
 	/**
@@ -623,12 +553,7 @@ class EFF_Ajax_Handler {
 	 * POST params: filename, variable_id, delete_children (optional, '1' to delete children)
 	 */
 	public function ajax_eff_delete_color(): void {
-		$this->verify_request();
-
-		$filename        = $this->get_filename_param();
-		$variable_id     = isset( $_POST['variable_id'] )
-			? sanitize_text_field( wp_unslash( $_POST['variable_id'] ) )
-			: '';
+		$variable_id     = $this->post_param( 'variable_id' );
 		$delete_children = isset( $_POST['delete_children'] )
 			&& $_POST['delete_children'] !== '0'
 			&& $_POST['delete_children'] !== '';
@@ -637,20 +562,16 @@ class EFF_Ajax_Handler {
 			wp_send_json_error( array( 'message' => __( 'Variable ID is required.', 'elementor-framework-forge' ) ) );
 		}
 
-		$store   = $this->load_store( $filename );
-		$deleted = $store->delete_variable( $variable_id, $delete_children );
-
-		if ( ! $deleted ) {
-			wp_send_json_error( array( 'message' => __( 'Variable not found.', 'elementor-framework-forge' ) ) );
-		}
-
-		$this->save_store( $store, $filename );
-
-		wp_send_json_success( array(
-			'data'    => $store->get_all_data(),
-			'counts'  => $store->get_counts(),
-			'message' => __( 'Color variable deleted.', 'elementor-framework-forge' ),
-		) );
+		$this->with_store( function ( $store ) use ( $variable_id, $delete_children ) {
+			if ( ! $store->delete_variable( $variable_id, $delete_children ) ) {
+				throw new \Exception( __( 'Variable not found.', 'elementor-framework-forge' ) );
+			}
+			return array(
+				'data'    => $store->get_all_data(),
+				'counts'  => $store->get_counts(),
+				'message' => __( 'Color variable deleted.', 'elementor-framework-forge' ),
+			);
+		} );
 	}
 
 	/**
@@ -665,129 +586,113 @@ class EFF_Ajax_Handler {
 	 */
 	public function ajax_eff_generate_children(): void {
 		$this->verify_request();
-
-		$filename         = $this->get_filename_param();
-		$parent_id        = isset( $_POST['parent_id'] ) ? sanitize_text_field( wp_unslash( $_POST['parent_id'] ) ) : '';
-		$tint_steps       = isset( $_POST['tints'] ) ? (int) $_POST['tints'] : 0;
-		$shade_steps      = isset( $_POST['shades'] ) ? (int) $_POST['shades'] : 0;
-		$trans_on         = isset( $_POST['transparencies'] ) && $_POST['transparencies'] !== '0' && $_POST['transparencies'] !== '';
-
-		// Validate step values: 0–10 for tints/shades.
-		$tint_steps  = max( 0, min( 10, $tint_steps ) );
-		$shade_steps = max( 0, min( 10, $shade_steps ) );
+		$parent_id   = $this->post_param( 'parent_id' );
+		$tint_steps  = max( 0, min( 10, isset( $_POST['tints'] )   ? (int) $_POST['tints']   : 0 ) );
+		$shade_steps = max( 0, min( 10, isset( $_POST['shades'] )  ? (int) $_POST['shades']  : 0 ) );
+		$trans_on    = isset( $_POST['transparencies'] ) && $_POST['transparencies'] !== '0' && $_POST['transparencies'] !== '';
 
 		if ( empty( $parent_id ) ) {
 			wp_send_json_error( array( 'message' => __( 'Parent variable ID is required.', 'elementor-framework-forge' ) ) );
 		}
 
-		$store = $this->load_store( $filename );
-
-		// Find parent variable.
-		$parent = null;
-		foreach ( $store->get_variables() as $var ) {
-			if ( $var['id'] === $parent_id ) {
-				$parent = $var;
-				break;
+		$this->with_store( function ( $store ) use ( $parent_id, $tint_steps, $shade_steps, $trans_on ) {
+			// Find parent variable.
+			$parent = null;
+			foreach ( $store->get_variables() as $var ) {
+				if ( $var['id'] === $parent_id ) {
+					$parent = $var;
+					break;
+				}
 			}
-		}
-
-		if ( ! $parent ) {
-			wp_send_json_error( array( 'message' => __( 'Parent variable not found.', 'elementor-framework-forge' ) ) );
-		}
-
-		// Remove existing children of this parent (regenerate).
-		foreach ( $store->get_variables() as $var ) {
-			if ( isset( $var['parent_id'] ) && $var['parent_id'] === $parent_id ) {
-				$store->delete_variable( $var['id'] );
+			if ( ! $parent ) {
+				throw new \Exception( __( 'Parent variable not found.', 'elementor-framework-forge' ) );
 			}
-		}
 
-		// Parse parent hex to H, S, L.
-		$hex = ltrim( $parent['value'], '#' );
-		if ( strlen( $hex ) !== 6 ) {
-			wp_send_json_error( array( 'message' => __( 'Parent variable must have a 6-digit hex value to generate children.', 'elementor-framework-forge' ) ) );
-		}
-
-		list( $h, $s, $l ) = $this->hex_to_hsl( $hex );
-		$base_name = preg_replace( '/^--/', '', $parent['name'] );
-
-		$new_ids = array();
-
-		// Generate tints: each step i of N shifts lightness equally toward 100% (white).
-		// Naming: --name-{i*10} e.g. --primary-10, --primary-20 … --primary-30 for N=3.
-		if ( $tint_steps > 0 ) {
-			for ( $i = 1; $i <= $tint_steps; $i++ ) {
-				$tint_l   = $l + ( 100.0 - $l ) * ( $i / $tint_steps );
-				$tint_l   = min( 98.0, $tint_l );
-				$tint_hex = $this->hsl_to_hex( $h, $s, $tint_l );
-				$new_ids[] = $store->add_variable( array(
-					'name'        => '--' . $base_name . '-' . ( $i * 10 ),
-					'value'       => $tint_hex,
-					'type'        => 'color',
-					'subgroup'    => $parent['subgroup'] ?? 'Colors',
-					'category'    => $parent['category'] ?? '',
-					'category_id' => $parent['category_id'] ?? '',
-					'format'      => $parent['format'] ?? 'HEX',
-					'status'      => 'new',
-					'source'      => 'user-defined',
-					'parent_id'   => $parent_id,
-				) );
+			// Remove existing children of this parent (regenerate).
+			foreach ( $store->get_variables() as $var ) {
+				if ( isset( $var['parent_id'] ) && $var['parent_id'] === $parent_id ) {
+					$store->delete_variable( $var['id'] );
+				}
 			}
-		}
 
-		// Generate shades: each step i of N shifts lightness equally toward 0% (black).
-		// Naming: --name-plus-{i*10} ('+' encoded as '-plus-') e.g. --primary-plus-10.
-		if ( $shade_steps > 0 ) {
-			for ( $i = 1; $i <= $shade_steps; $i++ ) {
-				$shade_l   = $l - $l * ( $i / $shade_steps );
-				$shade_l   = max( 2.0, $shade_l );
-				$shade_hex = $this->hsl_to_hex( $h, $s, $shade_l );
-				$new_ids[] = $store->add_variable( array(
-					'name'        => '--' . $base_name . '-plus-' . ( $i * 10 ),
-					'value'       => $shade_hex,
-					'type'        => 'color',
-					'subgroup'    => $parent['subgroup'] ?? 'Colors',
-					'category'    => $parent['category'] ?? '',
-					'category_id' => $parent['category_id'] ?? '',
-					'format'      => $parent['format'] ?? 'HEX',
-					'status'      => 'new',
-					'source'      => 'user-defined',
-					'parent_id'   => $parent_id,
-				) );
+			// Parse parent hex to H, S, L.
+			$hex = ltrim( $parent['value'], '#' );
+			if ( strlen( $hex ) !== 6 ) {
+				throw new \Exception( __( 'Parent variable must have a 6-digit hex value to generate children.', 'elementor-framework-forge' ) );
 			}
-		}
 
-		// Generate transparencies: 9 fixed steps, alpha = step/10 (0.1 to 0.9).
-		// Naming: --name{step*10} (no separator) e.g. --primary10, --primary20 … --primary90.
-		if ( $trans_on ) {
-			for ( $i = 1; $i <= 9; $i++ ) {
-				$alpha_pct  = $i * 10;
-				$alpha_hex  = strtoupper( dechex( (int) round( $alpha_pct / 100 * 255 ) ) );
-				$alpha_hex  = str_pad( $alpha_hex, 2, '0', STR_PAD_LEFT );
-				$new_ids[] = $store->add_variable( array(
-					'name'        => '--' . $base_name . ( $i * 10 ),
-					'value'       => '#' . $hex . $alpha_hex,
-					'type'        => 'color',
-					'subgroup'    => $parent['subgroup'] ?? 'Colors',
-					'category'    => $parent['category'] ?? '',
-					'category_id' => $parent['category_id'] ?? '',
-					'format'      => 'HEXA',
-					'status'      => 'new',
-					'source'      => 'user-defined',
-					'parent_id'   => $parent_id,
-				) );
+			list( $h, $s, $l ) = $this->hex_to_hsl( $hex );
+			$base_name = preg_replace( '/^--/', '', $parent['name'] );
+			$new_ids   = array();
+
+			// Generate tints: each step i of N shifts lightness equally toward 100% (white).
+			// Naming: --name-{i*10} e.g. --primary-10, --primary-20 … --primary-30 for N=3.
+			if ( $tint_steps > 0 ) {
+				for ( $i = 1; $i <= $tint_steps; $i++ ) {
+					$tint_l    = min( 98.0, $l + ( 100.0 - $l ) * ( $i / $tint_steps ) );
+					$new_ids[] = $store->add_variable( array(
+						'name'        => '--' . $base_name . '-' . ( $i * 10 ),
+						'value'       => $this->hsl_to_hex( $h, $s, $tint_l ),
+						'type'        => 'color',
+						'subgroup'    => $parent['subgroup'] ?? 'Colors',
+						'category'    => $parent['category'] ?? '',
+						'category_id' => $parent['category_id'] ?? '',
+						'format'      => $parent['format'] ?? 'HEX',
+						'status'      => 'new',
+						'source'      => 'user-defined',
+						'parent_id'   => $parent_id,
+					) );
+				}
 			}
-		}
 
-		$this->save_store( $store, $filename );
+			// Generate shades: each step i of N shifts lightness equally toward 0% (black).
+			// Naming: --name-plus-{i*10} ('+' encoded as '-plus-') e.g. --primary-plus-10.
+			if ( $shade_steps > 0 ) {
+				for ( $i = 1; $i <= $shade_steps; $i++ ) {
+					$shade_l   = max( 2.0, $l - $l * ( $i / $shade_steps ) );
+					$new_ids[] = $store->add_variable( array(
+						'name'        => '--' . $base_name . '-plus-' . ( $i * 10 ),
+						'value'       => $this->hsl_to_hex( $h, $s, $shade_l ),
+						'type'        => 'color',
+						'subgroup'    => $parent['subgroup'] ?? 'Colors',
+						'category'    => $parent['category'] ?? '',
+						'category_id' => $parent['category_id'] ?? '',
+						'format'      => $parent['format'] ?? 'HEX',
+						'status'      => 'new',
+						'source'      => 'user-defined',
+						'parent_id'   => $parent_id,
+					) );
+				}
+			}
 
-		wp_send_json_success( array(
-			'new_ids'  => $new_ids,
-			'data'     => $store->get_all_data(),
-			'counts'   => $store->get_counts(),
-			/* translators: %d: number of child variables generated */
-			'message'  => sprintf( __( 'Generated %d child variables.', 'elementor-framework-forge' ), count( $new_ids ) ),
-		) );
+			// Generate transparencies: 9 fixed steps, alpha = step/10 (0.1 to 0.9).
+			// Naming: --name{step*10} (no separator) e.g. --primary10, --primary20 … --primary90.
+			if ( $trans_on ) {
+				for ( $i = 1; $i <= 9; $i++ ) {
+					$alpha_hex = str_pad( strtoupper( dechex( (int) round( $i * 10 / 100 * 255 ) ) ), 2, '0', STR_PAD_LEFT );
+					$new_ids[] = $store->add_variable( array(
+						'name'        => '--' . $base_name . ( $i * 10 ),
+						'value'       => '#' . $hex . $alpha_hex,
+						'type'        => 'color',
+						'subgroup'    => $parent['subgroup'] ?? 'Colors',
+						'category'    => $parent['category'] ?? '',
+						'category_id' => $parent['category_id'] ?? '',
+						'format'      => 'HEXA',
+						'status'      => 'new',
+						'source'      => 'user-defined',
+						'parent_id'   => $parent_id,
+					) );
+				}
+			}
+
+			return array(
+				'new_ids' => $new_ids,
+				'data'    => $store->get_all_data(),
+				'counts'  => $store->get_counts(),
+				/* translators: %d: number of child variables generated */
+				'message' => sprintf( __( 'Generated %d child variables.', 'elementor-framework-forge' ), count( $new_ids ) ),
+			);
+		} );
 	}
 
 	/**
@@ -800,16 +705,12 @@ class EFF_Ajax_Handler {
 
 		$filename      = $this->get_filename_param();
 		$variables_raw = isset( $_POST['variables'] ) ? wp_unslash( $_POST['variables'] ) : '[]';
-		$variables     = json_decode( $variables_raw, true );
-
-		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $variables ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid variables format.', 'elementor-framework-forge' ) ) );
-		}
+		$variables     = $this->safe_json_decode( $variables_raw, __( 'Invalid variables format.', 'elementor-framework-forge' ) );
 
 		// Sanitize: allow only valid CSS custom property entries.
 		$sanitized = array();
 		foreach ( $variables as $v ) {
-			if ( ! is_array( $v ) || ! isset( $v['name'] ) || ! preg_match( '/^--[\w-]+$/', $v['name'] ) ) {
+			if ( ! is_array( $v ) || ! isset( $v['name'] ) || ! $this->is_valid_css_var( $v['name'] ) ) {
 				continue;
 			}
 			$sanitized[] = array(
@@ -852,16 +753,13 @@ class EFF_Ajax_Handler {
 	 *
 	 * POST params: filename, variables (JSON array of {name, value} to commit)
 	 */
+	// Intentional Phase 5 write-back exception — see EFF CLAUDE.md Critical Rule #1.
 	public function ajax_eff_commit_to_elementor(): void {
 		$this->verify_request();
 
 		$filename      = $this->get_filename_param();
 		$variables_raw = isset( $_POST['variables'] ) ? wp_unslash( $_POST['variables'] ) : '[]';
-		$variables     = json_decode( $variables_raw, true );
-
-		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $variables ) ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid variables format.', 'elementor-framework-forge' ) ) );
-		}
+		$variables     = $this->safe_json_decode( $variables_raw, __( 'Invalid variables format.', 'elementor-framework-forge' ) );
 
 		// Locate the Elementor kit CSS file.
 		$parser   = new EFF_CSS_Parser();
@@ -889,7 +787,7 @@ class EFF_Ajax_Handler {
 		$skipped   = array();
 
 		foreach ( $variables as $v ) {
-			if ( ! is_array( $v ) || ! isset( $v['name'] ) || ! preg_match( '/^--[\w-]+$/', $v['name'] ) ) {
+			if ( ! is_array( $v ) || ! isset( $v['name'] ) || ! $this->is_valid_css_var( $v['name'] ) ) {
 				continue;
 			}
 
@@ -1005,7 +903,7 @@ class EFF_Ajax_Handler {
 	 * @return int|false Position of `}` in $css, or false if no suitable block found.
 	 */
 	private function find_user_root_close_pos( string $css ) {
-		$system_prefixes = array( '--e-global-', '--e-a-', '--e-one-', '--e-context-', '--e-button-', '--kit-' );
+		$system_prefixes = EFF_CSS_Parser::SYSTEM_PREFIXES;
 
 		// Find all :root block positions and their content.
 		$offset = 0;
@@ -1047,9 +945,7 @@ class EFF_Ajax_Handler {
 	 * @return string One of 'Colors', 'Fonts', 'Numbers'.
 	 */
 	private function get_subgroup_param(): string {
-		$subgroup = isset( $_POST['subgroup'] )
-			? sanitize_text_field( wp_unslash( $_POST['subgroup'] ) )
-			: 'Colors';
+		$subgroup = $this->post_param( 'subgroup', 'Colors' );
 
 		$allowed = array( 'Colors', 'Fonts', 'Numbers' );
 		return in_array( $subgroup, $allowed, true ) ? $subgroup : 'Colors';
@@ -1063,9 +959,7 @@ class EFF_Ajax_Handler {
 	 * @return string Resolved relative path (new or legacy format).
 	 */
 	private function get_filename_param(): string {
-		$raw = isset( $_POST['filename'] )
-			? sanitize_text_field( wp_unslash( $_POST['filename'] ) )
-			: '';
+		$raw = $this->post_param( 'filename' );
 
 		if ( empty( $raw ) ) {
 			wp_send_json_error( array( 'message' => __( 'Filename is required.', 'elementor-framework-forge' ) ) );
@@ -1109,6 +1003,27 @@ class EFF_Ajax_Handler {
 
 		if ( ! $store->save_to_file( $file ) ) {
 			wp_send_json_error( array( 'message' => __( 'Could not write EFF file. Check directory permissions.', 'elementor-framework-forge' ) ) );
+		}
+	}
+
+	/**
+	 * Verify the request, load the store, run $callback, save, and send JSON success.
+	 *
+	 * The callback receives the EFF_Data_Store instance and must return the array
+	 * to pass to wp_send_json_success(). Throw an \Exception to send an error instead.
+	 *
+	 * @param callable $callback function( EFF_Data_Store $store ): array
+	 */
+	private function with_store( callable $callback ): void {
+		$this->verify_request();
+		$filename = $this->get_filename_param();
+		$store    = $this->load_store( $filename );
+		try {
+			$result = $callback( $store );
+			$this->save_store( $store, $filename );
+			wp_send_json_success( $result );
+		} catch ( \Exception $e ) {
+			wp_send_json_error( array( 'message' => $e->getMessage() ) );
 		}
 	}
 
@@ -1185,6 +1100,50 @@ class EFF_Ajax_Handler {
 	}
 
 	// -----------------------------------------------------------------------
+	// PRIVATE HELPERS — REQUEST, DECODING & VALIDATION
+	// -----------------------------------------------------------------------
+
+	private const CSS_VAR_PATTERN = '/^--[\w-]+$/';
+
+	/**
+	 * Decode a JSON string and send an error response if decoding fails.
+	 *
+	 * @param string $raw           Raw JSON string (already unslashed).
+	 * @param string $error_message Error message for the JSON error response.
+	 * @return array Decoded associative array.
+	 */
+	private function safe_json_decode( string $raw, string $error_message ): array {
+		$decoded = json_decode( $raw, true );
+		if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $decoded ) ) {
+			wp_send_json_error( array( 'message' => $error_message ) );
+		}
+		return $decoded;
+	}
+
+	/**
+	 * Get a sanitized string value from $_POST.
+	 *
+	 * @param string $key     POST parameter name.
+	 * @param string $default Default value if the key is absent.
+	 * @return string Sanitized value.
+	 */
+	private function post_param( string $key, string $default = '' ): string {
+		return isset( $_POST[ $key ] )
+			? sanitize_text_field( wp_unslash( $_POST[ $key ] ) )
+			: $default;
+	}
+
+	/**
+	 * Check whether a string is a valid CSS custom property name.
+	 *
+	 * @param string $name String to test.
+	 * @return bool True if the name matches --identifier syntax.
+	 */
+	private function is_valid_css_var( string $name ): bool {
+		return preg_match( self::CSS_VAR_PATTERN, $name ) === 1;
+	}
+
+	// -----------------------------------------------------------------------
 	// FILE PATH RESOLUTION
 	// -----------------------------------------------------------------------
 
@@ -1233,13 +1192,7 @@ class EFF_Ajax_Handler {
 	 * Verify nonce and capability. Sends JSON error and dies on failure.
 	 */
 	private function verify_request(): void {
-		// Suppress PHP notice/warning output so they cannot corrupt JSON responses.
-		// Local development environments (e.g. Local WP) often have display_errors = On
-		// in their php.ini regardless of WP_DEBUG, which prepends HTML error output to
-		// the response body and causes JSON.parse failures in the browser.
-		ini_set( 'display_errors', '0' );
-
-		if ( ! check_ajax_referer( self::NONCE_ACTION, 'nonce', false ) ) {
+		if ( ! check_ajax_referer( EFF_NONCE_ACTION, 'nonce', false ) ) {
 			wp_send_json_error(
 				array( 'message' => __( 'Security check failed.', 'elementor-framework-forge' ) ),
 				403
@@ -1269,7 +1222,7 @@ class EFF_Ajax_Handler {
 	public function ajax_eff_sync_v3_global_colors(): void {
 		$this->verify_request();
 
-		$kit_id = (int) get_option( 'elementor_active_kit', 0 );
+		$kit_id = EFF_CSS_Parser::get_active_kit_id();
 		if ( ! $kit_id ) {
 			wp_send_json_error( array(
 				'message' => __( 'No active Elementor kit found.', 'elementor-framework-forge' ),
