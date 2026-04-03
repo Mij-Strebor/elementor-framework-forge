@@ -186,6 +186,13 @@ class EFF_Ajax_Handler {
 			$css_file = $parser->find_kit_css_file();
 		}
 
+		// If the kit CSS file is still missing, attempt to regenerate it via Elementor's
+		// CSS API. This handles fresh installs and post-cache-clear states where the file
+		// has not yet been written, eliminating the need to load a front-end page first.
+		if ( ! $css_file ) {
+			$css_file = $this->try_regenerate_elementor_kit_css();
+		}
+
 		if ( ! $css_file ) {
 			$upload_dir  = wp_upload_dir();
 			$css_dir     = $upload_dir['basedir'] . '/elementor/css/';
@@ -193,7 +200,7 @@ class EFF_Ajax_Handler {
 			$expected    = $kit_id ? $css_dir . 'post-' . $kit_id . '.css' : $css_dir . 'post-?.css';
 			wp_send_json_error( array(
 				'message'       => __( 'Elementor kit CSS file not found.', 'elementor-framework-forge' ),
-				'hint'          => __( 'Open any page in Elementor editor and click Update/Save to regenerate kit CSS.', 'elementor-framework-forge' ),
+				'hint'          => __( 'EFF attempted to regenerate the CSS but Elementor was not available. Open any page in Elementor editor and click Update/Save to regenerate kit CSS.', 'elementor-framework-forge' ),
 				'expected_file' => $expected,
 			) );
 		}
@@ -1205,6 +1212,50 @@ class EFF_Ajax_Handler {
 				403
 			);
 		}
+	}
+
+	// -----------------------------------------------------------------------
+	// PRIVATE HELPER — Elementor kit CSS regeneration
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Attempt to regenerate the Elementor kit CSS file via Elementor's CSS API.
+	 *
+	 * Called when find_kit_css_file() returns null, meaning the file does not yet
+	 * exist on disk (fresh install, cache clear, etc.). Elementor's Post CSS class
+	 * reads kit settings from post meta and writes the CSS file without a page load.
+	 *
+	 * Returns the path to the regenerated file, or null if Elementor is not
+	 * available or regeneration fails.
+	 *
+	 * @return string|null Absolute path to the kit CSS file, or null on failure.
+	 */
+	private function try_regenerate_elementor_kit_css(): ?string {
+		$kit_id = EFF_CSS_Parser::get_active_kit_id();
+		if ( ! $kit_id ) {
+			return null;
+		}
+
+		// Elementor must be active and its CSS class available.
+		if (
+			! class_exists( '\Elementor\Plugin' ) ||
+			! isset( \Elementor\Plugin::$instance ) ||
+			! class_exists( '\Elementor\Core\Files\CSS\Post' )
+		) {
+			return null;
+		}
+
+		try {
+			$css_obj = new \Elementor\Core\Files\CSS\Post( $kit_id );
+			$css_obj->update();
+		} catch ( \Throwable $e ) {
+			error_log( 'EFF: Failed to regenerate Elementor kit CSS (kit ID ' . $kit_id . '): ' . $e->getMessage() );
+			return null;
+		}
+
+		// Re-check for the file after regeneration.
+		$parser = new EFF_CSS_Parser();
+		return $parser->find_kit_css_file();
 	}
 
 	// -----------------------------------------------------------------------

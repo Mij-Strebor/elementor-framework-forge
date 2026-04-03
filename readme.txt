@@ -4,7 +4,7 @@ Tags:              elementor, css variables, design system, developer tools, ato
 Requires at least: 5.8
 Tested up to:      6.7
 Requires PHP:      7.4
-Stable tag:        0.3.1-beta
+Stable tag:        0.3.3-beta
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -22,7 +22,7 @@ EFF allows developers to organize, edit, and persist the three core asset types 
 
 **Requires Elementor and Elementor Pro.**
 
-=== Key Features (Beta 0.3.1) ===
+=== Key Features (Beta 0.3.3) ===
 
 * **Sync from Elementor** — Reads the Elementor V4 kit CSS file and imports CSS variables automatically. Sync options dialog: "Sync by name" or "Clear and replace".
 * **Versioned backup system** — Every Save Project creates a timestamped snapshot; restore any backup from the two-level project/backup picker. Up to 50 backups per project (configurable).
@@ -63,7 +63,10 @@ Elementor v4+ (atomic widget architecture) and Elementor Pro.
 
 == Changelog ==
 
-= 0.3.1-beta =
+= 0.3.3-beta =
+* Auto-regenerate Elementor kit CSS via Elementor's CSS API when the file is missing, preventing 0-variable sync on fresh installs or after cache clears.
+
+= 0.3.2-beta =
 * Fixed drag-and-drop color reorder failing when no project file was loaded (`eff_save_file` API mismatch after versioned backup refactor).
 * Fixed column sort state not persisting when switching between Colors and Numbers tabs.
 * Fixed `resolve_file()` rejecting valid subdirectory paths when the project directory did not yet exist, causing auto-load to silently fail.
@@ -93,7 +96,10 @@ Elementor v4+ (atomic widget architecture) and Elementor Pro.
 
 == Upgrade Notice ==
 
-= 0.3.1-beta =
+= 0.3.3-beta =
+Auto-regenerates missing Elementor kit CSS on sync — prevents 0-variable result on fresh installs or after Elementor cache clears.
+
+= 0.3.2-beta =
 Bug-fix release: drag-and-drop color reorder, column sort persistence across tab switches, and auto-load reliability.
 
 = 0.3.0-beta =
