@@ -250,4 +250,118 @@ class AFF_CSS_Parser {
 	private function normalize_value( string $value ): string {
 		return preg_replace( '/\blamp\s*\(/', 'clamp(', $value );
 	}
+
+	// -----------------------------------------------------------------------
+	// DIRECT META READ (primary sync path — Elementor v4)
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Read Elementor v4 variables directly from the active kit's post meta.
+	 *
+	 * Elementor stores global variables in `_elementor_global_variables` on the
+	 * kit post as a JSON-encoded string. The kit CSS file is a cache derived from
+	 * this meta — reading the meta directly works even when no CSS file exists.
+	 *
+	 * @return array[]|null Array of { name: string, value: string }, or null if unavailable.
+	 */
+	public function read_from_kit_meta(): ?array {
+		$kit_id = $this->get_active_kit_id();
+		if ( ! $kit_id ) {
+			return null;
+		}
+
+		$raw = get_post_meta( $kit_id, '_elementor_global_variables', true );
+
+		if ( empty( $raw ) ) {
+			return null;
+		}
+
+		// Elementor stores the meta as a JSON string (via update_json_meta).
+		if ( is_string( $raw ) ) {
+			$decoded = json_decode( $raw, true );
+			if ( JSON_ERROR_NONE !== json_last_error() || ! is_array( $decoded ) ) {
+				return null;
+			}
+			$raw = $decoded;
+		}
+
+		if ( ! is_array( $raw ) ) {
+			return null;
+		}
+
+		$data = $raw['data'] ?? array();
+		if ( empty( $data ) ) {
+			return null;
+		}
+
+		$variables = array();
+
+		foreach ( $data as $variable ) {
+			// Skip soft-deleted variables.
+			if ( isset( $variable['deleted_at'] ) ) {
+				continue;
+			}
+
+			$label = sanitize_text_field( $variable['label'] ?? '' );
+			if ( '' === $label ) {
+				continue;
+			}
+
+			$value = $this->extract_meta_value( $variable['value'] ?? '' );
+			if ( '' === $value ) {
+				continue;
+			}
+
+			$variables[] = array(
+				'name'  => '--' . $label,
+				'value' => $this->normalize_value( $value ),
+			);
+		}
+
+		return ! empty( $variables ) ? $variables : null;
+	}
+
+	/**
+	 * Extract a plain string value from Elementor's wrapped storage format.
+	 *
+	 * v2 format wraps values as: { "$$type": "color|string|size", "value": ... }
+	 * v1 format stores plain strings.
+	 *
+	 * Size inner value: { "size": 16, "unit": "px" } → "16px"
+	 *
+	 * @param mixed $raw Raw value from post meta.
+	 * @return string Plain string value, or empty string if unparseable.
+	 */
+	private function extract_meta_value( $raw ): string {
+		// v1: plain string
+		if ( is_string( $raw ) ) {
+			return trim( $raw );
+		}
+
+		if ( ! is_array( $raw ) ) {
+			return '';
+		}
+
+		// v2: { "$$type": "...", "value": ... } — unwrap one level
+		$inner = $raw['value'] ?? null;
+
+		// Color / font: inner value is a plain string
+		if ( is_string( $inner ) ) {
+			return trim( $inner );
+		}
+
+		// Size: inner value is { "size": number, "unit": string }
+		if ( is_array( $inner ) ) {
+			$unit = $inner['unit'] ?? '';
+			$size = $inner['size'] ?? '';
+
+			if ( 'auto' === $unit ) {
+				return 'auto';
+			}
+
+			return trim( $size . $unit );
+		}
+
+		return '';
+	}
 }

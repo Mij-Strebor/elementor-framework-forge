@@ -157,11 +157,31 @@ class AFF_Ajax_Handler {
 	public function ajax_aff_sync_from_elementor(): void {
 		$this->verify_request();
 
-		$parser   = new AFF_CSS_Parser();
-		$css_file = null;
+		$parser = new AFF_CSS_Parser();
 
-		// Optional manual override — user-supplied path validated against the uploads/elementor/css/ dir.
+		// Primary path: read directly from _elementor_global_variables post meta.
+		// This is Elementor's authoritative storage for v4 variables and works even
+		// when no kit CSS file has been generated yet.
+		// Skip when a manual CSS file override is supplied.
 		$manual_path = $this->post_param( 'css_file_path' );
+
+		if ( ! $manual_path ) {
+			$variables = $parser->read_from_kit_meta();
+
+			if ( null !== $variables ) {
+				wp_send_json_success( array(
+					'variables' => $variables,
+					'count'     => count( $variables ),
+					'source'    => 'elementor_kit_meta',
+					/* translators: %d: number of variables found */
+					'message'   => sprintf( __( 'Found %d Elementor variable(s).', 'atomic-framework-forge-for-elementor' ), count( $variables ) ),
+				) );
+				return;
+			}
+		}
+
+		// Fallback: CSS file approach (manual override, or kit meta unavailable).
+		$css_file = null;
 
 		if ( $manual_path ) {
 			$upload_dir   = wp_upload_dir();
@@ -179,6 +199,7 @@ class AFF_Ajax_Handler {
 				wp_send_json_error( array(
 					'message' => __( 'The supplied path is not valid. It must be an existing .css file inside wp-content/uploads/elementor/css/.', 'atomic-framework-forge-for-elementor' ),
 				) );
+				return;
 			}
 		}
 
@@ -194,15 +215,10 @@ class AFF_Ajax_Handler {
 		}
 
 		if ( ! $css_file ) {
-			$upload_dir  = wp_upload_dir();
-			$css_dir     = $upload_dir['basedir'] . '/elementor/css/';
-			$kit_id      = AFF_CSS_Parser::get_active_kit_id();
-			$expected    = $kit_id ? $css_dir . 'post-' . $kit_id . '.css' : $css_dir . 'post-?.css';
 			wp_send_json_error( array(
-				'message'       => __( 'Elementor kit CSS file not found.', 'atomic-framework-forge-for-elementor' ),
-				'hint'          => __( 'AFF attempted to regenerate the CSS but Elementor was not available. Open any page in Elementor editor and click Update/Save to regenerate kit CSS.', 'atomic-framework-forge-for-elementor' ),
-				'expected_file' => $expected,
+				'message' => __( 'No Elementor variables found. Make sure you have defined global variables in Elementor (Site Settings → Global Variables) and saved.', 'atomic-framework-forge-for-elementor' ),
 			) );
+			return;
 		}
 
 		$variables = $parser->parse_file( $css_file );
@@ -212,7 +228,7 @@ class AFF_Ajax_Handler {
 			'count'     => count( $variables ),
 			'source'    => basename( $css_file ),
 			/* translators: %d: number of variables found */
-			'message'   => sprintf( __( 'Found %d Elementor v4 variable(s).', 'atomic-framework-forge-for-elementor' ), count( $variables ) ),
+			'message'   => sprintf( __( 'Found %d Elementor variable(s).', 'atomic-framework-forge-for-elementor' ), count( $variables ) ),
 		) );
 	}
 

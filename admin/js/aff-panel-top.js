@@ -668,7 +668,7 @@
 				btn.disabled      = true;
 			}
 
-			AFF.App.ajax('eff_sync_from_elementor', {})
+			AFF.App.ajax('aff_sync_from_elementor', {})
 				.then(function (res) {
 					if (btn) {
 						btn.style.opacity = '';
@@ -807,7 +807,7 @@
 			var btn  = document.getElementById('aff-btn-sync-variables');
 			if (btn) { btn.style.opacity = '0.5'; btn.disabled = true; }
 
-			AFF.App.ajax('eff_sync_from_elementor', { css_file_path: cssPath })
+			AFF.App.ajax('aff_sync_from_elementor', { css_file_path: cssPath })
 				.then(function (res) {
 					if (btn) { btn.style.opacity = ''; btn.disabled = false; }
 					if (res.success) {

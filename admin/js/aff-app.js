@@ -270,10 +270,35 @@
 			return AFF.App.ajax('aff_get_config', {})
 				.then(function (res) {
 					if (res.success && res.data.config) {
-						AFF.state.config = res.data.config;
-						AFF.state.globalConfig = res.data.config;
-						if (res.data.config.projectName) {
-							AFF.state.projectName = res.data.config.projectName;
+						var cfg = res.data.config;
+
+						// Normalize defaults: groups.Variables.* string arrays → category object arrays.
+						// aff-defaults.json stores ["Spacing","Gaps",...] but _getCatsForSet expects
+						// [{id, name, order, locked}]. Only run when the key is absent (defaults case).
+						var groupVars = (cfg.groups && cfg.groups.Variables) ? cfg.groups.Variables : {};
+						var _normalizeCats = function (strArr, prefix) {
+							return strArr.map(function (name, i) {
+								return {
+									id:     'default-' + prefix + '-' + String(name).toLowerCase().replace(/\s+/g, '-'),
+									name:   String(name),
+									order:  i,
+									locked: String(name) === 'Uncategorized'
+								};
+							});
+						};
+						if (!cfg.fontCategories || !cfg.fontCategories.length) {
+							var fontSrc = (groupVars.Fonts && groupVars.Fonts.length) ? groupVars.Fonts : ['Titles', 'Text', 'Uncategorized'];
+							cfg.fontCategories = _normalizeCats(fontSrc, 'font');
+						}
+						if (!cfg.numberCategories || !cfg.numberCategories.length) {
+							var numSrc = (groupVars.Numbers && groupVars.Numbers.length) ? groupVars.Numbers : ['Spacing', 'Gaps', 'Grids', 'Radius', 'Uncategorized'];
+							cfg.numberCategories = _normalizeCats(numSrc, 'number');
+						}
+
+						AFF.state.config = cfg;
+						AFF.state.globalConfig = cfg;
+						if (cfg.projectName) {
+							AFF.state.projectName = cfg.projectName;
 						}
 					}
 				})
