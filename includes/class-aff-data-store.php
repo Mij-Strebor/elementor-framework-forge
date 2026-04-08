@@ -223,6 +223,26 @@ class AFF_Data_Store {
 	}
 
 	/**
+	 * Delete a variable by name only if it has an empty ID.
+	 *
+	 * Used to remove the placeholder empty-id copy that aff_save_file writes
+	 * for synced variables, before add_variable creates the real UUID copy.
+	 *
+	 * @param string $name CSS custom property name (e.g., '--primary').
+	 * @return bool True if a matching empty-id variable was found and removed.
+	 */
+	public function delete_variable_by_name_if_empty_id( string $name ): bool {
+		foreach ( $this->data['variables'] as $k => $var ) {
+			if ( ( $var['name'] ?? '' ) === $name && empty( $var['id'] ) ) {
+				array_splice( $this->data['variables'], $k, 1 );
+				$this->dirty = true;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
 	 * Find a variable by its CSS property name (e.g., '--primary').
 	 *
 	 * @param string $name CSS custom property name.
