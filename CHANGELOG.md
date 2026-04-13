@@ -7,6 +7,31 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.5-beta] — 2026-04-13
+
+### Added
+
+- **Load Project modal — project management** — Level 1 now shows each project's save count and last-saved date. Projects can be renamed inline (click name field, type, blur or Enter to save). Copy project button duplicates all backups under a new name. Delete project button removes the entire project folder after confirmation.
+- **Variable count in backup picker** — Level 2 backup rows now show the number of variables stored in each snapshot.
+
+### Fixed
+
+- **Cross-module event contamination** — Colors, Variables, and Numbers all share `#aff-edit-content` as their delegated event container. Click, focusout, and mousedown drag handlers now guard against firing when their own view is not present, preventing Colors events from triggering in Numbers and vice versa.
+- **Drag snap-back in Numbers** — Variables dragged in Numbers snapped back to their original position because Colors' drag `mouseup` handler was firing on the same gesture. The view-presence guard on mousedown prevents Colors' drag state from activating when Numbers is shown.
+- **Drag cross-module switch** — Dragging in Numbers no longer unexpectedly activates a Colors drag. Root cause was the same shared container; resolved by the view-presence guard on both modules' mousedown handlers.
+- **Write to Elementor — kit CSS file not found** — `ajax_aff_commit_to_elementor` now calls `try_regenerate_elementor_kit_css()` when `find_kit_css_file()` returns null, instead of immediately returning an error. Prevents failures on fresh installs or after Elementor clears its CSS cache.
+- **Duplicate variable names** — Renaming a variable to an existing name is now blocked in JS (client-side field error, value reverted) and PHP (`variable_name_exists()` check in `ajax_aff_save_color()`).
+- **Forced `--` prefix while typing** — Three live `input` event handlers in `aff-colors.js` and `aff-variables.js` were re-inserting `--` as the user typed a variable name. All three removed; the prefix is added only when the name is saved.
+- **Missing nonce verification** — `ajax_aff_save_category()` and `ajax_aff_delete_color()` were missing `$this->verify_request()` calls added.
+- **category_id validation** — New variables with a `category_id` are now validated against the existing categories for their subgroup before being saved.
+
+### Changed
+
+- **Dead code removed** — `_moveCategoryUp`, `_moveCategoryDown`, `_sortCategories`, and the `move-up` / `move-down` switch cases in `aff-colors.js` were unreachable and removed (~100 lines).
+- **Version** — Bumped to 0.3.5-beta.
+
+---
+
 ## [0.3.4-beta] — 2026-04-08
 
 ### Changed
@@ -261,6 +286,7 @@ Initial Alpha release.
 | **0.2.2** | Export/Import; Save Changes contrast fix; category CRUD merge fix |
 | **0.2.3** | Elementor sync lowercase names; Manage Project select-all; stacked `.aff` suffix fix |
 | **0.3.0-beta** | Versioned backup system; multi-project; two-level picker; right panel reorganization; sync options dialog; commit summary dialog; V3 Global Colors import |
+| **0.3.5-beta** | Load Project modal improvements; cross-module event fix; drag fixes; Write to Elementor kit CSS auto-regeneration; duplicate variable name prevention; removed forced `--` prefix |
 | **1.0.0** | Classes management; Components registry |
 | **2.0.0** | Components registry; Elementor Kit Manager API write-back; Bulk variable rename |
 | **Future** | Standalone Windows / Mac desktop application |

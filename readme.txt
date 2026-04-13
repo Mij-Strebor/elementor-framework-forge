@@ -22,7 +22,7 @@ AFF allows developers to organize, edit, and persist the three core asset types 
 
 **Requires Elementor and Elementor Pro.**
 
-=== Key Features (Beta 0.3.4) ===
+=== Key Features (Beta 0.3.5) ===
 
 * **Sync from Elementor** — Reads the Elementor V4 kit CSS file and imports CSS variables automatically. Sync options dialog: "Sync by name" or "Clear and replace".
 * **Versioned backup system** — Every Save Project creates a timestamped snapshot; restore any backup from the two-level project/backup picker. Up to 50 backups per project (configurable).
