@@ -1361,9 +1361,9 @@
 
 			if (newName === oldName) { return; }
 
-			if (!/^[A-Za-z_][A-Za-z0-9_-]*$/.test(newName)) {
+			if (!/^(--)?[A-Za-z_][A-Za-z0-9_-]*$/.test(newName)) {
 				nameInput.value = oldName; // Revert.
-				self._showFieldError(nameInput, 'Use letters, numbers, hyphens, or underscores. Must start with a letter or underscore. No -- prefix.');
+				self._showFieldError(nameInput, 'Use letters, numbers, hyphens, or underscores. May start with --.');
 				return;
 			}
 

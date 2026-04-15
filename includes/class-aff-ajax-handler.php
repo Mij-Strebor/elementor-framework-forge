@@ -187,7 +187,7 @@ class AFF_Ajax_Handler {
 		}
 
 		wp_send_json_success( array(
-			'data'     => $this->normalize_variable_names( $store->get_all_data() ),
+			'data'     => $store->get_all_data(),
 			'counts'   => $store->get_counts(),
 			'filename' => $filename,
 		) );
@@ -765,7 +765,7 @@ class AFF_Ajax_Handler {
 
 			return array(
 				'id'      => $id,
-				'data'    => $this->normalize_variable_names( $store->get_all_data() ),
+				'data'    => $store->get_all_data(),
 				'counts'  => $store->get_counts(),
 				'message' => __( 'Color variable saved.', 'atomic-framework-forge-for-elementor' ),
 			);
@@ -793,7 +793,7 @@ class AFF_Ajax_Handler {
 				throw new \Exception( __( 'Variable not found.', 'atomic-framework-forge-for-elementor' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
 			return array(
-				'data'    => $this->normalize_variable_names( $store->get_all_data() ),
+				'data'    => $store->get_all_data(),
 				'counts'  => $store->get_counts(),
 				'message' => __( 'Color variable deleted.', 'atomic-framework-forge-for-elementor' ),
 			);
@@ -913,7 +913,7 @@ class AFF_Ajax_Handler {
 
 			return array(
 				'new_ids' => $new_ids,
-				'data'    => $this->normalize_variable_names( $store->get_all_data() ),
+				'data'    => $store->get_all_data(),
 				'counts'  => $store->get_counts(),
 				/* translators: %d: number of child variables generated */
 				'message' => sprintf( __( 'Generated %d child variables.', 'atomic-framework-forge-for-elementor' ), count( $new_ids ) ),
@@ -1022,14 +1022,12 @@ class AFF_Ajax_Handler {
 				continue;
 			}
 
-			// Strip any leading dashes first (backward compat for legacy .aff.json
-			// files that stored names with the -- prefix). Validate the bare name,
-			// then prepend canonical -- for CSS output.
-			$bare = ltrim( $v['name'], '-' );
-			if ( ! $this->is_valid_css_var( $bare ) ) {
+			// Validate the stored name (may be 'purple' or '--purple'), then prepend
+			// -- for CSS output — matching EV4: 'purple' → '--purple', '--purple' → '----purple'.
+			if ( ! $this->is_valid_css_var( $v['name'] ) ) {
 				continue;
 			}
-			$v['name'] = '--' . $bare;
+			$v['name'] = '--' . $v['name'];
 
 			$name  = sanitize_text_field( $v['name'] );
 			$value = isset( $v['value'] ) ? sanitize_text_field( $v['value'] ) : '';
@@ -1056,8 +1054,8 @@ class AFF_Ajax_Handler {
 					if ( ! isset( $v['name'] ) ) {
 						continue;
 					}
-					// $name already has --; reconstruct from v['name'] the same way.
-					$v_normalized = '--' . ltrim( $v['name'], '-' );
+					// $name already has -- prepended; mirror that for the lookup.
+					$v_normalized = '--' . $v['name'];
 					if ( $v_normalized === $name ) {
 						$val           = sanitize_text_field( $v['value'] ?? '' );
 						$insert_block .= "\n  " . $name . ': ' . $val . ';';
@@ -1371,9 +1369,11 @@ class AFF_Ajax_Handler {
 	// PRIVATE HELPERS — REQUEST, DECODING & VALIDATION
 	// -----------------------------------------------------------------------
 
-	// Names are stored WITHOUT the -- prefix. Validation rejects any leading dashes;
-	// the commit path re-adds -- when writing to the kit CSS file.
-	private const CSS_VAR_PATTERN = '/^[A-Za-z_][A-Za-z0-9_-]*$/';
+	// Names are stored as typed (matching EV4's display). A name may optionally
+	// start with -- (the user typed '--purple' in EV4) or with a letter/underscore.
+	// The commit path prepends -- for CSS output, so '--purple' → '----purple',
+	// matching what EV4 would write for a variable the user named '--purple'.
+	private const CSS_VAR_PATTERN = '/^(--)?[A-Za-z_][A-Za-z0-9_-]*$/';
 
 	/**
 	 * Decode a JSON string and send an error response if decoding fails.
@@ -1415,31 +1415,6 @@ class AFF_Ajax_Handler {
 		return preg_match( self::CSS_VAR_PATTERN, $name ) === 1;
 	}
 
-	/**
-	 * Strip leading dashes from all variable names in an outbound data payload.
-	 *
-	 * AFF stores names without the -- prefix. Legacy .aff.json files written
-	 * before this convention was enforced may still contain names such as
-	 * '--button-background'. Normalise on every outbound read so the client
-	 * never sees the prefix regardless of what is physically on disk.
-	 *
-	 * @param array $data Full project data (from AFF_Data_Store::get_all_data()).
-	 * @return array Data with variable names and pending_rename_from stripped of leading dashes.
-	 */
-	private function normalize_variable_names( array $data ): array {
-		if ( ! empty( $data['variables'] ) && is_array( $data['variables'] ) ) {
-			foreach ( $data['variables'] as &$v ) {
-				if ( isset( $v['name'] ) && is_string( $v['name'] ) ) {
-					$v['name'] = ltrim( $v['name'], '-' );
-				}
-				if ( isset( $v['pending_rename_from'] ) && is_string( $v['pending_rename_from'] ) ) {
-					$v['pending_rename_from'] = ltrim( $v['pending_rename_from'], '-' );
-				}
-			}
-			unset( $v );
-		}
-		return $data;
-	}
 
 	// -----------------------------------------------------------------------
 	// FILE PATH RESOLUTION
