@@ -337,6 +337,10 @@
 			var modalBody = document.getElementById('aff-modal-body');
 			if (!modalBody) { return; }
 
+			// Always restore the correct title — error modals can leave a stale one.
+			var titleEl = document.getElementById('aff-modal-title');
+			if (titleEl) { titleEl.textContent = 'Load Project'; }
+
 			modalBody.innerHTML = self._buildProjectListBody(projects);
 
 			function pickerL1(e) {
@@ -396,20 +400,59 @@
 				if (delProjBtn) {
 					var delSlug = delProjBtn.getAttribute('data-slug');
 					var delName = delProjBtn.getAttribute('data-name');
-					if (!window.confirm('Delete ALL saves for \u201c' + delName + '\u201d? This cannot be undone.')) { return; }
-					AFF.App.ajax('aff_delete_project_folder', { project_slug: delSlug })
-						.then(function (res) {
-							if (res.success) {
-								cleanup();
-								AFF.App.ajax('aff_list_projects', {}).then(function (pr) {
-									if (pr.success) { self._showProjectList(pr.data.projects || []); }
+					cleanup(); // Remove L1 listener before switching to confirm modal.
+
+					var delProjHandler;
+					AFF.Modal.open({
+						title: 'Delete project?',
+						body:  '<p>Delete ALL saves for \u201c' + delName + '\u201d?</p>'
+							+ '<p style="margin-top:8px;color:var(--aff-clr-link);font-size:var(--fs-sm)">This cannot be undone.</p>',
+						footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
+							+ '<button class="aff-btn aff-btn--secondary" id="aff-del-proj-cancel">Cancel</button>'
+							+ '<button class="aff-btn" id="aff-del-proj-confirm">Delete all saves</button>'
+							+ '</div>',
+						onClose: function () { document.removeEventListener('click', delProjHandler); },
+					});
+					delProjHandler = function (e) {
+						if (e.target.id === 'aff-del-proj-cancel') {
+							document.removeEventListener('click', delProjHandler);
+							self._openProjectPicker();
+						} else if (e.target.id === 'aff-del-proj-confirm') {
+							AFF.Modal.close();
+							document.removeEventListener('click', delProjHandler);
+							AFF.App.ajax('aff_delete_project_folder', { project_slug: delSlug })
+								.then(function (res) {
+									if (res.success) {
+										// If the deleted project is currently loaded, clear app state.
+										var activeSlug = AFF.state.currentFile
+											? AFF.state.currentFile.split('/')[0] : null;
+										if (activeSlug === delSlug) {
+											AFF.state.variables   = [];
+											AFF.state.classes     = [];
+											AFF.state.components  = [];
+											AFF.state.config      = {};
+											AFF.state.currentFile = null;
+											AFF.state.projectName = '';
+											AFF.App.setDirty(false);
+											AFF.App.refreshCounts();
+											if (AFF.PanelLeft)    { AFF.PanelLeft.refresh(); }
+											if (self._filenameInput) { self._filenameInput.value = ''; }
+										}
+										AFF.App.ajax('aff_list_projects', {}).then(function (pr) {
+											AFF.Modal.open({ title: 'Load Project', body: '', footer: '', className: 'aff-modal--wide' });
+											if (pr.success) { self._showProjectList(pr.data.projects || []); }
+										});
+									} else {
+										var msg = (res.data && res.data.message) ? res.data.message : 'Could not delete project.';
+										AFF.Modal.open({ title: 'Delete error', body: '<p>' + msg + '</p>' });
+									}
+								})
+								.catch(function () {
+									AFF.Modal.open({ title: 'Delete error', body: '<p>Network error. Please try again.</p>' });
 								});
-							} else {
-								var msg = (res.data && res.data.message) ? res.data.message : 'Could not delete project.';
-								AFF.Modal.open({ title: 'Delete error', body: '<p>' + msg + '</p>' });
-							}
-						})
-						.catch(function () {});
+						}
+					};
+					document.addEventListener('click', delProjHandler);
 					return;
 				}
 			}
@@ -800,7 +843,7 @@
 						AFF.state.variables = [];
 					}
 					if (AFF.PanelTop && AFF.PanelTop._syncFromElementor) {
-						AFF.PanelTop._syncFromElementor({});
+						AFF.PanelTop._syncFromElementor({ clearMode: clearMode });
 					}
 				}
 			};
