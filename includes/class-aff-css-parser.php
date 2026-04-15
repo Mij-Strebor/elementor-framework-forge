@@ -160,6 +160,13 @@ class AFF_CSS_Parser {
 			);
 
 			if ( ! empty( $user_vars ) ) {
+				// Strip all leading dashes AFTER filtering — is_user_variable checks
+				// the full CSS name (e.g. --e-global-*), so stripping must come last.
+				// Handles ----purple artifacts written by EV4 when user types --purple.
+				foreach ( $user_vars as &$v ) {
+					$v['name'] = ltrim( $v['name'], '-' );
+				}
+				unset( $v );
 				return $user_vars;
 			}
 		}
@@ -326,7 +333,9 @@ class AFF_CSS_Parser {
 			}
 
 			$variables[] = array(
-				'name'    => '--' . $label,
+				// Strip all leading dashes — EV4 stores the label as typed, so
+				// '--purple' becomes '----purple' in CSS. AFF stores bare names only.
+				'name'    => ltrim( $label, '-' ),
 				'value'   => $this->normalize_value( $value ),
 				'el_type' => $el_type,  // Elementor type hint ('color'|'size'|'string')
 				'el_unit' => $el_unit,  // Elementor size unit when el_type === 'size'

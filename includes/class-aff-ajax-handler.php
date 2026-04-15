@@ -187,7 +187,7 @@ class AFF_Ajax_Handler {
 		}
 
 		wp_send_json_success( array(
-			'data'     => $store->get_all_data(),
+			'data'     => $this->normalize_variable_names( $store->get_all_data() ),
 			'counts'   => $store->get_counts(),
 			'filename' => $filename,
 		) );
@@ -727,7 +727,7 @@ class AFF_Ajax_Handler {
 				// Add new variable.
 				$name = isset( $variable['name'] ) ? sanitize_text_field( $variable['name'] ) : '';
 				if ( empty( $name ) || ! $this->is_valid_css_var( $name ) ) {
-					throw new \Exception( __( 'Variable name is required and may only contain letters, digits, hyphens, and underscores.', 'atomic-framework-forge-for-elementor' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+					throw new \Exception( __( 'Variable name is required, must start with a letter or underscore, and may only contain letters, digits, hyphens, and underscores. Do not include the -- prefix.', 'atomic-framework-forge-for-elementor' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 				}
 
 				if ( $this->variable_name_exists( $store->get_variables(), $name ) ) {
@@ -765,7 +765,7 @@ class AFF_Ajax_Handler {
 
 			return array(
 				'id'      => $id,
-				'data'    => $store->get_all_data(),
+				'data'    => $this->normalize_variable_names( $store->get_all_data() ),
 				'counts'  => $store->get_counts(),
 				'message' => __( 'Color variable saved.', 'atomic-framework-forge-for-elementor' ),
 			);
@@ -793,7 +793,7 @@ class AFF_Ajax_Handler {
 				throw new \Exception( __( 'Variable not found.', 'atomic-framework-forge-for-elementor' ) ); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
 			return array(
-				'data'    => $store->get_all_data(),
+				'data'    => $this->normalize_variable_names( $store->get_all_data() ),
 				'counts'  => $store->get_counts(),
 				'message' => __( 'Color variable deleted.', 'atomic-framework-forge-for-elementor' ),
 			);
@@ -913,7 +913,7 @@ class AFF_Ajax_Handler {
 
 			return array(
 				'new_ids' => $new_ids,
-				'data'    => $store->get_all_data(),
+				'data'    => $this->normalize_variable_names( $store->get_all_data() ),
 				'counts'  => $store->get_counts(),
 				/* translators: %d: number of child variables generated */
 				'message' => sprintf( __( 'Generated %d child variables.', 'atomic-framework-forge-for-elementor' ), count( $new_ids ) ),
@@ -1018,15 +1018,18 @@ class AFF_Ajax_Handler {
 		$skipped   = array();
 
 		foreach ( $variables as $v ) {
-			if ( ! is_array( $v ) || ! isset( $v['name'] ) || ! $this->is_valid_css_var( $v['name'] ) ) {
+			if ( ! is_array( $v ) || ! isset( $v['name'] ) ) {
 				continue;
 			}
 
-			// Normalize: Elementor Atomic widget convention omits the -- prefix.
-			// Always write a valid CSS custom property to the kit CSS.
-			if ( ! str_starts_with( $v['name'], '--' ) ) {
-				$v['name'] = '--' . $v['name'];
+			// Strip any leading dashes first (backward compat for legacy .aff.json
+			// files that stored names with the -- prefix). Validate the bare name,
+			// then prepend canonical -- for CSS output.
+			$bare = ltrim( $v['name'], '-' );
+			if ( ! $this->is_valid_css_var( $bare ) ) {
+				continue;
 			}
+			$v['name'] = '--' . $bare;
 
 			$name  = sanitize_text_field( $v['name'] );
 			$value = isset( $v['value'] ) ? sanitize_text_field( $v['value'] ) : '';
@@ -1053,8 +1056,8 @@ class AFF_Ajax_Handler {
 					if ( ! isset( $v['name'] ) ) {
 						continue;
 					}
-					// Match against the normalized name — $name already has --; $v['name'] may not.
-					$v_normalized = str_starts_with( $v['name'], '--' ) ? $v['name'] : '--' . $v['name'];
+					// $name already has --; reconstruct from v['name'] the same way.
+					$v_normalized = '--' . ltrim( $v['name'], '-' );
 					if ( $v_normalized === $name ) {
 						$val           = sanitize_text_field( $v['value'] ?? '' );
 						$insert_block .= "\n  " . $name . ': ' . $val . ';';
@@ -1368,7 +1371,9 @@ class AFF_Ajax_Handler {
 	// PRIVATE HELPERS — REQUEST, DECODING & VALIDATION
 	// -----------------------------------------------------------------------
 
-	private const CSS_VAR_PATTERN = '/^(--)?[A-Za-z_][A-Za-z0-9_-]*$/';
+	// Names are stored WITHOUT the -- prefix. Validation rejects any leading dashes;
+	// the commit path re-adds -- when writing to the kit CSS file.
+	private const CSS_VAR_PATTERN = '/^[A-Za-z_][A-Za-z0-9_-]*$/';
 
 	/**
 	 * Decode a JSON string and send an error response if decoding fails.
@@ -1401,11 +1406,39 @@ class AFF_Ajax_Handler {
 	/**
 	 * Check whether a string is a valid CSS custom property name.
 	 *
+	 * Names are stored without the -- prefix; this validates the bare identifier.
+	 *
 	 * @param string $name String to test.
-	 * @return bool True if the name matches --identifier syntax.
+	 * @return bool True if the name is a valid bare identifier (no leading dashes).
 	 */
 	private function is_valid_css_var( string $name ): bool {
 		return preg_match( self::CSS_VAR_PATTERN, $name ) === 1;
+	}
+
+	/**
+	 * Strip leading dashes from all variable names in an outbound data payload.
+	 *
+	 * AFF stores names without the -- prefix. Legacy .aff.json files written
+	 * before this convention was enforced may still contain names such as
+	 * '--button-background'. Normalise on every outbound read so the client
+	 * never sees the prefix regardless of what is physically on disk.
+	 *
+	 * @param array $data Full project data (from AFF_Data_Store::get_all_data()).
+	 * @return array Data with variable names and pending_rename_from stripped of leading dashes.
+	 */
+	private function normalize_variable_names( array $data ): array {
+		if ( ! empty( $data['variables'] ) && is_array( $data['variables'] ) ) {
+			foreach ( $data['variables'] as &$v ) {
+				if ( isset( $v['name'] ) && is_string( $v['name'] ) ) {
+					$v['name'] = ltrim( $v['name'], '-' );
+				}
+				if ( isset( $v['pending_rename_from'] ) && is_string( $v['pending_rename_from'] ) ) {
+					$v['pending_rename_from'] = ltrim( $v['pending_rename_from'], '-' );
+				}
+			}
+			unset( $v );
+		}
+		return $data;
 	}
 
 	// -----------------------------------------------------------------------
