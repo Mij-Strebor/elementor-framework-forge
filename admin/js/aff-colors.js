@@ -74,6 +74,13 @@
 	var _catSortState = {};
 
 	// -----------------------------------------------------------------------
+	// MULTI-SELECT STATE — persists across re-renders within the same view session
+	// -----------------------------------------------------------------------
+
+	var _selectedKeys  = {};   // { rowKey: true } — current selection set
+	var _lastSelectKey = null; // shift+click anchor for range selection
+
+	// -----------------------------------------------------------------------
 	// MODULE
 	// -----------------------------------------------------------------------
 
@@ -91,6 +98,28 @@
 		 * Initialize: intercept AFF.EditSpace.loadCategory for Colors subgroup.
 		 */
 		init: function () {
+			// Inject selection styles once — avoids touching the CSS file.
+			if (!document.getElementById('aff-multiselect-styles')) {
+				var styleEl = document.createElement('style');
+				styleEl.id  = 'aff-multiselect-styles';
+				styleEl.textContent = [
+					'.aff-color-row[data-selected="true"]{',
+					'  outline:2px solid var(--aff-clr-accent,#c9a84c);',
+					'  outline-offset:-2px;',
+					'  background:rgba(201,168,76,.10);',
+					'}',
+					'.aff-selection-bar{',
+					'  display:flex;align-items:center;gap:8px;',
+					'  padding:6px 10px;margin-bottom:6px;',
+					'  background:var(--aff-clr-accent,#c9a84c);',
+					'  border-radius:4px;font-size:12px;',
+					'  color:var(--aff-clr-on-accent,#1a1a1a);',
+					'}',
+					'.aff-sel-bar-count{font-weight:600;margin-right:4px;flex:1;}',
+				].join('');
+				document.head.appendChild(styleEl);
+			}
+
 			var _original = AFF.EditSpace.loadCategory.bind(AFF.EditSpace);
 
 			AFF.EditSpace.loadCategory = function (selection) {
@@ -141,10 +170,18 @@
 			} else {
 				_focusedCategoryId = null;
 			}
-			// When navigating via left panel, reset manual collapse state
-			// so the focused category always expands (overrides any prior user toggle).
+			// When navigating via left panel, set collapse state so that only the
+			// focused category is expanded and all others are collapsed. We store
+			// this explicitly in _collapsedCategoryIds so that subsequent re-renders
+			// (e.g. after add/rename category) preserve the visual state and do not
+			// expand everything because _focusedCategoryId was cleared by _rerenderView.
 			if (_focusedCategoryId) {
-				_collapsedCategoryIds = {};
+				var _newCollapsed = {};
+				var _allCats = (AFF.state.config && AFF.state.config.categories) || [];
+				_allCats.forEach(function (c) {
+					_newCollapsed[c.id] = (c.id !== _focusedCategoryId);
+				});
+				_collapsedCategoryIds = _newCollapsed;
 			}
 
 			if (workspace) {
@@ -238,6 +275,20 @@
 				+ '</button>'
 				+ '</div>'
 				+ '</div>'; // .aff-colors-filter-bar
+
+			// ------- SELECTION BAR -------
+			// Visible only when ≥1 variable is selected. Shown/hidden live by
+			// _updateSelectionUI; also rebuilt here so re-renders preserve state.
+			var _selCount = Object.keys(_selectedKeys).length;
+			html += '<div class="aff-selection-bar" id="aff-selection-bar"'
+				+ (_selCount === 0 ? ' style="display:none"' : '')
+				+ '>'
+				+ '<span class="aff-sel-bar-count">' + _selCount + ' selected</span>'
+				+ '<button class="aff-btn aff-btn--xs" id="aff-sel-move-btn">Move to\u2026</button>'
+				+ '<button class="aff-btn aff-btn--xs aff-btn--danger" id="aff-sel-delete-btn">Delete selected</button>'
+				+ '<button class="aff-icon-btn aff-sel-clear-btn" id="aff-sel-clear-btn"'
+				+   ' title="Clear selection" aria-label="Clear selection">\u2715</button>'
+				+ '</div>';
 
 			// ------- CATEGORY BLOCKS -------
 			if (categories.length === 0) {
@@ -446,6 +497,7 @@
 
 			var html = '<div class="aff-color-row"'
 				+ (isExpanded ? ' data-expanded="true"' : '')
+				+ (_selectedKeys[rowKey] ? ' data-selected="true"' : '')
 				+ ' data-var-id="' + AFF.Utils.escHtml(rowKey) + '">'
 
 				// Drag handle (col 1: 24px).
@@ -737,6 +789,13 @@
 			self._initDrag(container);
 			self._bindCategoryAndRowActions(container);
 			self._bindInlineEditing(container);
+
+			// Escape clears the multi-select without re-rendering.
+			document.addEventListener('keydown', function (e) {
+				if (e.key === 'Escape' && Object.keys(_selectedKeys).length > 0) {
+					self._clearSelection(container);
+				}
+			});
 		},
 
 		_bindFilterBar: function (container) {
@@ -779,6 +838,38 @@
 			container.addEventListener('click', function (e) {
 				// Bail if the Colors view is not currently active in this container.
 				if (!container.querySelector('.aff-colors-view')) { return; }
+
+				// Selection bar actions.
+				if (e.target.id === 'aff-sel-move-btn')   { self._moveSelectedToCategory(container); return; }
+				if (e.target.id === 'aff-sel-delete-btn') { self._deleteSelected(container); return; }
+				if (e.target.id === 'aff-sel-clear-btn')  { self._clearSelection(container); return; }
+
+				// Plain row click (no modifiers): update the Shift+click anchor so the
+				// next Shift+click always has a valid range start point.
+				if (!e.ctrlKey && !e.metaKey && !e.shiftKey) {
+					var anchorRow = e.target.closest('.aff-color-row');
+					if (anchorRow && !e.target.closest('[data-action]')) {
+						var anchorKey = anchorRow.getAttribute('data-var-id');
+						if (anchorKey) { _lastSelectKey = anchorKey; }
+					}
+				}
+
+				// Multi-select: Ctrl/Meta+click toggles; Shift+click extends range.
+				// Skip when the click lands on an action button (drag, expand, picker,
+				// delete) so those controls remain functional with modifiers held.
+				if (e.ctrlKey || e.metaKey || e.shiftKey) {
+					var msRow    = e.target.closest('.aff-color-row');
+					var msAction = e.target.closest('[data-action]');
+					if (msRow && !msAction) {
+						var msKey = msRow.getAttribute('data-var-id');
+						if (msKey) {
+							e.preventDefault();
+							self._handleRowSelect(msKey, e.shiftKey, e.ctrlKey || e.metaKey, container);
+							return;
+						}
+					}
+				}
+
 				// Route sort buttons first (more specific target).
 				var sortBtn = e.target.closest('.aff-col-sort-btn');
 				if (sortBtn) {
@@ -905,11 +996,71 @@
 				if (varId !== null) { self._saveVarName(varId, nameInput); }
 			});
 
-			// Name and value inputs: blur on Enter.
+			// Name and value inputs: Enter commits; Tab moves between fields.
 			container.addEventListener('keydown', function (e) {
-				if (e.key !== 'Enter') { return; }
-				var input = e.target.closest('.aff-color-name-input, .aff-color-value-input');
-				if (input) { input.blur(); }
+				// Enter on a readonly name input — activate it for editing.
+				if (e.key === 'Enter') {
+					var nameInput = e.target.closest('.aff-color-name-input');
+					if (nameInput && nameInput.hasAttribute('readonly')) {
+						e.preventDefault();
+						nameInput.removeAttribute('readonly');
+						setTimeout(function () { nameInput.focus(); nameInput.select(); }, 0);
+						return;
+					}
+				}
+
+				// Enter on an active name/value input — commit (blur).
+				if (e.key === 'Enter') {
+					var input = e.target.closest('.aff-color-name-input, .aff-color-value-input');
+					if (input) { e.preventDefault(); input.blur(); }
+					return;
+				}
+
+				// Tab navigation: move between name ↔ value within a row, and
+				// value → next-row name (Tab) or name → prev-row value (Shift+Tab).
+				if (e.key === 'Tab') {
+					var tabInput = e.target.closest('.aff-color-name-input, .aff-color-value-input');
+					if (!tabInput) { return; }
+					e.preventDefault();
+
+					var row     = tabInput.closest('.aff-color-row');
+					var isName  = tabInput.classList.contains('aff-color-name-input');
+					var reverse = e.shiftKey;
+
+					function activateNameInput(ni) {
+						ni.removeAttribute('readonly');
+						setTimeout(function () { ni.focus(); ni.select(); }, 0);
+					}
+
+					if (isName && !reverse) {
+						// Name → Value (same row).
+						var val = row ? row.querySelector('.aff-color-value-input') : null;
+						if (val) { tabInput.blur(); setTimeout(function () { val.focus(); val.select(); }, 0); }
+
+					} else if (!isName && !reverse) {
+						// Value → Name of next visible row.
+						tabInput.blur();
+						var allRows  = Array.prototype.slice.call(container.querySelectorAll('.aff-color-row'));
+						var rowIdx   = allRows.indexOf(row);
+						var nextRow  = (rowIdx >= 0 && rowIdx + 1 < allRows.length) ? allRows[rowIdx + 1] : allRows[0];
+						var nextName = nextRow ? nextRow.querySelector('.aff-color-name-input') : null;
+						if (nextName) { setTimeout(function () { activateNameInput(nextName); }, 0); }
+
+					} else if (!isName && reverse) {
+						// Shift+Tab on Value → Name (same row).
+						var prevName = row ? row.querySelector('.aff-color-name-input') : null;
+						if (prevName) { tabInput.blur(); setTimeout(function () { activateNameInput(prevName); }, 0); }
+
+					} else if (isName && reverse) {
+						// Shift+Tab on Name → Value of previous visible row.
+						tabInput.blur();
+						var allRows2  = Array.prototype.slice.call(container.querySelectorAll('.aff-color-row'));
+						var rowIdx2   = allRows2.indexOf(row);
+						var prevRow   = (rowIdx2 > 0) ? allRows2[rowIdx2 - 1] : allRows2[allRows2.length - 1];
+						var prevVal   = prevRow ? prevRow.querySelector('.aff-color-value-input') : null;
+						if (prevVal) { setTimeout(function () { prevVal.focus(); prevVal.select(); }, 0); }
+					}
+				}
 			});
 
 			// Value input: validate, normalize, and save on change.
@@ -991,8 +1142,6 @@
 			block.setAttribute('data-collapsed', 'false');
 			_collapsedCategoryIds[catId] = false;
 
-			// Scroll the block into view.
-			block.scrollIntoView({ behavior: 'smooth', block: 'start' });
 		},
 
 		// -----------------------------------------------------------------------
@@ -1715,7 +1864,24 @@
 			}).then(function (res) {
 				if (res.success && res.data) {
 					if (!AFF.state.config) { AFF.state.config = {}; }
-					AFF.state.config.categories = res.data.categories;
+					// Update only the renamed category in memory — never replace the
+					// whole array from the server response. A wholesale replacement was
+					// causing all other categories to disappear when the server returned
+					// a partial or differently-ordered list.
+					var cats = AFF.state.config.categories || [];
+					for (var _ci = 0; _ci < cats.length; _ci++) {
+						if (cats[_ci].id === catId) { cats[_ci].name = newName; break; }
+					}
+					// Sync the cached category name on every variable in this category.
+					// Variables may be matched by name-fallback (_getVarsForCategory
+					// checks v.category === cat.name), so if the name changes without
+					// updating the variable records the variables become invisible.
+					var allVars = AFF.state.variables || [];
+					for (var _vi = 0; _vi < allVars.length; _vi++) {
+						if (allVars[_vi].category_id === catId || allVars[_vi].category === oldName) {
+							allVars[_vi].category = newName;
+						}
+					}
 					input.setAttribute('data-original', newName);
 					if (AFF.App) { AFF.App.setDirty(true); }
 					self._rerenderView();
@@ -1933,14 +2099,33 @@
 				_needsSave = true;
 			}
 
+			// Refresh the left panel now that categories are in memory.
+			// This covers the initial-load case where _ensureUncategorized seeds
+			// categories that were not yet reflected in the left nav tree.
+			if (_needsSave && AFF.PanelLeft && AFF.PanelLeft.refresh) {
+				AFF.PanelLeft.refresh();
+			}
+
 			// Persist seeded/added categories to the file so that subsequent
-			// eff_save_category calls load a file that already has the full list.
+			// aff_save_category calls load a file that already has the full list.
+			// IMPORTANT: update AFF.state.currentFile from the response so all
+			// following AJAX calls (add category, save color, etc.) use the new
+			// backup file. Without this, those calls modify the OLD file and the
+			// seeded categories end up split across two different backup files —
+			// causing categories to vanish when the newer backup is loaded.
 			if (_needsSave && AFF.state.currentFile) {
 				var d = { version: '1.0', config: AFF.state.config,
-						  variables: AFF.state.variables || [] };
+						  variables:  AFF.state.variables  || [],
+						  metadata:   AFF.state.metadata   || {},
+						  classes:    AFF.state.classes    || [],
+						  components: AFF.state.components || [] };
 				AFF.App.ajax('aff_save_file', {
 					project_name: AFF.state.projectName || 'unnamed-project',
 					data:         JSON.stringify(d),
+				}).then(function (res) {
+					if (res.success && res.data && res.data.filename) {
+						AFF.state.currentFile = res.data.filename;
+					}
 				}).catch(function () { console.warn('[AFF] AJAX error: save file'); });
 			}
 		},
@@ -2008,6 +2193,24 @@
 			function doDelete(deleteChildren) {
 				AFF.Modal.close();
 				document.removeEventListener('click', handleDelClick);
+
+				// Variables imported from Elementor (id:'') exist only in memory —
+				// no server record to delete.  Remove them from state directly.
+				if (!variable.id) {
+					var toRemove = { };
+					toRemove[varId] = true;
+					if (deleteChildren) {
+						children.forEach(function (c) { toRemove[self._rowKey(c)] = true; });
+					}
+					AFF.state.variables = AFF.state.variables.filter(function (v) {
+						return !toRemove[self._rowKey(v)];
+					});
+					AFF.App.setDirty(true);
+					AFF.App.refreshCounts();
+					self._rerenderView();
+					return;
+				}
+
 				AFF.App.ajax('aff_delete_color', {
 					filename:        AFF.state.currentFile,
 					variable_id:     varId,
@@ -2322,6 +2525,21 @@
 	_initDrag: function (container) {
 			var self = this;
 
+			// Delegate all drag infrastructure to the shared AFF.VarDrag module.
+			// Colors supplies its own onDrop callback (_dropVariable) so category
+			// lookup uses config.categories. The shared module handles ghost, indicator,
+			// auto-expand of collapsed blocks, and the empty-category sentinel.
+			if (AFF.VarDrag) {
+				AFF.VarDrag.init(container, {
+					viewSelector: '.aff-colors-view',
+					onDrop: function (draggedId, targetId, insertBefore, targetCatBlock) {
+						self._dropVariable(draggedId, targetId, insertBefore, targetCatBlock);
+					},
+				});
+				return;
+			}
+
+			// ---- Fallback: legacy inline implementation (kept for safety) ----
 			container.addEventListener('mousedown', function (e) {
 				// Bail if the Colors view is not currently active in this container.
 				if (!container.querySelector('.aff-colors-view')) { return; }
@@ -2382,17 +2600,21 @@
 				_drag.ghost.style.top = (parseFloat(_drag.ghost.style.top) + dy) + 'px';
 				_drag.startY = e.clientY;
 
-				// Auto-scroll when near viewport edges.
-				var scrollZone = 80;
-				if (e.clientY < scrollZone) {
-					clearInterval(_drag.scrollTimer);
-					_drag.scrollTimer = setInterval(function () { window.scrollBy(0, -8); }, 20);
-				} else if (e.clientY > window.innerHeight - scrollZone) {
-					clearInterval(_drag.scrollTimer);
-					_drag.scrollTimer = setInterval(function () { window.scrollBy(0, 8); }, 20);
-				} else {
-					clearInterval(_drag.scrollTimer);
-					_drag.scrollTimer = null;
+				// Auto-scroll the edit-space panel when near its top/bottom edge.
+				var _editSpaceLeg = document.getElementById('aff-edit-space');
+				if (_editSpaceLeg) {
+					var _rectLeg = _editSpaceLeg.getBoundingClientRect();
+					var _szLeg   = 60;
+					if (e.clientY < _rectLeg.top + _szLeg) {
+						clearInterval(_drag.scrollTimer);
+						_drag.scrollTimer = setInterval(function () { _editSpaceLeg.scrollTop -= 8; }, 20);
+					} else if (e.clientY > _rectLeg.bottom - _szLeg) {
+						clearInterval(_drag.scrollTimer);
+						_drag.scrollTimer = setInterval(function () { _editSpaceLeg.scrollTop += 8; }, 20);
+					} else {
+						clearInterval(_drag.scrollTimer);
+						_drag.scrollTimer = null;
+					}
 				}
 
 				// Find the row we're hovering over.
@@ -2873,6 +3095,241 @@
 					toggleBtn.innerHTML = this._collapseAllSVG();
 				}
 			}
+		},
+
+		// -----------------------------------------------------------------------
+		// MULTI-SELECT OPERATIONS
+		// -----------------------------------------------------------------------
+
+		/**
+		 * Handle a Ctrl/Shift/plain-click on a variable row for multi-select.
+		 *
+		 * @param {string}      rowKey    The clicked row's key (_rowKey value).
+		 * @param {boolean}     shiftKey  Extend range from last anchor.
+		 * @param {boolean}     ctrlKey   Toggle individual item.
+		 * @param {HTMLElement} container The #aff-edit-content element.
+		 */
+		_handleRowSelect: function (rowKey, shiftKey, ctrlKey, container) {
+			if (ctrlKey) {
+				// Toggle this row; update anchor only on additions.
+				if (_selectedKeys[rowKey]) {
+					delete _selectedKeys[rowKey];
+				} else {
+					_selectedKeys[rowKey] = true;
+					_lastSelectKey = rowKey;
+				}
+			} else if (shiftKey && _lastSelectKey) {
+				// Extend range between anchor and target using DOM order.
+				var allRows = container.querySelectorAll('.aff-color-row');
+				var keys = [];
+				for (var ri = 0; ri < allRows.length; ri++) {
+					keys.push(allRows[ri].getAttribute('data-var-id'));
+				}
+				var fromIdx = keys.indexOf(_lastSelectKey);
+				var toIdx   = keys.indexOf(rowKey);
+				if (fromIdx !== -1 && toIdx !== -1) {
+					var lo = Math.min(fromIdx, toIdx);
+					var hi = Math.max(fromIdx, toIdx);
+					for (var ki = lo; ki <= hi; ki++) {
+						if (keys[ki]) { _selectedKeys[keys[ki]] = true; }
+					}
+				}
+				// Anchor stays fixed on chained shift-clicks.
+			} else {
+				// Plain modifier-less click via _handleRowSelect path: select only this one.
+				_selectedKeys = {};
+				_selectedKeys[rowKey] = true;
+				_lastSelectKey = rowKey;
+			}
+			this._updateSelectionUI(container);
+		},
+
+		/**
+		 * Sync row highlight attributes and selection bar visibility/count to
+		 * the current _selectedKeys set without re-rendering the full view.
+		 *
+		 * @param {HTMLElement} container
+		 */
+		_updateSelectionUI: function (container) {
+			var allRows = container.querySelectorAll('.aff-color-row');
+			for (var i = 0; i < allRows.length; i++) {
+				var rk = allRows[i].getAttribute('data-var-id');
+				allRows[i].setAttribute('data-selected', _selectedKeys[rk] ? 'true' : 'false');
+			}
+			var count = Object.keys(_selectedKeys).length;
+			var bar   = container.querySelector('#aff-selection-bar');
+			if (bar) {
+				bar.style.display = count > 0 ? '' : 'none';
+				var countEl = bar.querySelector('.aff-sel-bar-count');
+				if (countEl) { countEl.textContent = count + ' selected'; }
+			}
+		},
+
+		/**
+		 * Clear all selections and hide the selection bar.
+		 *
+		 * @param {HTMLElement} container
+		 */
+		_clearSelection: function (container) {
+			_selectedKeys  = {};
+			_lastSelectKey = null;
+			this._updateSelectionUI(container);
+		},
+
+		/**
+		 * Show a category picker and move all selected variables to the chosen category.
+		 *
+		 * Updates AFF state then persists via aff_save_file (one round-trip for all
+		 * moved vars — avoids per-variable aff_save_color calls).
+		 *
+		 * @param {HTMLElement} container
+		 */
+		_moveSelectedToCategory: function (container) {
+			var self  = this;
+			var count = Object.keys(_selectedKeys).length;
+			if (count === 0) { return; }
+
+			var cats = (AFF.state.config && AFF.state.config.categories)
+				? AFF.state.config.categories.slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); })
+				: self._getDefaultCategories();
+			if (cats.length === 0) { return; }
+
+			var opts = cats.map(function (c) {
+				return '<option value="' + AFF.Utils.escHtml(c.id) + '">' + AFF.Utils.escHtml(c.name) + '</option>';
+			}).join('');
+
+			var handler;
+			AFF.Modal.open({
+				title: 'Move ' + count + ' variable' + (count !== 1 ? 's' : '') + ' to category',
+				body:  '<select id="aff-sel-cat-pick" style="width:100%;margin-top:4px;padding:6px 8px;font-size:13px;border-radius:4px;border:1px solid var(--aff-clr-border)">'
+					+ opts + '</select>',
+				footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
+					+ '<button class="aff-btn aff-btn--secondary" id="aff-sel-move-cancel">Cancel</button>'
+					+ '<button class="aff-btn" id="aff-sel-move-confirm">Move</button>'
+					+ '</div>',
+				onClose: function () { document.removeEventListener('click', handler); },
+			});
+
+			handler = function (e) {
+				if (e.target.id === 'aff-sel-move-cancel') {
+					AFF.Modal.close();
+					document.removeEventListener('click', handler);
+				} else if (e.target.id === 'aff-sel-move-confirm') {
+					var sel    = document.getElementById('aff-sel-cat-pick');
+					var catId  = sel ? sel.value : '';
+					AFF.Modal.close();
+					document.removeEventListener('click', handler);
+					if (!catId) { return; }
+
+					// Resolve category name from ID.
+					var catName = '';
+					for (var ci = 0; ci < cats.length; ci++) {
+						if (cats[ci].id === catId) { catName = cats[ci].name; break; }
+					}
+
+					// Update category on every selected variable in state.
+					for (var vi = 0; vi < AFF.state.variables.length; vi++) {
+						var v  = AFF.state.variables[vi];
+						var rk = self._rowKey(v);
+						if (_selectedKeys[rk]) {
+							AFF.state.variables[vi].category    = catName;
+							AFF.state.variables[vi].category_id = catId;
+							AFF.state.variables[vi].status      = 'modified';
+						}
+					}
+
+					_selectedKeys  = {};
+					_lastSelectKey = null;
+
+					// Persist all moves in one save call.
+					if (AFF.state.currentFile && AFF.state.projectName) {
+						AFF.App.ajax('aff_save_file', {
+							project_name: AFF.state.projectName,
+							data: JSON.stringify({
+								version:    '1.0',
+								config:     AFF.state.config    || {},
+								variables:  AFF.state.variables || [],
+								classes:    AFF.state.classes    || [],
+								components: AFF.state.components || [],
+								metadata:   AFF.state.metadata   || {},
+							}),
+						}).then(function (res) {
+							if (res.success && res.data && res.data.variables) {
+								AFF.state.variables = res.data.variables;
+							}
+							if (AFF.App) { AFF.App.setDirty(true); AFF.App.refreshCounts(); }
+							self._rerenderView();
+						}).catch(function () {
+							if (AFF.App) { AFF.App.setDirty(true); }
+							self._rerenderView();
+						});
+					} else {
+						if (AFF.App) { AFF.App.setDirty(true); }
+						self._rerenderView();
+					}
+				}
+			};
+			document.addEventListener('click', handler);
+		},
+
+		/**
+		 * Confirm and delete all currently selected variables.
+		 *
+		 * Unsaved variables (id:'') are removed from memory only.
+		 * Saved variables are also deleted from the server via aff_delete_color.
+		 *
+		 * @param {HTMLElement} container
+		 */
+		_deleteSelected: function (container) {
+			var self  = this;
+			var count = Object.keys(_selectedKeys).length;
+			if (count === 0) { return; }
+
+			var handler;
+			AFF.Modal.open({
+				title: 'Delete ' + count + ' variable' + (count !== 1 ? 's' : '') + '?',
+				body:  '<p>This cannot be undone.</p>',
+				footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
+					+ '<button class="aff-btn aff-btn--secondary" id="aff-msdel-cancel">Cancel</button>'
+					+ '<button class="aff-btn aff-btn--danger" id="aff-msdel-confirm">Delete all</button>'
+					+ '</div>',
+				onClose: function () { document.removeEventListener('click', handler); },
+			});
+
+			handler = function (e) {
+				if (e.target.id === 'aff-msdel-cancel') {
+					AFF.Modal.close();
+					document.removeEventListener('click', handler);
+				} else if (e.target.id === 'aff-msdel-confirm') {
+					AFF.Modal.close();
+					document.removeEventListener('click', handler);
+
+					// Remove selected vars from state; collect saved IDs for server delete.
+					var savedIds = [];
+					AFF.state.variables = AFF.state.variables.filter(function (v) {
+						var rk = self._rowKey(v);
+						if (!_selectedKeys[rk]) { return true; }  // keep
+						if (v.id) { savedIds.push(v.id); }         // mark for server delete
+						return false;                               // remove from state
+					});
+
+					_selectedKeys  = {};
+					_lastSelectKey = null;
+
+					// Fire server deletes for saved vars (fire-and-forget; state already cleaned).
+					savedIds.forEach(function (vid) {
+						AFF.App.ajax('aff_delete_color', {
+							filename:        AFF.state.currentFile,
+							variable_id:     vid,
+							delete_children: '0',
+						});
+					});
+
+					if (AFF.App) { AFF.App.setDirty(true); AFF.App.refreshCounts(); }
+					self._rerenderView();
+				}
+			};
+			document.addEventListener('click', handler);
 		},
 
 		// -----------------------------------------------------------------------

@@ -552,6 +552,141 @@ class AFF_Data_Store {
 		return null;
 	}
 
+	// -----------------------------------------------------------------------
+	// DIAGNOSTICS & DEDUPLICATION
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Scan for duplicate variables (by name) and duplicate categories (by name
+	 * within each subgroup). Returns a report; makes no changes.
+	 *
+	 * @return array{
+	 *   duplicate_variable_names: string[],
+	 *   duplicate_categories:     array{ subgroup: string, name: string }[],
+	 *   variable_count:           int,
+	 *   category_counts:          array{ Colors: int, Fonts: int, Numbers: int },
+	 * }
+	 */
+	public function get_diagnostics(): array {
+		$dup_var_names = array();
+		$seen_names    = array();
+
+		foreach ( $this->data['variables'] as $var ) {
+			$lc = strtolower( $var['name'] ?? '' );
+			if ( '' === $lc ) { continue; }
+			if ( isset( $seen_names[ $lc ] ) ) {
+				$dup_var_names[] = $var['name'];
+			} else {
+				$seen_names[ $lc ] = true;
+			}
+		}
+
+		$dup_cats   = array();
+		$cat_counts = array();
+		foreach ( array( 'Colors', 'Fonts', 'Numbers' ) as $sg ) {
+			$cats              = $this->get_categories_for_subgroup( $sg );
+			$cat_counts[ $sg ] = count( $cats );
+			$seen_cat          = array();
+			foreach ( $cats as $cat ) {
+				$lc = strtolower( $cat['name'] ?? '' );
+				if ( '' === $lc ) { continue; }
+				if ( isset( $seen_cat[ $lc ] ) ) {
+					$dup_cats[] = array( 'subgroup' => $sg, 'name' => $cat['name'] );
+				} else {
+					$seen_cat[ $lc ] = true;
+				}
+			}
+		}
+
+		return array(
+			'duplicate_variable_names' => array_unique( $dup_var_names ),
+			'duplicate_categories'     => $dup_cats,
+			'variable_count'           => count( $this->data['variables'] ),
+			'category_counts'          => $cat_counts,
+		);
+	}
+
+	/**
+	 * Remove duplicate variables (keep first occurrence by array order) and
+	 * duplicate categories (keep first occurrence, reassign affected variables).
+	 *
+	 * Marks the store dirty if anything was removed. Does NOT save to disk —
+	 * caller must call save_to_file() after.
+	 *
+	 * @return array{ removed_variables: int, removed_categories: int }
+	 */
+	public function deduplicate(): array {
+		$removed_vars = 0;
+		$removed_cats = 0;
+
+		// Variables: keep first occurrence of each name (case-insensitive).
+		$seen     = array();
+		$new_vars = array();
+		foreach ( $this->data['variables'] as $var ) {
+			$lc = strtolower( $var['name'] ?? '' );
+			if ( '' === $lc || ! isset( $seen[ $lc ] ) ) {
+				$seen[ $lc ] = true;
+				$new_vars[]  = $var;
+			} else {
+				$removed_vars++;
+			}
+		}
+		$this->data['variables'] = array_values( $new_vars );
+
+		// Categories: per subgroup, keep first occurrence of each name.
+		foreach ( array( 'Colors', 'Fonts', 'Numbers' ) as $sg ) {
+			$key  = $this->subgroup_to_cat_key( $sg );
+			$cats = $this->data['config'][ $key ] ?? array();
+
+			$seen_cat = array();
+			$kept     = array();
+			$remap    = array(); // removed_cat_id => kept_cat_id
+
+			foreach ( $cats as $cat ) {
+				$lc = strtolower( $cat['name'] ?? '' );
+				if ( ! isset( $seen_cat[ $lc ] ) ) {
+					$seen_cat[ $lc ] = $cat['id'];
+					$kept[]          = $cat;
+				} else {
+					$remap[ $cat['id'] ] = $seen_cat[ $lc ];
+					$removed_cats++;
+				}
+			}
+
+			$this->data['config'][ $key ] = array_values( $kept );
+
+			// Reassign variables whose category_id pointed to a removed category.
+			if ( ! empty( $remap ) ) {
+				$id_to_name = array();
+				foreach ( $kept as $kcat ) {
+					$id_to_name[ $kcat['id'] ] = $kcat['name'];
+				}
+
+				foreach ( $this->data['variables'] as &$var ) {
+					if ( ( $var['subgroup'] ?? '' ) !== $sg ) { continue; }
+					$cid = $var['category_id'] ?? '';
+					if ( isset( $remap[ $cid ] ) ) {
+						$new_id             = $remap[ $cid ];
+						$var['category_id'] = $new_id;
+						$var['category']    = $id_to_name[ $new_id ] ?? $var['category'];
+					}
+				}
+				unset( $var );
+			}
+		}
+
+		if ( $removed_vars > 0 || $removed_cats > 0 ) {
+			$this->dirty = true;
+		}
+
+		return array(
+			'removed_variables'  => $removed_vars,
+			'removed_categories' => $removed_cats,
+		);
+	}
+
+	// -----------------------------------------------------------------------
+
 	/**
 	 * Upgrade legacy data structures to the current schema in-place.
 	 *

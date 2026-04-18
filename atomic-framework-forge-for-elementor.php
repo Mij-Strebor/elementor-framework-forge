@@ -29,6 +29,12 @@ define( 'AFF_SLUG',           'atomic-framework-forge' );
 define( 'AFF_NONCE_ACTION',   'aff_admin_nonce' );
 define( 'AFF_USER_META_THEME', 'aff_theme_preference' );
 
+// Elementor versions this build was developed and tested against.
+// Update these constants whenever AFF is re-validated on a new Elementor release.
+// A mismatch at runtime triggers a pre-commit safety warning to the user.
+define( 'AFF_DEV_ELEMENTOR_VERSION',     '4.0.1' );
+define( 'AFF_DEV_ELEMENTOR_PRO_VERSION', '4.0.1' );
+
 /**
  * Check that required plugins (Elementor + Elementor Pro) are active.
  *

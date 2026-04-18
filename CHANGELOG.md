@@ -328,6 +328,7 @@ Initial Alpha release.
 | **0.3.5-beta** | Load Project modal improvements; cross-module event fix; drag fixes; Write to Elementor kit CSS auto-regeneration; duplicate variable name prevention; removed forced `--` prefix |
 | **0.4.0-beta** | Numbers editing overhaul (pure storage, autofill suffix, unitless type, fₓ display). Nav variable counts. Double-chevron collapse buttons. Drag/drop and scroll bug fixes. QUICK-START.md corrections. |
 | **0.4.1-beta** | Placeholder sign background transparency fix. |
+| **0.5.x-beta** | Super Categories — two-level category nesting within each variable set (Colors, Fonts, Numbers). Top-level category holds sub-categories only; sub-categories hold variables only. Flat Elementor commit unchanged. Motivated by large Number sets (382-variable website design systems). |
 | **1.0.0** | Classes management; Components registry |
 | **2.0.0** | Components registry; Elementor Kit Manager API write-back; Bulk variable rename |
 | **Future** | Standalone Windows / Mac desktop application |

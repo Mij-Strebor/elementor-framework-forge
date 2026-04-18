@@ -48,6 +48,9 @@ class AFF_Ajax_Handler {
 			'aff_commit_to_elementor',
 			// Elementor V3 Import
 			'aff_sync_v3_global_colors',
+			// Diagnostics & cleanup
+			'aff_get_diagnostics',
+			'aff_deduplicate',
 		);
 
 		foreach ( $actions as $action ) {
@@ -1835,5 +1838,60 @@ class AFF_Ajax_Handler {
 			'imported' => $imported,
 			'count'    => count( $imported ),
 		) );
+	}
+
+	// -----------------------------------------------------------------------
+	// ENDPOINT: Diagnostics
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Return a duplicate report for the current project file. No data is changed.
+	 */
+	public function ajax_aff_get_diagnostics(): void {
+		$this->verify_request();
+
+		$filename = $this->get_filename_param();
+		$store    = new AFF_Data_Store();
+
+		if ( ! $store->load_from_file( AFF_Data_Store::get_wp_storage_dir() . $filename ) ) {
+			wp_send_json_error( array( 'message' => __( 'Could not load project file.', 'atomic-framework-forge-for-elementor' ) ) );
+			return;
+		}
+
+		wp_send_json_success( $store->get_diagnostics() );
+	}
+
+	// -----------------------------------------------------------------------
+	// ENDPOINT: Deduplicate
+	// -----------------------------------------------------------------------
+
+	/**
+	 * Remove duplicate variables and categories from the current project file,
+	 * save the result, and return a summary of what was removed.
+	 */
+	public function ajax_aff_deduplicate(): void {
+		$this->verify_request();
+
+		$filename = $this->get_filename_param();
+		$path     = AFF_Data_Store::get_wp_storage_dir() . $filename;
+		$store    = new AFF_Data_Store();
+
+		if ( ! $store->load_from_file( $path ) ) {
+			wp_send_json_error( array( 'message' => __( 'Could not load project file.', 'atomic-framework-forge-for-elementor' ) ) );
+			return;
+		}
+
+		$result = $store->deduplicate();
+
+		if ( $result['removed_variables'] > 0 || $result['removed_categories'] > 0 ) {
+			if ( ! $store->save_to_file( $path ) ) {
+				wp_send_json_error( array( 'message' => __( 'Deduplication complete but file save failed.', 'atomic-framework-forge-for-elementor' ) ) );
+				return;
+			}
+		}
+
+		wp_send_json_success( array_merge( $result, array(
+			'variables' => $store->get_variables(),
+		) ) );
 	}
 }

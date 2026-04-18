@@ -66,6 +66,7 @@
 				active: false, varId: null, ghost: null,
 				indicator: null, startY: 0, scrollTimer: null,
 				_dropTargetId: null, _dropAbove: null,
+				_expandedCatBlock: null,
 			};
 
 			AFF.Variables._sets[cfg.setName] = inst;
@@ -718,7 +719,6 @@
 			if (!block) { return; }
 			block.setAttribute('data-collapsed', 'false');
 			this._collapsedIds[catId] = false;
-			block.scrollIntoView({ behavior: 'smooth', block: 'start' });
 		},
 
 		// -------------------------------------------------------------------
@@ -1039,7 +1039,6 @@
 								nameInp.removeAttribute('readonly');
 								nameInp.focus({ preventScroll: true });
 								nameInp.select();
-								newRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 							}
 						}
 					}
@@ -1118,6 +1117,7 @@
 					+ '<button class="aff-btn aff-btn--secondary" id="aff-modal-cat-cancel">Cancel</button>'
 					+ '<button class="aff-btn" id="aff-modal-cat-ok">Add Category</button>'
 					+ '</div>',
+				onClose: function () { document.removeEventListener('click', handleClick); },
 			});
 			setTimeout(function () {
 				var inp = document.getElementById('aff-modal-cat-name');
@@ -1142,25 +1142,27 @@
 					}).then(function (res) {
 						if (res.success && res.data) {
 							if (!AFF.state.config) { AFF.state.config = {}; }
-							// Merge: append new category to local state instead of
-							// replacing — preserves globalConfig-sourced categories
-							// that aren't written to the file yet.
-							var _newCat = null;
-							var _serverCats = res.data.categories || [];
-							for (var _ki = 0; _ki < _serverCats.length; _ki++) {
-								if (_serverCats[_ki].id === res.data.id) { _newCat = _serverCats[_ki]; break; }
+							// Use in-memory list as authoritative base; only append the
+							// newly created category from the server response. This
+							// preserves any unsaved reorder/drag state in local memory.
+							var existing = (AFF.state.config[self._cfg.catKey] || []).slice();
+							var newId    = res.data.id;
+							var alreadyPresent = existing.some(function (c) { return c.id === newId; });
+							if (!alreadyPresent) {
+								var _serverCats = res.data.categories || [];
+								for (var _ki = 0; _ki < _serverCats.length; _ki++) {
+									if (_serverCats[_ki].id === newId) {
+										existing.push(_serverCats[_ki]);
+										break;
+									}
+								}
 							}
-							if (_newCat) {
-								if (!Array.isArray(AFF.state.config[self._cfg.catKey])) { AFF.state.config[self._cfg.catKey] = []; }
-								AFF.state.config[self._cfg.catKey].push(_newCat);
-							} else {
-								AFF.state.config[self._cfg.catKey] = _serverCats;
-							}
+							AFF.state.config[self._cfg.catKey] = existing;
 							if (AFF.App) { AFF.App.setDirty(true); }
 							self._rerenderView();
 							if (AFF.PanelLeft && AFF.PanelLeft.refresh) { AFF.PanelLeft.refresh(); }
 						}
-					}).catch(function () {});
+					}).catch(function () { console.warn('[AFF] AJAX error: add category (' + self._cfg.setName + ')'); });
 				}
 			}
 			document.addEventListener('click', handleClick);
@@ -1194,7 +1196,7 @@
 			}).then(function (res) {
 				if (res.success && res.data) {
 					if (!AFF.state.config) { AFF.state.config = {}; }
-					// Merge: update the renamed category in local state by ID.
+					// Update only the renamed category in memory by ID.
 					var _localCats = AFF.state.config[self._cfg.catKey];
 					if (Array.isArray(_localCats)) {
 						for (var _ri = 0; _ri < _localCats.length; _ri++) {
@@ -1202,6 +1204,15 @@
 						}
 					} else {
 						AFF.state.config[self._cfg.catKey] = res.data.categories || [];
+					}
+					// Sync the cached category name on every variable in this category.
+					// _getVarsForCategory matches by v.category === cat.name as a
+					// fallback; without this sync a rename makes those variables invisible.
+					var _allVars = AFF.state.variables || [];
+					for (var _vi = 0; _vi < _allVars.length; _vi++) {
+						if (_allVars[_vi].category_id === catId || _allVars[_vi].category === oldName) {
+							_allVars[_vi].category = newName;
+						}
 					}
 					input.setAttribute('data-original', newName);
 					if (AFF.App) { AFF.App.setDirty(true); }
@@ -1692,6 +1703,7 @@
 			AFF.state.config[catKey] = cats;
 
 			AFF.App.ajax('aff_reorder_categories', {
+				filename:    AFF.state.currentFile,
 				subgroup:    self._cfg.setName,
 				ordered_ids: JSON.stringify(ordered_ids),
 			}).then(function (res) {
@@ -1714,155 +1726,25 @@
 		_initDrag: function (container) {
 			var self     = this;
 			var setLower = self._cfg.setName.toLowerCase();
-			var d        = self._drag;
 
-			container.addEventListener('mousedown', function (e) {
-				if (!container.querySelector('.aff-' + setLower + '-view')) { return; }
-				var handle = e.target.closest('.aff-drag-handle');
-				if (!handle) { return; }
-				e.preventDefault();
-
-				var row = handle.closest('.aff-color-row');
-				if (!row) { return; }
-
-				d.varId = row.getAttribute('data-var-id');
-				if (!d.varId) { return; }
-
-				d.active = true;
-				d.startY = e.clientY;
-
-				// Ghost: a fixed-position clone of the dragged row.
-				var ghost = row.cloneNode(true);
-				var rowRect = row.getBoundingClientRect();
-				ghost.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;'
-					+ 'width:' + row.offsetWidth + 'px;height:' + row.offsetHeight + 'px;'
-					+ 'top:' + rowRect.top + 'px;left:' + rowRect.left + 'px;'
-					+ 'opacity:0.88;box-shadow:0 8px 24px rgba(0,0,0,0.28);border-radius:4px;';
-				ghost.className += ' aff-drag-ghost';
-				document.body.appendChild(ghost);
-				d.ghost = ghost;
-
-				// Drop indicator: accent-colour horizontal bar.
-				var indicator          = document.createElement('div');
-				indicator.className   = 'aff-drop-indicator';
-				indicator.style.display      = 'none';
-				indicator.style.pointerEvents = 'none';
-				var _appEl  = document.getElementById('aff-app');
-				var _accent = _appEl ? getComputedStyle(_appEl).getPropertyValue('--aff-clr-accent').trim() : '';
-				if (!_accent) { _accent = '#f4c542'; }
-				indicator.style.background = 'linear-gradient(to right, transparent, '
-					+ _accent + ' 15%, ' + _accent + ' 85%, transparent)';
-				document.body.appendChild(indicator);
-				d.indicator = indicator;
-
-				row.classList.add('aff-row-dragging');
-			});
-
-			document.addEventListener('mousemove', function (e) {
-				if (!d.active || !d.ghost) { return; }
-				var dy = e.clientY - d.startY;
-				d.ghost.style.transform = 'translateY(' + dy + 'px)';
-
-				// Temporarily hide ghost so elementFromPoint sees the row underneath.
-				d.ghost.style.display = 'none';
-				var elBelow = document.elementFromPoint(e.clientX, e.clientY);
-				d.ghost.style.display = '';
-
-				var targetRow = elBelow ? elBelow.closest('.aff-color-row') : null;
-				if (targetRow && targetRow.getAttribute('data-var-id') !== d.varId) {
-					var trRect  = targetRow.getBoundingClientRect();
-					var above   = e.clientY < trRect.top + trRect.height / 2;
-					d.indicator.style.display = '';
-					d.indicator.style.left    = trRect.left + 'px';
-					d.indicator.style.width   = trRect.width + 'px';
-					d.indicator.style.top     = (above ? trRect.top : trRect.bottom) - 2 + 'px';
-					d.indicator.style.height  = '4px';
-					d._dropTargetId = targetRow.getAttribute('data-var-id');
-					d._dropAbove    = above;
-				} else {
-					d.indicator.style.display = 'none';
-					d._dropTargetId = null;
-				}
-			});
-
-			document.addEventListener('mouseup', function () {
-				if (!d.active) { return; }
-				d.active = false;
-
-				if (d.ghost     && d.ghost.parentNode)     { d.ghost.parentNode.removeChild(d.ghost); }
-				if (d.indicator && d.indicator.parentNode) { d.indicator.parentNode.removeChild(d.indicator); }
-				d.ghost     = null;
-				d.indicator = null;
-
-				var draggingRow = container.querySelector('.aff-color-row.aff-row-dragging');
-				if (draggingRow) { draggingRow.classList.remove('aff-row-dragging'); }
-
-				if (d._dropTargetId && d.varId && d._dropTargetId !== d.varId) {
-					self._onDropVar(d.varId, d._dropTargetId, d._dropAbove, container);
-				}
-				d._dropTargetId = null;
-				d._dropAbove    = null;
-				d.varId         = null;
-			});
-		},
-
-		/**
-		 * Handle a completed drop: reorder variables and update category if needed.
-		 *
-		 * @param {string}      srcId    Dragged variable ID.
-		 * @param {string}      targetId Drop-target variable ID.
-		 * @param {boolean}     above    True = insert before target.
-		 * @param {HTMLElement} container
-		 */
-		_onDropVar: function (srcId, targetId, above, container) {
-			var self    = this;
-			var srcVar  = self._findVarByKey(srcId);
-			var tgtVar  = self._findVarByKey(targetId);
-			if (!srcVar || !tgtVar) { return; }
-			var setVars = self._getVarsForSet();
-
-			// Move src into target's category if different.
-			var newCatId   = tgtVar.category_id || '';
-			var newCatName = tgtVar.category    || '';
-
-			// Rebuild order: remove src, insert near target.
-			var sorted     = setVars.slice().sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
-			var withoutSrc = sorted.filter(function (v) { return v !== srcVar; });
-			var tgtIdx     = -1;
-			for (var j = 0; j < withoutSrc.length; j++) {
-				if (withoutSrc[j] === tgtVar) { tgtIdx = j; break; }
-			}
-			if (tgtIdx === -1) { return; }
-			withoutSrc.splice(above ? tgtIdx : tgtIdx + 1, 0, srcVar);
-			withoutSrc.forEach(function (v, idx) { v.order = idx + 1; });
-
-			srcVar.category    = newCatName;
-			srcVar.category_id = newCatId;
-
-			var chain = Promise.resolve();
-			withoutSrc.forEach(function (v) {
-				(function (variable) {
-					chain = chain.then(function () {
-						return AFF.App.ajax('aff_save_color', {
-							filename: AFF.state.currentFile,
-							variable: JSON.stringify({
-								id:          variable.id,
-								order:       variable.order,
-								category:    variable.category,
-								category_id: variable.category_id,
-							}),
-						}).then(function (r) {
-							if (r.success && r.data && r.data.data) {
-								AFF.state.variables = r.data.data.variables;
-							}
-						});
+			// Delegate all drag infrastructure to the shared AFF.VarDrag module.
+			// Supply getCats so the drop logic reads the correct category array for
+			// this subgroup (Colors → config.categories, Fonts → config.fontCategories,
+			// Numbers → config.numberCategories).
+			AFF.VarDrag.init(container, {
+				viewSelector: '.aff-' + setLower + '-view',
+				onDrop: function (draggedId, targetId, insertBefore, targetCatBlock) {
+					AFF.VarDrag.drop({
+						draggedId:      draggedId,
+						targetId:       targetId,
+						insertBefore:   insertBefore,
+						targetCatBlock: targetCatBlock,
+						getCats:        function () { return self._getCatsForSet(); },
+						getSetVars:     function () { return self._getVarsForSet(); },
+						rerenderView:   function () { self._rerenderView(); },
 					});
-				}(v));
+				},
 			});
-			chain.then(function () {
-				if (AFF.App) { AFF.App.setDirty(true); }
-				self._rerenderView();
-			}).catch(function () {});
 		},
 
 		// -------------------------------------------------------------------

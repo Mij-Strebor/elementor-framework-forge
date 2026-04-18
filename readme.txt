@@ -22,6 +22,16 @@ AFF allows developers to organize, edit, and persist the three core asset types 
 
 **Requires Elementor and Elementor Pro.**
 
+= How AFF Interacts with Elementor =
+
+**Read:** AFF reads global variables directly from the active Elementor kit's _elementor_global_variables post meta -- the same authoritative data store Elementor itself uses. This happens only when you click "Fetch Elementor Data". It is purely read-only; nothing in Elementor is touched.
+
+**Write:** When you click "Write to Elementor", AFF writes the current variable values back to _elementor_global_variables on the kit post. Elementor rebuilds its CSS from this meta on the next page load. This is the only write operation AFF performs on Elementor data.
+
+Every write is user-triggered (no background or automatic writes, ever), preceded by a confirmation dialog showing exactly what will change, and limited to variables you have managed in AFF. AFF does not touch anything else in your Elementor configuration.
+
+**Use on staging or a local development environment only.** A corrupted write could damage your Elementor kit's variable data. Always export a project backup before writing to Elementor.
+
 === Key Features (Beta 0.4.1) ===
 
 * **Sync from Elementor** — Reads the Elementor V4 kit CSS file and imports CSS variables automatically. Sync options dialog: "Sync by name" or "Clear and replace".

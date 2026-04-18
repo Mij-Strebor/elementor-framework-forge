@@ -84,6 +84,344 @@
 	};
 
 	// -----------------------------------------------------------------------
+	// UNIFIED VARIABLE DRAG-AND-DROP
+	// -----------------------------------------------------------------------
+	//
+	// All variable types (Colors, Fonts, Numbers, any future set) share this
+	// single drag-and-drop implementation.  Variables are plain objects; the
+	// only thing that differs per set is which category array to read from.
+	// Callers supply a getCats() callback that returns the right array.
+	//
+	// Public surface
+	// ──────────────
+	//   AFF.VarDrag.rowKey(v)              → row key string for a variable object
+	//   AFF.VarDrag.drop(opts)             → commit a completed drag (update state + AJAX)
+	//   AFF.VarDrag.init(container, opts)  → bind drag events to a container element
+	//
+	// opts for drop()
+	//   draggedId      {string}           row key of the dragged variable
+	//   targetId       {string}           row key of the drop-target variable, or '__empty-cat__'
+	//   insertBefore   {boolean}          insert before (true) or after (false) target
+	//   targetCatBlock {HTMLElement|null} .aff-category-block at the drop point
+	//   getCats        {Function}         () → category array for this subgroup
+	//   rerenderView   {Function}         () → re-renders the edit panel
+	//
+	// opts for init()
+	//   viewSelector   {string}           CSS selector that the active view element must match
+	//   onDrop         {Function}         (draggedId, targetId, insertBefore, targetCatBlock)
+	// -----------------------------------------------------------------------
+
+	AFF.VarDrag = {
+
+		/** Row key for a variable: UUID when available, otherwise a name-based sentinel. */
+		rowKey: function (v) {
+			return v.id || ('__n_' + v.name);
+		},
+
+		/**
+		 * Commit a completed drag-and-drop.
+		 *
+		 * Works for any variable subgroup — Colors, Fonts, Numbers, future sets.
+		 * Callers supply getCats() and getSetVars() so the logic is scoped to the
+		 * correct category array and variable set without coupling to module internals.
+		 *
+		 * opts:
+		 *   draggedId      {string}    row key of the dragged variable
+		 *   targetId       {string}    row key of the drop target, or '__empty-cat__'
+		 *   insertBefore   {boolean}   insert before (true) or after (false) target
+		 *   targetCatBlock {Element}   .aff-category-block at drop point
+		 *   getCats        {Function}  () → sorted category objects for this subgroup
+		 *   getSetVars     {Function}  () → all variable objects for this subgroup
+		 *   rerenderView   {Function}  () → re-renders the edit panel
+		 */
+		drop: function (opts) {
+			var draggedId      = opts.draggedId;
+			var targetId       = opts.targetId;
+			var insertBefore   = opts.insertBefore;
+			var targetCatBlock = opts.targetCatBlock;
+			var getCats        = opts.getCats;
+			var getSetVars     = opts.getSetVars || function () { return AFF.state.variables; };
+			var rerenderView   = opts.rerenderView;
+
+			if (!draggedId || !AFF.state.currentFile) { return; }
+
+			var self    = AFF.VarDrag;
+			var allVars = AFF.state.variables;
+
+			// Locate the dragged variable in the global pool (UUID lookup).
+			var dragged = null;
+			for (var i = 0; i < allVars.length; i++) {
+				if (self.rowKey(allVars[i]) === draggedId) { dragged = allVars[i]; break; }
+			}
+			if (!dragged) { return; }
+
+			var cats      = getCats();
+			var newCatId  = targetCatBlock ? targetCatBlock.getAttribute('data-category-id') : (dragged.category_id || '');
+			var newCatName = dragged.category;
+
+			// Resolve category name from the ID.
+			var targetCatObj = null;
+			for (var ci = 0; ci < cats.length; ci++) {
+				if (cats[ci].id === newCatId) {
+					newCatName   = cats[ci].name;
+					targetCatObj = cats[ci];
+					break;
+				}
+			}
+
+			// Drop into an empty category — no target row exists.
+			if (targetId === '__empty-cat__') {
+				if (!targetCatObj) { return; }
+				dragged.category    = newCatName;
+				dragged.category_id = newCatId;
+				dragged.order       = 0;
+				rerenderView();
+				if (AFF.App) { AFF.App.setDirty(true); if (AFF.PanelLeft) { AFF.PanelLeft.refresh(); } }
+				AFF.App.ajax('aff_save_color', {
+					filename: AFF.state.currentFile,
+					variable: JSON.stringify({ id: dragged.id, order: 0, category: newCatName, category_id: newCatId }),
+				}).catch(function () { console.warn('[AFF] VarDrag: AJAX error on empty-cat drop'); });
+				return;
+			}
+
+			if (!targetCatObj) { return; }
+
+			// Build ordered list of variables in the target category from this subgroup only,
+			// excluding the dragged variable so it can be spliced in at the right position.
+			var setVars = getSetVars();
+			var catVars = setVars.filter(function (v) {
+				return ((v.category_id && v.category_id === newCatId) || v.category === newCatName)
+				    && self.rowKey(v) !== draggedId;
+			}).sort(function (a, b) {
+				return (a.order || 0) - (b.order || 0);
+			});
+
+			// Find insertion index.
+			var insertIdx = catVars.length; // default: append
+			for (var vi = 0; vi < catVars.length; vi++) {
+				if (self.rowKey(catVars[vi]) === targetId) {
+					insertIdx = insertBefore ? vi : vi + 1;
+					break;
+				}
+			}
+			catVars.splice(insertIdx, 0, dragged);
+
+			// Reassign order values and update dragged variable's category.
+			var saves = [];
+			for (var si = 0; si < catVars.length; si++) {
+				catVars[si].order       = si;
+				catVars[si].category    = newCatName;
+				catVars[si].category_id = newCatId;
+				saves.push({ id: catVars[si].id, order: si, category: newCatName, category_id: newCatId });
+			}
+
+			rerenderView();
+			if (AFF.App) {
+				AFF.App.setDirty(true);
+				if (AFF.PanelLeft) { AFF.PanelLeft.refresh(); }
+			}
+
+			// Persist each affected variable (fire-and-forget — no state update from response).
+			for (var pi = 0; pi < saves.length; pi++) {
+				(function (saveItem) {
+					if (!saveItem.id) { return; }
+					AFF.App.ajax('aff_save_color', {
+						filename: AFF.state.currentFile,
+						variable: JSON.stringify(saveItem),
+					}).catch(function () { console.warn('[AFF] VarDrag: AJAX error on persist reorder'); });
+				}(saves[pi]));
+			}
+		},
+
+		/**
+		 * Bind drag-and-drop events to a container element.
+		 *
+		 * @param {HTMLElement} container   The edit-content element.
+		 * @param {Object}      opts
+		 *   viewSelector {string}    Selector for the active view (e.g. '.aff-colors-view')
+		 *   onDrop       {Function}  (draggedId, targetId, insertBefore, targetCatBlock)
+		 */
+		init: function (container, opts) {
+			var viewSelector = opts.viewSelector;
+			var onDrop       = opts.onDrop;
+
+			var drag = {
+				active: false, varId: null,
+				ghost: null, indicator: null,
+				startY: 0, scrollTimer: null,
+				_forceAfter: false,
+			};
+
+			// ---- mousedown ----
+			container.addEventListener('mousedown', function (e) {
+				if (!container.querySelector(viewSelector)) { return; }
+				var handle = e.target.closest('.aff-drag-handle');
+				if (!handle) { return; }
+				e.preventDefault();
+
+				var row = handle.closest('.aff-color-row');
+				if (!row) { return; }
+
+				drag.varId = row.getAttribute('data-var-id');
+				if (!drag.varId) { return; }
+
+				drag.active = true;
+				drag.startY = e.clientY;
+
+				var ghost   = row.cloneNode(true);
+				var rowRect = row.getBoundingClientRect();
+				ghost.style.cssText = 'position:fixed;pointer-events:none;z-index:9999;'
+					+ 'width:' + row.offsetWidth + 'px;'
+					+ 'height:' + row.offsetHeight + 'px;'
+					+ 'top:' + rowRect.top + 'px;'
+					+ 'left:' + rowRect.left + 'px;'
+					+ 'opacity:0.88;box-shadow:0 8px 24px rgba(0,0,0,0.28);border-radius:4px;';
+				ghost.className += ' aff-drag-ghost';
+				document.body.appendChild(ghost);
+				drag.ghost = ghost;
+
+				var indicator         = document.createElement('div');
+				indicator.className   = 'aff-drop-indicator';
+				indicator.style.display      = 'none';
+				indicator.style.pointerEvents = 'none';
+				var _appEl  = document.getElementById('aff-app');
+				var _accent = _appEl ? getComputedStyle(_appEl).getPropertyValue('--aff-clr-accent').trim() : '';
+				if (!_accent) { _accent = '#f4c542'; }
+				indicator.style.background = 'linear-gradient(to right, transparent,'
+					+ _accent + ' 15%,' + _accent + ' 85%, transparent)';
+				indicator.style.boxShadow = '0 0 6px ' + _accent;
+				document.body.appendChild(indicator);
+				drag.indicator = indicator;
+
+				row.classList.add('aff-row-dragging');
+			});
+
+			// ---- mousemove ----
+			document.addEventListener('mousemove', function (e) {
+				if (!drag.active || !drag.ghost) { return; }
+				drag._forceAfter = false;
+				e.preventDefault();
+
+				var dy = e.clientY - drag.startY;
+				drag.ghost.style.top = (parseFloat(drag.ghost.style.top) + dy) + 'px';
+				drag.startY = e.clientY;
+
+				// Auto-scroll the edit-space panel when near its top/bottom edge.
+				var _editSpace = document.getElementById('aff-edit-space');
+				if (_editSpace) {
+					var _rect = _editSpace.getBoundingClientRect();
+					var _sz   = 60;
+					if (e.clientY < _rect.top + _sz) {
+						clearInterval(drag.scrollTimer);
+						drag.scrollTimer = setInterval(function () { _editSpace.scrollTop -= 8; }, 20);
+					} else if (e.clientY > _rect.bottom - _sz) {
+						clearInterval(drag.scrollTimer);
+						drag.scrollTimer = setInterval(function () { _editSpace.scrollTop += 8; }, 20);
+					} else {
+						clearInterval(drag.scrollTimer);
+						drag.scrollTimer = null;
+					}
+				}
+
+				// Hide ghost so elementFromPoint sees what's underneath.
+				drag.ghost.style.display = 'none';
+				var el = document.elementFromPoint(e.clientX, e.clientY);
+				drag.ghost.style.display = '';
+
+				var targetRow = el ? el.closest('.aff-color-row') : null;
+
+				// If no row found, check if cursor is over a collapsed category block.
+				// Expand it immediately and re-probe so the indicator appears on the
+				// same mouse event (no one-event lag).
+				if (!targetRow && el) {
+					var hoverBlock = el.closest('.aff-category-block');
+					if (hoverBlock && hoverBlock.getAttribute('data-collapsed') === 'true') {
+						hoverBlock.setAttribute('data-collapsed', 'false');
+						drag.ghost.style.display = 'none';
+						var el2 = document.elementFromPoint(e.clientX, e.clientY);
+						drag.ghost.style.display = '';
+						var newRow = el2 ? el2.closest('.aff-color-row') : null;
+						if (newRow) { targetRow = newRow; }
+					}
+				}
+
+				// Cursor over an expanded block but not on a row → append to its end.
+				if (!targetRow && el) {
+					var hoverBlock2 = el.closest('.aff-category-block');
+					if (hoverBlock2 && hoverBlock2.getAttribute('data-collapsed') === 'false') {
+						var blockRows = hoverBlock2.querySelectorAll('.aff-color-row:not(.aff-row-dragging)');
+						if (blockRows.length > 0) {
+							targetRow = blockRows[blockRows.length - 1];
+							drag._forceAfter = true;
+						} else {
+							// Empty category — show indicator in the list body.
+							var emptyBody = hoverBlock2.querySelector('.aff-color-list');
+							if (emptyBody) {
+								var er = emptyBody.getBoundingClientRect();
+								drag.indicator.style.display    = 'block';
+								drag.indicator.style.top        = (er.top + er.height / 2 - 1) + 'px';
+								drag.indicator.style.left       = er.left + 'px';
+								drag.indicator.style.width      = er.width + 'px';
+								drag.indicator._targetVarId     = '__empty-cat__';
+								drag.indicator._insertBefore    = true;
+								drag.indicator._targetCatBlock  = hoverBlock2;
+							}
+						}
+					}
+				}
+
+				if (targetRow && targetRow.getAttribute('data-var-id') !== drag.varId) {
+					var rect   = targetRow.getBoundingClientRect();
+					var midY   = rect.top + rect.height / 2;
+					var before = drag._forceAfter ? false : (e.clientY < midY);
+					drag.indicator.style.display   = 'block';
+					drag.indicator.style.top       = (before ? rect.top : rect.bottom) - 1 + 'px';
+					drag.indicator.style.left      = rect.left + 'px';
+					drag.indicator.style.width     = rect.width + 'px';
+					drag.indicator._targetVarId    = targetRow.getAttribute('data-var-id');
+					drag.indicator._insertBefore   = before;
+					drag.indicator._targetCatBlock = targetRow.closest('.aff-category-block');
+				} else {
+					if (!el || !el.closest('.aff-category-block')) {
+						drag.indicator.style.display = 'none';
+						drag.indicator._targetVarId  = null;
+					}
+				}
+			});
+
+			// ---- mouseup ----
+			document.addEventListener('mouseup', function () {
+				if (!drag.active) { return; }
+
+				clearInterval(drag.scrollTimer);
+				drag.scrollTimer = null;
+
+				var targetVarId    = drag.indicator ? drag.indicator._targetVarId    : null;
+				var insertBefore   = drag.indicator ? drag.indicator._insertBefore   : true;
+				var targetCatBlock = drag.indicator ? drag.indicator._targetCatBlock : null;
+
+				if (drag.ghost)     { drag.ghost.parentNode     && drag.ghost.parentNode.removeChild(drag.ghost); }
+				if (drag.indicator) { drag.indicator.parentNode && drag.indicator.parentNode.removeChild(drag.indicator); }
+
+				var draggingRow = container.querySelector('.aff-color-row.aff-row-dragging');
+				if (draggingRow) { draggingRow.classList.remove('aff-row-dragging'); }
+
+				drag.ghost     = null;
+				drag.indicator = null;
+				drag.active    = false;
+
+				if (!targetVarId || !drag.varId) { drag.varId = null; return; }
+
+				var draggedVarId = drag.varId;
+				drag.varId = null;
+
+				onDrop(draggedVarId, targetVarId, insertBefore, targetCatBlock);
+			});
+		},
+
+	};
+
+	// -----------------------------------------------------------------------
 	// CORE APP API
 	// -----------------------------------------------------------------------
 

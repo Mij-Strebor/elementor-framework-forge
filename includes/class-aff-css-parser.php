@@ -386,6 +386,12 @@ class AFF_CSS_Parser {
 				return 'auto';
 			}
 
+			// 'custom' means the size field already contains the full CSS expression
+			// (e.g. a clamp() or calc()) — there is no separate unit suffix to append.
+			if ( 'custom' === $unit ) {
+				return trim( (string) $size );
+			}
+
 			return trim( $size . $unit );
 		}
 

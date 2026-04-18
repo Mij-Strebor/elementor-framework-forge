@@ -272,6 +272,8 @@
 					self._openConvertV3();
 				} else if (action === 'change-types') {
 					self._openChangeTypes();
+				} else if (action === 'diagnose') {
+					self._openDiagnostics();
 				}
 			});
 		},
@@ -328,6 +330,125 @@
 		},
 
 		// ------------------------------------------------------------------
+		// DIAGNOSTICS & CLEANUP
+		// ------------------------------------------------------------------
+
+		_openDiagnostics: function () {
+			if (!AFF.state.currentFile) {
+				AFF.Modal.open({ title: 'Diagnose & Clean Up', body: '<p>No project file is loaded.</p>' });
+				return;
+			}
+
+			var self = this;
+
+			AFF.Modal.open({
+				title: 'Diagnose & Clean Up',
+				body:  '<p style="color:var(--aff-clr-muted)">Scanning project\u2026</p>',
+			});
+
+			AFF.App.ajax('aff_get_diagnostics', { filename: AFF.state.currentFile })
+				.then(function (res) {
+					if (!res.success) {
+						AFF.Modal.open({ title: 'Diagnose & Clean Up', body: '<p>Error: ' + AFF.Utils.escHtml((res.data && res.data.message) || 'Unknown error.') + '</p>' });
+						return;
+					}
+
+					var d           = res.data;
+					var dupVars     = d.duplicate_variable_names  || [];
+					var dupCats     = d.duplicate_categories       || [];
+					var varCount    = d.variable_count             || 0;
+					var catCounts   = d.category_counts            || {};
+					var hasProblems = dupVars.length > 0 || dupCats.length > 0;
+
+					var body = '<table style="width:100%;border-collapse:collapse;margin-bottom:14px;font-size:13px">'
+						+ '<tr><td style="padding:4px 8px 4px 0;color:var(--aff-clr-muted)">Total variables</td><td style="font-weight:600">' + varCount + '</td></tr>'
+						+ '<tr><td style="padding:4px 8px 4px 0;color:var(--aff-clr-muted)">Color categories</td><td style="font-weight:600">' + (catCounts.Colors  || 0) + '</td></tr>'
+						+ '<tr><td style="padding:4px 8px 4px 0;color:var(--aff-clr-muted)">Font categories</td><td style="font-weight:600">'  + (catCounts.Fonts   || 0) + '</td></tr>'
+						+ '<tr><td style="padding:4px 8px 4px 0;color:var(--aff-clr-muted)">Number categories</td><td style="font-weight:600">' + (catCounts.Numbers || 0) + '</td></tr>'
+						+ '</table>';
+
+					if (!hasProblems) {
+						body += '<p style="color:var(--aff-clr-success,#4caf50);font-weight:600">No duplicates found. Project is clean.</p>';
+					} else {
+						if (dupVars.length > 0) {
+							body += '<p style="color:#e07a40;font-weight:600;margin-bottom:6px">'
+								+ dupVars.length + ' duplicate variable name' + (dupVars.length !== 1 ? 's' : '') + ':</p>'
+								+ '<ul style="margin:0 0 12px 16px;font-size:12px;color:var(--aff-clr-secondary)">'
+								+ dupVars.map(function (n) { return '<li>' + AFF.Utils.escHtml(n) + '</li>'; }).join('')
+								+ '</ul>';
+						}
+						if (dupCats.length > 0) {
+							body += '<p style="color:#e07a40;font-weight:600;margin-bottom:6px">'
+								+ dupCats.length + ' duplicate categor' + (dupCats.length !== 1 ? 'ies' : 'y') + ':</p>'
+								+ '<ul style="margin:0 0 12px 16px;font-size:12px;color:var(--aff-clr-secondary)">'
+								+ dupCats.map(function (c) { return '<li>' + AFF.Utils.escHtml(c.subgroup) + ' &rarr; ' + AFF.Utils.escHtml(c.name) + '</li>'; }).join('')
+								+ '</ul>';
+						}
+						body += '<p style="font-size:12px;color:var(--aff-clr-muted)">Clean Up keeps the first occurrence of each duplicate and reassigns any variables pointing to removed categories. A new backup is recommended before proceeding.</p>';
+					}
+
+					var footer = hasProblems
+						? '<div style="display:flex;justify-content:flex-end;gap:8px">'
+							+ '<button class="aff-btn aff-btn--secondary" id="aff-diag-cancel">Close</button>'
+							+ '<button class="aff-btn" id="aff-diag-clean">Clean Up</button>'
+							+ '</div>'
+						: '<div style="display:flex;justify-content:flex-end">'
+							+ '<button class="aff-btn" id="aff-diag-cancel">Close</button>'
+							+ '</div>';
+
+					AFF.Modal.open({ title: 'Diagnose & Clean Up', body: body, footer: footer });
+
+					var handler;
+					handler = function (e) {
+						if (e.target.id === 'aff-diag-cancel') {
+							AFF.Modal.close();
+							document.removeEventListener('click', handler);
+						} else if (e.target.id === 'aff-diag-clean') {
+							AFF.Modal.close();
+							document.removeEventListener('click', handler);
+							self._runDedup();
+						}
+					};
+					document.addEventListener('click', handler);
+				})
+				.catch(function () {
+					AFF.Modal.open({ title: 'Diagnose & Clean Up', body: '<p>Network error running diagnostics.</p>' });
+				});
+		},
+
+		_runDedup: function () {
+			AFF.Modal.open({ title: 'Clean Up', body: '<p style="color:var(--aff-clr-muted)">Removing duplicates\u2026</p>' });
+
+			AFF.App.ajax('aff_deduplicate', { filename: AFF.state.currentFile })
+				.then(function (res) {
+					if (!res.success) {
+						AFF.Modal.open({ title: 'Clean Up', body: '<p>Error: ' + AFF.Utils.escHtml((res.data && res.data.message) || 'Unknown.') + '</p>' });
+						return;
+					}
+					var rv = res.data.removed_variables  || 0;
+					var rc = res.data.removed_categories || 0;
+
+					// Reload in-memory state from the cleaned file result.
+					if (res.data.variables) {
+						AFF.state.variables = res.data.variables;
+					}
+					if (AFF.PanelLeft)  { AFF.PanelLeft.refresh(); }
+					if (AFF.EditSpace)  { AFF.EditSpace.loadCategory(AFF.state.currentSelection || {}); }
+					AFF.App.refreshCounts();
+
+					var msg = (rv === 0 && rc === 0)
+						? 'No duplicates found — nothing to remove.'
+						: 'Removed ' + rv + ' duplicate variable' + (rv !== 1 ? 's' : '')
+							+ ' and ' + rc + ' duplicate categor' + (rc !== 1 ? 'ies' : 'y') + '. File saved.';
+
+					AFF.Modal.open({ title: 'Clean Up Complete', body: '<p>' + AFF.Utils.escHtml(msg) + '</p>' });
+				})
+				.catch(function () {
+					AFF.Modal.open({ title: 'Clean Up', body: '<p>Network error during cleanup.</p>' });
+				});
+		},
+
+		// ------------------------------------------------------------------
 		// MODAL CONTENT — Preferences
 		// ------------------------------------------------------------------
 
@@ -356,6 +477,7 @@
 		// ------------------------------------------------------------------
 
 		_openManageProject: function () {
+			var _self    = this;                   // captured for RAF callback where 'this' is window
 			var config  = AFF.state.config;
 			var cfg      = AFF.state.config || {};
 		var projName = AFF.state.projectName || '';
@@ -384,7 +506,9 @@
 			+ '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px">'
 			+ '<p style="font-size:12px;color:var(--aff-clr-muted);margin:0">'
 			+ 'Used as the project folder name: <em>project-name/</em></p>'
-			+ '<button type="button" id="aff-proj-switch" class="aff-btn aff-btn--xs">Switch project</button>'
+			+ '<button type="button" id="aff-proj-switch" class="aff-btn aff-btn--xs"'
+				+ ' title="Open, create, rename, copy, delete projects and restore backups">'
+				+ 'Project Manager\u2026</button>'
 			+ '</div>'
 			+ '</div>'
 			+ '<div style="border-top:1px solid var(--aff-clr-border,#d6ccc2);padding-top:16px">'
@@ -424,12 +548,12 @@
 			+ '</div>';
 		var footer = '<button class="aff-btn" id="aff-proj-cancel" style="margin-right:8px">Cancel</button>'
 			+ '<button class="aff-btn" id="aff-proj-save">Save</button>';
-		AFF.Modal.open({ title: 'Manage project', body: body, footer: footer });
+		AFF.Modal.open({ title: 'Manage Projects', body: body, footer: footer });
 		requestAnimationFrame(function () {
 			var cancelBtn = document.getElementById('aff-proj-cancel');
 			var saveBtn   = document.getElementById('aff-proj-save');
 			if (cancelBtn) { cancelBtn.addEventListener('click', function () { AFF.Modal.close(); }); }
-			if (saveBtn)   { saveBtn.addEventListener('click', this._saveProjectConfig.bind(this)); }
+			if (saveBtn)   { saveBtn.addEventListener('click', _self._saveProjectConfig.bind(_self)); }
 			var switchBtn = document.getElementById('aff-proj-switch');
 			if (switchBtn) {
 				switchBtn.addEventListener('click', function () {
@@ -725,6 +849,10 @@
 							return (v.name || '').toLowerCase();
 						});
 
+						// The snapshot is always fresh data — mark unsaved immediately so
+						// the Save indicator turns on after every user-triggered fetch.
+						if (!silent) { AFF.App.setDirty(true); }
+
 						// Partition Elementor vars into: new / conflict / match.
 						var partition = AFF.Merge.buildConflictList(vars, AFF.state.variables);
 
@@ -829,8 +957,10 @@
 					var elUnit = (v.el_unit || '').toLowerCase();
 					if (elUnit) {
 						// Map Elementor unit to AFF format label.
+						// 'custom' means the size field holds a full CSS expression
+						// (clamp, calc, etc.) — map it to AFF's FX format.
 						var unitMap = { px: 'PX', '%': '%', em: 'EM', rem: 'REM',
-						                vw: 'VW', vh: 'VH', ch: 'CH' };
+						                vw: 'VW', vh: 'VH', ch: 'CH', custom: 'FX' };
 						format = unitMap[elUnit] || elUnit.toUpperCase();
 					} else {
 						// Infer from value string (CSS file path or string-type vars).
@@ -845,7 +975,12 @@
 						else                                         { format = 'REM'; }
 					}
 				} else if (isColor) {
-					format = 'HEX';
+					if      (lc.indexOf('rgba(') === 0)       { format = 'RGBA'; }
+					else if (lc.indexOf('rgb(') === 0)        { format = 'RGB'; }
+					else if (lc.indexOf('hsla(') === 0)       { format = 'HSLA'; }
+					else if (lc.indexOf('hsl(') === 0)        { format = 'HSL'; }
+					else if (/^#[0-9a-f]{8}$/.test(lc))      { format = 'HEXA'; }
+					else                                      { format = 'HEX'; }
 				}
 
 				// Strip the unit suffix from Numbers values so the stored value is a
@@ -1164,6 +1299,30 @@
 			AFF.state.classes     = Array.isArray(parsed.classes)                            ? parsed.classes    : [];
 			AFF.state.components  = Array.isArray(parsed.components)                         ? parsed.components : [];
 			AFF.state.config      = (parsed.config && typeof parsed.config === 'object')     ? parsed.config     : {};
+
+			// Normalize variables that lack type/subgroup (e.g. exported before these
+			// fields were added, or imported from an external source).
+			AFF.state.variables.forEach(function (v) {
+				if (!v || typeof v !== 'object' || v.type) { return; }
+				var lc      = (v.value || '').trim().toLowerCase();
+				var isCl    = AFF.Utils.isColorValue(lc);
+				var isFt    = !isCl && /\b(serif|sans-serif|monospace|cursive|fantasy|system-ui|ui-sans-serif|ui-serif|ui-monospace)\b/.test(lc);
+				var isNm    = !isCl && !isFt && (
+					/^\d/.test(lc) || /^(clamp|calc|min|max)\s*\(/.test(lc)
+					|| /\d+(px|rem|em|%|vw|vh|ch|fr|pt|deg|ms)\b/.test(lc)
+				);
+				v.type     = isCl ? 'color' : (isFt ? 'font' : (isNm ? 'number' : 'unknown'));
+				v.subgroup = v.subgroup || (isCl ? 'Colors' : (isFt ? 'Fonts' : (isNm ? 'Numbers' : '')));
+				if (!v.format && isCl) {
+					if      (lc.indexOf('rgba(') === 0)  { v.format = 'RGBA'; }
+					else if (lc.indexOf('rgb(') === 0)   { v.format = 'RGB'; }
+					else if (lc.indexOf('hsla(') === 0)  { v.format = 'HSLA'; }
+					else if (lc.indexOf('hsl(') === 0)   { v.format = 'HSL'; }
+					else if (/^#[0-9a-f]{8}$/.test(lc)) { v.format = 'HEXA'; }
+					else                                  { v.format = 'HEX'; }
+				}
+			});
+
 			var importedName = (parsed.name || '').replace(/(?:\.eff)+(?:\.json)?$/i, '');
 			AFF.state.projectName = importedName;
 

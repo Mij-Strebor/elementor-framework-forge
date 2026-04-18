@@ -231,6 +231,9 @@
 				variables:  AFF.state.variables,
 				classes:    AFF.state.classes,
 				components: AFF.state.components,
+				// Persist metadata (includes elementor_snapshot) so snapshot survives
+				// manual saves and page reloads — without this, EV4 deletions are lost.
+				metadata:   AFF.state.metadata || {},
 			};
 
 			AFF.App.ajax('aff_save_file', {
@@ -319,7 +322,7 @@
 			AFF.App.ajax('aff_list_projects', {})
 				.then(function (res) {
 					if (res.success) {
-						AFF.Modal.open({ title: 'Load Project', body: '', footer: '', className: 'aff-modal--wide' });
+						AFF.Modal.open({ title: 'Project Manager', body: '', footer: '', className: 'aff-modal--wide' });
 						self._showProjectList(res.data.projects || []);
 					} else {
 						AFF.Modal.open({ title: 'Error', body: '<p>' + (res.data.message || 'Could not load projects.') + '</p>' });
@@ -341,7 +344,7 @@
 
 			// Always restore the correct title — error modals can leave a stale one.
 			var titleEl = document.getElementById('aff-modal-title');
-			if (titleEl) { titleEl.textContent = 'Load Project'; }
+			if (titleEl) { titleEl.textContent = 'Project Manager'; }
 
 			modalBody.innerHTML = self._buildProjectListBody(projects);
 
@@ -441,7 +444,7 @@
 											if (self._filenameInput) { self._filenameInput.value = ''; }
 										}
 										AFF.App.ajax('aff_list_projects', {}).then(function (pr) {
-											AFF.Modal.open({ title: 'Load Project', body: '', footer: '', className: 'aff-modal--wide' });
+											AFF.Modal.open({ title: 'Project Manager', body: '', footer: '', className: 'aff-modal--wide' });
 											if (pr.success) { self._showProjectList(pr.data.projects || []); }
 										});
 									} else {
@@ -679,7 +682,10 @@
 				+ '<path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h2.764c.958 0 1.76.56 2.311 1.184C7.985 3.648 8.48 4 9 4h4.5A1.5 1.5 0 0 1 15 5.5v7a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9zm8.5.5c-.68 0-1.363-.378-1.949-1H2.5A.5.5 0 0 0 2 3.5V5h12v-.5a.5.5 0 0 0-.5-.5H9.5zM2 6v6.5a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5V6H2z"/>'
 				+ '</svg>';
 
-			var html = '';
+			var html = '<p style="font-size:12px;color:var(--aff-clr-muted);margin:0 0 12px">'
+				+ 'Open a project to browse its saves, or create a new one below. '
+				+ 'Click the project name to rename it inline. Use the row icons to open saves, copy, or delete a project.'
+				+ '</p>';
 
 			if (projects.length > 0) {
 				html += '<div class="aff-picker-header">'
@@ -864,8 +870,77 @@
 			var self = this;
 
 			this._commitVariablesBtn.addEventListener('click', function () {
-				self._openCommitSummaryDialog();
+				// Safety gate first — user must read and confirm before anything touches Elementor.
+				self._showWriteSafetyGate(function () {
+					self._openCommitSummaryDialog();
+				});
 			});
+		},
+
+		/**
+		 * Show a mandatory safety confirmation before any Write to Elementor operation.
+		 *
+		 * Warns about live-site risk, backups, test coverage, and Elementor version
+		 * mismatches.  Calls onConfirm() only when the user explicitly accepts.
+		 *
+		 * @param {Function} onConfirm  Called when user clicks "I Understand – Continue".
+		 */
+		_showWriteSafetyGate: function (onConfirm) {
+			var d    = (typeof AFFData !== 'undefined') ? AFFData : {};
+			var elV  = d.elVersion    || '?';
+			var elP  = d.elProVersion || null;
+			var devV = d.elDevVersion    || '?';
+			var devP = d.elProDevVersion || '?';
+
+			// Detect version mismatches.
+			var elMismatch  = elV  !== '?' && elV  !== devV;
+			var proMismatch = elP  !== null && elP  !== devP;
+
+			var versionNote = '';
+			if (elMismatch || proMismatch) {
+				versionNote = '<div style="margin-top:10px;padding:8px 10px;border-left:3px solid #e53e3e;background:rgba(229,62,62,.08);font-size:12px">'
+					+ '<strong style="color:#e53e3e">Version mismatch detected</strong><br>';
+				if (elMismatch) {
+					versionNote += 'Elementor: running <strong>' + AFF.Utils.escHtml(elV)
+						+ '</strong>, developed on <strong>' + AFF.Utils.escHtml(devV) + '</strong>.<br>';
+				}
+				if (proMismatch) {
+					versionNote += 'Elementor Pro: running <strong>' + AFF.Utils.escHtml(elP)
+						+ '</strong>, developed on <strong>' + AFF.Utils.escHtml(devP) + '</strong>.<br>';
+				}
+				versionNote += 'Internal Elementor data structures may have changed. Verify on staging before using on any real site.</div>';
+			}
+
+			var body = '<ul style="margin:0 0 10px 16px;list-style:disc;font-size:13px;line-height:1.7">'
+				+ '<li><strong>Never run on a live / in-service website.</strong> Use staging or a local dev install only.</li>'
+				+ '<li><strong>Make a backup first.</strong> Export your Elementor kit before writing.</li>'
+				+ '<li>AFF runs 350+ automated tests, but makes no guarantees of compatibility with every Elementor configuration.</li>'
+				+ '<li>Writing to Elementor modifies the kit post meta directly. A failed write could corrupt variable data.</li>'
+				+ '</ul>'
+				+ versionNote;
+
+			var handler;
+			AFF.Modal.open({
+				title: '\uD83D\uDED1 Stop, Before You Write To Elementor',
+				body:  body,
+				footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
+					+ '<button class="aff-btn aff-btn--secondary" id="aff-safety-cancel">Cancel</button>'
+					+ '<button class="aff-btn" id="aff-safety-confirm">I Understand \u2013 Continue</button>'
+					+ '</div>',
+				onClose: function () { document.removeEventListener('click', handler); },
+			});
+
+			handler = function (e) {
+				if (e.target.id === 'aff-safety-cancel') {
+					AFF.Modal.close();
+					document.removeEventListener('click', handler);
+				} else if (e.target.id === 'aff-safety-confirm') {
+					AFF.Modal.close();
+					document.removeEventListener('click', handler);
+					onConfirm();
+				}
+			};
+			document.addEventListener('click', handler);
 		},
 
 		/**
@@ -884,7 +959,21 @@
 				else if (s === 'deleted') { deleted++; }
 			}
 
-			var total = modified + added + deleted;
+			// Count snapshot-based EV4 deletions: labels that were in the last fetch
+			// but are no longer in AFF.  These are not tracked by variable status —
+			// the variable is simply gone from the array — so they must be counted
+			// separately to prevent the "Nothing to commit" guard from blocking writes
+			// whose only purpose is removing stale variables from Elementor.
+			var _snapshot      = (AFF.state.metadata && AFF.state.metadata.elementor_snapshot)
+				? AFF.state.metadata.elementor_snapshot : [];
+			var _currentNamesLc = AFF.state.variables.map(function (v) {
+				return (v.name || '').toLowerCase();
+			});
+			var ev4DeleteCount = _snapshot.filter(function (lbl) {
+				return _currentNamesLc.indexOf((lbl || '').toLowerCase()) === -1;
+			}).length;
+
+			var total = modified + added + deleted + ev4DeleteCount;
 
 			if (total === 0) {
 				AFF.Modal.open({
@@ -909,8 +998,22 @@
 					var elVars = (res.success && res.data && res.data.variables) ? res.data.variables : [];
 
 					// Exclude 'new' variables from conflict checking — they're always written.
+					// Normalize Number values to their CSS form (e.g. '9' + 'rem' → '9rem') so
+					// the comparison matches what AFF will write to Elementor — preventing false
+					// conflicts when the user stored a bare numeric value with a separate format.
+					var _FMT = { PX: 'px', '%': '%', EM: 'em', REM: 'rem', VW: 'vw', VH: 'vh', CH: 'ch' };
 					var candidateVars = AFF.state.variables.filter(function (v) {
 						return v.status !== 'new';
+					}).map(function (v) {
+						if (v.subgroup === 'Numbers' && v.format !== 'FX') {
+							var unit = _FMT[v.format] || '';
+							var m    = (v.value || '').match(/^(-?[\d.]+)/);
+							var css  = m ? m[1] + unit : v.value;
+							// Return a shallow copy with the CSS value — do not mutate state.
+							return { name: v.name, value: css, status: v.status,
+							         subgroup: v.subgroup, format: v.format, type: v.type };
+						}
+						return v;
 					});
 					var partition = AFF.Merge.buildConflictList(elVars, candidateVars);
 
@@ -930,36 +1033,38 @@
 								var commitVars = AFF.state.variables.filter(function (v) {
 									return !skipNames[(v.name || '').toLowerCase()];
 								});
-								self._showCommitSummary(modified, added, deleted, commitVars);
+								self._showCommitSummary(modified, added, deleted, ev4DeleteCount, commitVars);
 							},
 							null // Cancel — do nothing
 						);
 					} else {
 						// No conflicts — show the standard commit summary.
-						self._showCommitSummary(modified, added, deleted, AFF.state.variables);
+						self._showCommitSummary(modified, added, deleted, ev4DeleteCount, AFF.state.variables);
 					}
 				})
 				.catch(function () {
 					// If the pre-check itself fails, skip it and proceed without conflict check.
 					AFF.Modal.close();
-					self._showCommitSummary(modified, added, deleted, AFF.state.variables);
+					self._showCommitSummary(modified, added, deleted, ev4DeleteCount, AFF.state.variables);
 				});
 		},
 
 		/**
 		 * Show the commit confirmation summary dialog and trigger the commit on confirm.
 		 *
-		 * @param {number} modified     Count of modified variables
-		 * @param {number} added        Count of new variables
-		 * @param {number} deleted      Count of deleted variables
-		 * @param {Array}  commitVars   AFF variable objects to include in the commit
+		 * @param {number} modified       Count of modified variables
+		 * @param {number} added          Count of new variables
+		 * @param {number} deleted        Count of status-deleted variables (usually 0)
+		 * @param {number} ev4DeleteCount Count of variables to be removed from EV4 (snapshot diff)
+		 * @param {Array}  commitVars     AFF variable objects to include in the commit
 		 */
-		_showCommitSummary: function (modified, added, deleted, commitVars) {
+		_showCommitSummary: function (modified, added, deleted, ev4DeleteCount, commitVars) {
 			var self         = this;
 			var summaryLines = [];
-			if (modified > 0) { summaryLines.push(modified + ' modified'); }
-			if (added > 0)    { summaryLines.push(added    + ' new'); }
-			if (deleted > 0)  { summaryLines.push(deleted  + ' deleted'); }
+			if (modified > 0)      { summaryLines.push(modified      + ' modified'); }
+			if (added > 0)         { summaryLines.push(added         + ' new'); }
+			if (deleted > 0)       { summaryLines.push(deleted       + ' deleted'); }
+			if (ev4DeleteCount > 0) { summaryLines.push(ev4DeleteCount + ' removed from Elementor'); }
 
 			var skippedCount = AFF.state.variables.length - commitVars.length;
 			var skippedNote  = skippedCount > 0
@@ -971,12 +1076,13 @@
 			var commitHandler;
 			AFF.Modal.open({
 				title: 'Write to Elementor',
-				body:  '<p style="margin-bottom:8px">The following changes will be written to the Elementor kit CSS file:</p>'
+				body:  '<p style="margin-bottom:8px">The following changes will be written to Elementor:</p>'
 					+ '<ul style="margin:0 0 12px 16px;list-style:disc">'
 					+ summaryLines.map(function (l) { return '<li>' + l + '</li>'; }).join('')
 					+ '</ul>'
 					+ skippedNote
-					+ '<p style="font-size:12px;color:var(--aff-clr-muted)"><strong>This modifies Elementor\'s files.</strong> Save a backup first if you haven\'t already.</p>',
+					+ '<p style="font-size:12px;color:var(--aff-clr-muted)"><strong>This modifies Elementor\'s data.</strong> Save a backup first if you haven\'t already.</p>'
+					+ '<p style="font-size:12px;color:var(--aff-clr-muted);margin-top:6px">You will need to <strong>refresh the browser page</strong> after writing to see changes in Elementor\'s Variables Manager.</p>',
 				footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
 					+ '<button class="aff-btn aff-btn--secondary" id="aff-commit-cancel">Cancel</button>'
 					+ '<button class="aff-btn" id="aff-commit-confirm">Commit</button>'
@@ -1100,6 +1206,9 @@
 					if (skipped.length > 0) {
 						msg += ' ' + skipped.length + ' not found in CSS (refresh page to see all changes).';
 					}
+					// EV4's Variables Manager is populated from meta, not the CSS cache — a page
+					// refresh is needed for the panel to show the newly written variables.
+					msg += ' Refresh the browser page to see changes in Elementor\'s Variables Manager.';
 					AFF.Modal.open({ title: 'Commit complete', body: '<p>' + msg + '</p>' });
 
 					// Re-render current view to show updated status dots.
