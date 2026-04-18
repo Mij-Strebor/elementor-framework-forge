@@ -81,6 +81,326 @@
 			div.textContent = str;
 			return div.innerHTML;
 		},
+
+		/**
+		 * Escape a string for safe use inside an HTML attribute value.
+		 * Encodes &, <, >, ", and ' — unlike escHtml which only covers &/</>
+		 * via the DOM trick and misses double-quotes inside attribute strings.
+		 *
+		 * @param {*} str
+		 * @returns {string}
+		 */
+		escAttr: function (str) {
+			return String(str || '')
+				.replace(/&/g,  '&amp;')
+				.replace(/</g,  '&lt;')
+				.replace(/>/g,  '&gt;')
+				.replace(/"/g,  '&quot;')
+				.replace(/'/g,  '&#39;');
+		},
+
+		/**
+		 * CSS custom-property color for a variable status value.
+		 *
+		 * @param {string} status
+		 * @returns {string}
+		 */
+		statusColor: function (status) {
+			var map = {
+				synced:   'var(--aff-status-synced)',
+				modified: 'var(--aff-status-modified)',
+				new:      'var(--aff-status-new)',
+				deleted:  'var(--aff-status-deleted)',
+				conflict: 'var(--aff-status-conflict)',
+				orphaned: 'var(--aff-status-orphaned)',
+			};
+			return map[status] || 'var(--aff-status-synced)';
+		},
+
+		/**
+		 * Extended tooltip text for a variable status value.
+		 *
+		 * @param {string} status
+		 * @returns {string}
+		 */
+		statusLongTooltip: function (status) {
+			var map = {
+				synced:   'Synced \u2014 This variable matches the value in the Elementor kit.',
+				modified: 'Modified \u2014 Value changed since last sync. Commit to push to Elementor.',
+				new:      'New \u2014 Variable not yet in the Elementor kit. Commit to add it.',
+				deleted:  'Deleted \u2014 Marked for deletion. Commit to remove from Elementor.',
+				conflict: 'Conflict \u2014 Value changed both here and in Elementor since last sync.',
+				orphaned: 'Orphaned \u2014 Exists in AFF but not found in Elementor kit. Commit to add it.',
+			};
+			return map[status] || ('Status: ' + status);
+		},
+
+		/**
+		 * Compute a unique DOM row key for a variable object.
+		 * Uses the UUID when available; falls back to a synthetic '__n_name' key
+		 * so unsaved variables that lack an ID still get a unique anchor.
+		 *
+		 * @param {Object} v Variable object.
+		 * @returns {string}
+		 */
+		rowKey: function (v) {
+			return v.id || ('__n_' + v.name);
+		},
+
+		/**
+		 * Find a variable by its row key (UUID or synthetic __n_name key).
+		 * Falls back to name-based search when a __n_ key has been superseded
+		 * by a server-assigned UUID without a full re-render.
+		 *
+		 * @param {string} key Row key from a data-var-id attribute.
+		 * @returns {Object|null}
+		 */
+		findVarByKey: function (key) {
+			var vars = AFF.state.variables || [];
+			for (var i = 0; i < vars.length; i++) {
+				if (AFF.Utils.rowKey(vars[i]) === key) { return vars[i]; }
+			}
+			if (key.indexOf('__n_') === 0) {
+				var name = key.slice(4);
+				for (var j = 0; j < vars.length; j++) {
+					if (vars[j].name === name) { return vars[j]; }
+				}
+			}
+			return null;
+		},
+
+		/**
+		 * Find a variable by UUID.
+		 *
+		 * @param {string} id Variable UUID.
+		 * @returns {Object|null}
+		 */
+		findVarById: function (id) {
+			var vars = AFF.state.variables || [];
+			for (var i = 0; i < vars.length; i++) {
+				if (vars[i].id === id) { return vars[i]; }
+			}
+			return null;
+		},
+
+		/**
+		 * Return all non-deleted variables that belong to a given category ID.
+		 *
+		 * @param {string} catId Category UUID.
+		 * @returns {Array}
+		 */
+		getVarsForCategoryId: function (catId) {
+			return (AFF.state.variables || []).filter(function (v) {
+				return v.category_id === catId && v.status !== 'deleted';
+			});
+		},
+
+		/**
+		 * Show a positioned error tooltip below a form field.
+		 * Auto-dismisses after 3.5 s. Clears any existing tip first.
+		 *
+		 * @param {HTMLElement} field
+		 * @param {string}      message
+		 */
+		showFieldError: function (field, message) {
+			AFF.Utils.clearFieldError(field);
+			var el  = document.createElement('div');
+			el.className   = 'aff-inline-error';
+			el.textContent = message;
+			var rect       = field.getBoundingClientRect();
+			el.style.left  = rect.left + 'px';
+			el.style.top   = (rect.bottom + 4) + 'px';
+			document.body.appendChild(el);
+			field._affErrEl = el;
+			field._affErrTimer = setTimeout(function () {
+				if (el.parentNode) { el.parentNode.removeChild(el); }
+				if (field._affErrEl === el) { field._affErrEl = null; }
+			}, 3500);
+		},
+
+		/**
+		 * Remove any visible field-error tooltip for an input.
+		 *
+		 * @param {HTMLElement} field
+		 */
+		clearFieldError: function (field) {
+			if (field._affErrEl) {
+				if (field._affErrEl.parentNode) { field._affErrEl.parentNode.removeChild(field._affErrEl); }
+				field._affErrEl = null;
+			}
+			if (field._affErrTimer) {
+				clearTimeout(field._affErrTimer);
+				field._affErrTimer = null;
+			}
+		},
+	};
+
+	// -----------------------------------------------------------------------
+	// SHARED ICON HELPERS
+	// -----------------------------------------------------------------------
+	//
+	// All SVG icon strings and the catBtn builder live here so aff-colors.js
+	// and aff-variables.js never need local copies.
+	// -----------------------------------------------------------------------
+
+	AFF.Icons = {
+
+		/**
+		 * Build a category action icon button.
+		 *
+		 * @param {string}  action
+		 * @param {string}  label
+		 * @param {string}  icon       SVG HTML string.
+		 * @param {string}  extraClass Additional CSS class(es).
+		 * @param {boolean} disabled
+		 * @returns {string}
+		 */
+		catBtn: function (action, label, icon, extraClass, disabled) {
+			var esc = AFF.Utils.escAttr;
+			return '<button class="aff-icon-btn ' + (extraClass || '') + '"'
+				+ ' data-action="' + esc(action) + '"'
+				+ ' aria-label="' + esc(label) + '"'
+				+ ' title="' + esc(label) + '"'
+				+ ' data-aff-tooltip="' + esc(label) + '"'
+				+ (disabled ? ' disabled' : '')
+				+ '>'
+				+ icon
+				+ '</button>';
+		},
+
+		/** Six-dot drag handle. */
+		sixDotSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="20" viewBox="0 0 14 20" fill="currentColor" aria-hidden="true">'
+				+ '<circle cx="4" cy="4" r="2"/><circle cx="10" cy="4" r="2"/>'
+				+ '<circle cx="4" cy="10" r="2"/><circle cx="10" cy="10" r="2"/>'
+				+ '<circle cx="4" cy="16" r="2"/><circle cx="10" cy="16" r="2"/>'
+				+ '</svg>';
+		},
+
+		/** Chevron-down (collapse indicator / expand row). */
+		chevronSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
+				+ ' fill="none" stroke="currentColor" stroke-width="2"'
+				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+				+ '<polyline points="6 9 12 15 18 9"></polyline>'
+				+ '</svg>';
+		},
+
+		/** × close / back button. */
+		closeSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
+				+ ' fill="none" stroke="currentColor" stroke-width="2"'
+				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+				+ '<line x1="18" y1="6" x2="6" y2="18"></line>'
+				+ '<line x1="6" y1="6" x2="18" y2="18"></line>'
+				+ '</svg>';
+		},
+
+		/** Double-chevron up — collapse-all icon. */
+		collapseAllSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
+				+ ' fill="none" stroke="currentColor" stroke-width="2"'
+				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+				+ '<polyline points="18 11 12 5 6 11"></polyline>'
+				+ '<polyline points="18 19 12 13 6 19"></polyline>'
+				+ '</svg>';
+		},
+
+		/** Double-chevron down — expand-all icon. */
+		expandAllSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
+				+ ' fill="none" stroke="currentColor" stroke-width="2"'
+				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+				+ '<polyline points="6 5 12 11 18 5"></polyline>'
+				+ '<polyline points="6 13 12 19 18 13"></polyline>'
+				+ '</svg>';
+		},
+
+		/** Plus inside a circle (add variable / add category). */
+		plusCircleSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
+				+ ' fill="none" stroke="currentColor" stroke-width="2"'
+				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+				+ '<circle cx="12" cy="12" r="10"></circle>'
+				+ '<line x1="12" y1="8" x2="12" y2="16"></line>'
+				+ '<line x1="8" y1="12" x2="16" y2="12"></line>'
+				+ '</svg>';
+		},
+
+		/** Plain plus sign. */
+		plusSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"'
+				+ ' fill="none" stroke="currentColor" stroke-width="2.5"'
+				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+				+ '<line x1="12" y1="5" x2="12" y2="19"></line>'
+				+ '<line x1="5" y1="12" x2="19" y2="12"></line>'
+				+ '</svg>';
+		},
+
+		/** Duplicate / copy icon. */
+		duplicateSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
+				+ ' fill="none" stroke="currentColor" stroke-width="2"'
+				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+				+ '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>'
+				+ '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>'
+				+ '</svg>';
+		},
+
+		/** Arrow pointing up (move category up). */
+		arrowUpSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
+				+ ' fill="none" stroke="currentColor" stroke-width="2"'
+				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+				+ '<line x1="12" y1="19" x2="12" y2="5"></line>'
+				+ '<polyline points="5 12 12 5 19 12"></polyline>'
+				+ '</svg>';
+		},
+
+		/** Arrow pointing down (move category down). */
+		arrowDownSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
+				+ ' fill="none" stroke="currentColor" stroke-width="2"'
+				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+				+ '<line x1="12" y1="5" x2="12" y2="19"></line>'
+				+ '<polyline points="19 12 12 19 5 12"></polyline>'
+				+ '</svg>';
+		},
+
+		/** Trash bin (delete). */
+		trashSVG: function () {
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
+				+ ' fill="none" stroke="currentColor" stroke-width="2"'
+				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+				+ '<polyline points="3 6 5 6 21 6"></polyline>'
+				+ '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>'
+				+ '<path d="M10 11v6"></path><path d="M14 11v6"></path>'
+				+ '<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>'
+				+ '</svg>';
+		},
+
+		/**
+		 * Sort button icon: neutral (up+down), ascending (up triangle), or descending (down triangle).
+		 *
+		 * @param {string} dir 'none' | 'asc' | 'desc'
+		 * @returns {string}
+		 */
+		sortBtnSVG: function (dir) {
+			if (dir === 'asc') {
+				return '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" aria-hidden="true">'
+					+ '<polygon points="12,3 22,21 2,21" fill="currentColor"/>'
+					+ '</svg>';
+			}
+			if (dir === 'desc') {
+				return '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" aria-hidden="true">'
+					+ '<polygon points="12,21 2,3 22,3" fill="currentColor"/>'
+					+ '</svg>';
+			}
+			return '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="12" viewBox="0 0 10 12" aria-hidden="true">'
+				+ '<polygon points="5,1 9,5 1,5" fill="currentColor" opacity="0.6"/>'
+				+ '<polygon points="5,11 1,7 9,7" fill="currentColor" opacity="0.6"/>'
+				+ '</svg>';
+		},
 	};
 
 	// -----------------------------------------------------------------------

@@ -243,7 +243,7 @@
 				if (!_tcCollapsed) { _anyExpanded = true; break; }
 			}
 			var _toggleState = _anyExpanded ? 'expanded' : 'collapsed';
-			var _toggleSVG   = _anyExpanded ? self._collapseAllSVG() : self._expandAllSVG();
+			var _toggleSVG   = _anyExpanded ? AFF.Icons.collapseAllSVG() : AFF.Icons.expandAllSVG();
 			var _toggleTitle = _anyExpanded ? 'Collapse all categories' : 'Expand all categories';
 
 			// ------- FILTER BAR -------
@@ -258,7 +258,7 @@
 				+ '<button class="aff-icon-btn aff-colors-back-btn" id="aff-colors-back"'
 				+ ' title="Close colors view" aria-label="Close colors view"'
 				+ ' data-aff-tooltip="Close Colors view">'
-				+ self._closeSVG()
+				+ AFF.Icons.closeSVG()
 				+ '</button>'
 				+ '<button class="aff-icon-btn" id="aff-colors-collapse-toggle"'
 				+ ' title="' + _toggleTitle + '" aria-label="' + _toggleTitle + '"'
@@ -271,7 +271,7 @@
 				+ '<button class="aff-icon-btn aff-colors-add-cat-btn" id="aff-colors-add-category"'
 				+ ' data-aff-tooltip="Add category"'
 				+ ' aria-label="Add category">'
-				+ self._plusSVG()
+				+ AFF.Icons.plusSVG()
 				+ '</button>'
 				+ '</div>'
 				+ '</div>'; // .aff-colors-filter-bar
@@ -381,7 +381,7 @@
 				// Drag handle — six-dot grip for category drag-and-drop.
 				+ '<span class="aff-cat-drag-handle" data-action="cat-drag-handle" aria-hidden="true"'
 				+ ' data-aff-tooltip="Drag to reorder">'
-				+ self._sixDotSVG()
+				+ AFF.Icons.sixDotSVG()
 				+ '</span>'
 
 				// Category name as plain span — no surrounding box.
@@ -401,9 +401,9 @@
 				+ '</div>' // .aff-cat-header-left
 
 				+ '<div class="aff-category-actions" role="toolbar" aria-label="Category actions">'
-				+ self._catBtn('duplicate', 'Duplicate category', self._duplicateSVG(), '')
-				+ (cat.locked ? '' : self._catBtn('delete', 'Delete category', self._trashSVG(), 'aff-icon-btn--danger'))
-				+ self._catBtn('collapse', 'Collapse/expand category', self._chevronSVG(), 'aff-category-collapse-btn')
+				+ AFF.Icons.catBtn('duplicate', 'Duplicate category', AFF.Icons.duplicateSVG(), '')
+				+ (cat.locked ? '' : AFF.Icons.catBtn('delete', 'Delete category', AFF.Icons.trashSVG(), 'aff-icon-btn--danger'))
+				+ AFF.Icons.catBtn('collapse', 'Collapse/expand category', AFF.Icons.chevronSVG(), 'aff-category-collapse-btn')
 				+ '</div>' // .aff-category-actions
 
 				+ '</div>' // .aff-cat-header-top
@@ -420,14 +420,14 @@
 				+ '<button class="aff-col-sort-btn" data-sort-col="name" data-cat-id="' + AFF.Utils.escHtml(cat.id) + '" data-sort-dir="' + _ns + '"'
 				+ ' title="Sort by name" aria-label="Sort by name"'
 				+ ' data-aff-tooltip="Sort by name">'
-				+ self._sortBtnSVG(_ns)
+				+ AFF.Icons.sortBtnSVG(_ns)
 				+ '</button>'
 				+ '</span>'
 				+ '<span class="aff-col-sort-wrap">'
 				+ '<button class="aff-col-sort-btn" data-sort-col="value" data-cat-id="' + AFF.Utils.escHtml(cat.id) + '" data-sort-dir="' + _vs + '"'
 				+ ' title="Sort by value" aria-label="Sort by value"'
 				+ ' data-aff-tooltip="Sort by value">'
-				+ self._sortBtnSVG(_vs)
+				+ AFF.Icons.sortBtnSVG(_vs)
 				+ '</button>'
 				+ '</span>'
 				+ '</div>'; // .aff-color-list-header
@@ -453,33 +453,12 @@
 				+ ' title="Add Color"'
 			+ ' data-aff-tooltip="Add Color"'
 			+ ' data-aff-tooltip-long="Add a new color variable to this category">'
-				+ self._plusSVG()
+				+ AFF.Icons.plusSVG()
 				+ '</button>'
 				+ '</div>';
 
 			html += '</div>'; // .aff-category-block
 			return html;
-		},
-
-		/**
-		 * Build one category action icon button.
-		 *
-		 * @param {string} action    data-action value
-		 * @param {string} label     aria-label
-		 * @param {string} icon      SVG icon HTML
-		 * @param {string} extraClass Additional CSS class
-		 * @returns {string}
-		 */
-		_catBtn: function (action, label, icon, extraClass, disabled) {
-			return '<button class="aff-icon-btn ' + (extraClass || '') + '"'
-				+ ' data-action="' + action + '"'
-				+ ' aria-label="' + AFF.Utils.escHtml(label) + '"'
-				+ ' title="' + AFF.Utils.escHtml(label) + '"'
-			+ ' data-aff-tooltip="' + AFF.Utils.escHtml(label) + '"'
-				+ (disabled ? ' disabled' : '')
-				+ '>'
-				+ icon
-				+ '</button>';
 		},
 
 		/**
@@ -490,9 +469,9 @@
 		 */
 		_buildVariableRow: function (v) {
 			var status      = v.status || 'synced';
-			var statusColor = this._statusColor(status);
+			var statusColor = AFF.Utils.statusColor(status);
 			var swatchBg    = AFF.Utils.escHtml(v.value || '');
-			var rowKey      = this._rowKey(v);
+			var rowKey      = AFF.Utils.rowKey(v);
 			var isExpanded  = (this._openExpandId === rowKey);
 
 			var html = '<div class="aff-color-row"'
@@ -503,14 +482,14 @@
 				// Drag handle (col 1: 24px).
 				+ '<div class="aff-drag-handle" data-action="drag-handle" draggable="false"'
 			+ ' aria-label="Drag to reorder" data-aff-tooltip="Drag to reorder">'
-				+ this._sixDotSVG()
+				+ AFF.Icons.sixDotSVG()
 				+ '</div>'
 
 				// Status dot (Phase 2e).
 				+ '<span class="aff-status-dot"'
 				+ ' style="background:' + statusColor + '"'
 				+ ' data-aff-tooltip="' + AFF.Utils.escHtml(status.charAt(0).toUpperCase() + status.slice(1)) + '"'
-				+ ' data-aff-tooltip-long="' + AFF.Utils.escHtml(this._statusLongTooltip(status)) + '"'
+				+ ' data-aff-tooltip-long="' + AFF.Utils.escHtml(AFF.Utils.statusLongTooltip(status)) + '"'
 				+ ' aria-label="Status: ' + AFF.Utils.escHtml(status) + '">'
 				+ '</span>'
 
@@ -552,7 +531,7 @@
 				+ ' aria-expanded="false"'
 				+ ' data-aff-tooltip="Open color editor"'
 			+ ' data-aff-tooltip-long="Open the full color editor — tints, shades, transparency, and picker">'
-				+ this._chevronSVG()
+				+ AFF.Icons.chevronSVG()
 				+ '</button>'
 
 				// Delete button (col 8).
@@ -608,7 +587,7 @@
 			var hsl      = rgba ? self._rgbToHsl(rgba.r, rgba.g, rgba.b) : null;
 			var swatchBg = AFF.Utils.escHtml(v.value || '');
 
-			var statusColor = self._statusColor(v.status || 'synced');
+			var statusColor = AFF.Utils.statusColor(v.status || 'synced');
 
 			var html = '<div class="aff-modal-header">'
 				// Empty drag-handle placeholder (col 1) — keeps grid alignment with .aff-color-row
@@ -1070,15 +1049,15 @@
 				var row   = valueInput.closest('.aff-color-row');
 				var varId = row ? row.getAttribute('data-var-id') : null;
 				if (varId === null) { return; }
-				var vv  = self._findVarByKey(varId);
+				var vv  = AFF.Utils.findVarByKey(varId);
 				var fmt = vv ? (vv.format || 'HEX') : 'HEX';
 				var res = self._normalizeColorValue(valueInput.value, fmt);
 				if (res.error) {
-					self._showFieldError(valueInput, res.error);
+					AFF.Utils.showFieldError(valueInput, res.error);
 					valueInput.value = valueInput.getAttribute('data-original') || '';
 					return;
 				}
-				self._clearFieldError(valueInput);
+				AFF.Utils.clearFieldError(valueInput);
 				if (res.value !== valueInput.value) { valueInput.value = res.value; }
 				if (AFF.App) { AFF.App.setDirty(true); }
 				self._saveVarValue(varId, res.value, valueInput);
@@ -1168,7 +1147,7 @@
 			// is never two .aff-expand-modal elements in the DOM at once.
 			self._closeExpandPanel(container, true);
 
-			var v = self._findVarByKey(varId);
+			var v = AFF.Utils.findVarByKey(varId);
 			if (!v) { return; }
 
 			row.setAttribute('data-expanded', 'true');
@@ -1295,15 +1274,15 @@
 					}
 				});
 				valueInput.addEventListener('change', function () {
-					var vv  = self._findVarByKey(varId);
+					var vv  = AFF.Utils.findVarByKey(varId);
 					var fmt = vv ? (vv.format || 'HEX') : 'HEX';
 					var res = self._normalizeColorValue(valueInput.value, fmt);
 					if (res.error) {
-						self._showFieldError(valueInput, res.error);
+						AFF.Utils.showFieldError(valueInput, res.error);
 						valueInput.value = valueInput.getAttribute('data-original') || '';
 						return;
 					}
-					self._clearFieldError(valueInput);
+					AFF.Utils.clearFieldError(valueInput);
 					if (res.value !== valueInput.value) { valueInput.value = res.value; }
 					self._saveVarValue(varId, res.value, valueInput);
 					var swatch = modal.querySelector('.aff-color-swatch');
@@ -1330,7 +1309,7 @@
 				formatSel.addEventListener('change', function () {
 					self._saveVarFormat(varId, formatSel.value);
 					// _saveVarFormat updates v.value in state; reflect in modal header.
-					var vv = self._findVarByKey(varId);
+					var vv = AFF.Utils.findVarByKey(varId);
 					if (vv) {
 						if (valueInput) {
 							valueInput.value = vv.value;
@@ -1407,7 +1386,7 @@
 					if (steps > 10) { steps = 10; }
 					tintsNum.value = steps; // clamp displayed value
 					var palette = modal.querySelector('.aff-tints-palette');
-					var vv      = self._findVarByKey(varId);
+					var vv      = AFF.Utils.findVarByKey(varId);
 					var rgba2   = vv ? self._parseToRgba(vv.value || '') : null;
 					var hsl2    = rgba2 ? self._rgbToHsl(rgba2.r, rgba2.g, rgba2.b) : null;
 					if (palette) { palette.innerHTML = self._buildTintsBars(hsl2, steps); }
@@ -1425,7 +1404,7 @@
 					if (steps > 10) { steps = 10; }
 					shadesNum.value = steps; // clamp displayed value
 					var palette = modal.querySelector('.aff-shades-palette');
-					var vv      = self._findVarByKey(varId);
+					var vv      = AFF.Utils.findVarByKey(varId);
 					var rgba2   = vv ? self._parseToRgba(vv.value || '') : null;
 					var hsl2    = rgba2 ? self._rgbToHsl(rgba2.r, rgba2.g, rgba2.b) : null;
 					if (palette) { palette.innerHTML = self._buildShadesBars(hsl2, steps); }
@@ -1439,7 +1418,7 @@
 				transChk.addEventListener('change', function () {
 					var isOn    = transChk.checked;
 					var palette = modal.querySelector('.aff-trans-palette');
-					var vv      = self._findVarByKey(varId);
+					var vv      = AFF.Utils.findVarByKey(varId);
 					var rgba2   = vv ? self._parseToRgba(vv.value || '') : null;
 					if (palette) { palette.innerHTML = isOn ? self._buildTransBars(rgba2) : ''; }
 					if (vv) { self._debounceGenerate(varId, modal); }
@@ -1512,7 +1491,7 @@
 
 			if (!/^(--)?[A-Za-z_][A-Za-z0-9_-]*$/.test(newName)) {
 				nameInput.value = oldName; // Revert.
-				self._showFieldError(nameInput, 'Use letters, numbers, hyphens, or underscores. May start with --.');
+				AFF.Utils.showFieldError(nameInput, 'Use letters, numbers, hyphens, or underscores. May start with --.');
 				return;
 			}
 
@@ -1521,11 +1500,11 @@
 			});
 			if (duplicate) {
 				nameInput.value = oldName;
-				self._showFieldError(nameInput, 'A variable with that name already exists.');
+				AFF.Utils.showFieldError(nameInput, 'A variable with that name already exists.');
 				return;
 			}
 
-			var v = self._findVarByKey(varId);
+			var v = AFF.Utils.findVarByKey(varId);
 			if (!v) { return; }
 
 			// Update status in state and dot in the main-list row immediately.
@@ -1534,7 +1513,7 @@
 			if (content) {
 				var listRow = content.querySelector('.aff-color-row[data-var-id="' + AFF.Utils.escHtml(varId) + '"]');
 				var listDot = listRow ? listRow.querySelector('.aff-status-dot') : null;
-				if (listDot) { listDot.style.background = self._statusColor('modified'); }
+				if (listDot) { listDot.style.background = AFF.Utils.statusColor('modified'); }
 			}
 
 			pushUndo({ type: 'name-change', id: v.id, oldValue: oldName, newValue: newName });
@@ -1561,7 +1540,7 @@
 		 */
 		_saveVarValue: function (varId, newValue, input) {
 			var self = this;
-			var v    = self._findVarByKey(varId);
+			var v    = AFF.Utils.findVarByKey(varId);
 			if (!v) { return; }
 
 			var oldValue = v.value || '';
@@ -1581,7 +1560,7 @@
 					var listVal = listRow.querySelector('.aff-color-value-input');
 					if (listVal) { listVal.value = newValue; }
 					var listDot = listRow.querySelector('.aff-status-dot');
-					if (listDot) { listDot.style.background = self._statusColor('modified'); }
+					if (listDot) { listDot.style.background = AFF.Utils.statusColor('modified'); }
 				}
 			}
 
@@ -1608,7 +1587,7 @@
 		 */
 		_saveVarFormat: function (varId, newFormat) {
 			var self = this;
-			var v    = self._findVarByKey(varId);
+			var v    = AFF.Utils.findVarByKey(varId);
 			if (!v) { return; }
 
 			var converted = self._convertColor(v.value || '', newFormat);
@@ -1630,7 +1609,7 @@
 						if (swatch) { swatch.style.background = converted; }
 					}
 					var dot = row.querySelector('.aff-status-dot');
-					if (dot) { dot.style.background = self._statusColor('modified'); }
+					if (dot) { dot.style.background = AFF.Utils.statusColor('modified'); }
 				}
 			}
 
@@ -2171,7 +2150,7 @@
 		 */
 		_deleteVariable: function (varId) {
 			var self     = this;
-			var variable = self._findVarByKey(varId);
+			var variable = AFF.Utils.findVarByKey(varId);
 			if (!variable) { return; }
 			// Use the resolved UUID for API calls; varId may be a stale __n_ key.
 			varId = variable.id || varId;
@@ -2200,10 +2179,10 @@
 					var toRemove = { };
 					toRemove[varId] = true;
 					if (deleteChildren) {
-						children.forEach(function (c) { toRemove[self._rowKey(c)] = true; });
+						children.forEach(function (c) { toRemove[AFF.Utils.rowKey(c)] = true; });
 					}
 					AFF.state.variables = AFF.state.variables.filter(function (v) {
-						return !toRemove[self._rowKey(v)];
+						return !toRemove[AFF.Utils.rowKey(v)];
 					});
 					AFF.App.setDirty(true);
 					AFF.App.refreshCounts();
@@ -2285,44 +2264,6 @@
 		// MOVE VARIABLE
 		// -----------------------------------------------------------------------
 
-		/**
-		 * Returns the 6-dot drag handle SVG icon.
-		 *
-		 * @returns {string}
-		 */
-		_sixDotSVG: function () {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="20" viewBox="0 0 14 20" fill="currentColor" aria-hidden="true">'
-				+ '<circle cx="4" cy="4" r="2"/><circle cx="10" cy="4" r="2"/>'
-				+ '<circle cx="4" cy="10" r="2"/><circle cx="10" cy="10" r="2"/>'
-				+ '<circle cx="4" cy="16" r="2"/><circle cx="10" cy="16" r="2"/>'
-				+ '</svg>';
-		},
-
-	/**
-	 * Return a small SVG icon for a sort button based on its direction state.
-	 * 'none' = neutral (up+down arrows), 'asc' = solid up triangle, 'desc' = solid down triangle.
-	 *
-	 * @param {string} dir 'none' | 'asc' | 'desc'
-	 * @returns {string}
-	 */
-	_sortBtnSVG: function (dir) {
-		if (dir === 'asc') {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" aria-hidden="true">'
-				+ '<polygon points="12,3 22,21 2,21" fill="currentColor"/>'
-				+ '</svg>';
-		}
-		if (dir === 'desc') {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" aria-hidden="true">'
-				+ '<polygon points="12,21 2,3 22,3" fill="currentColor"/>'
-				+ '</svg>';
-		}
-		// 'none' — stacked up+down triangles (neutral)
-		return '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="12" viewBox="0 0 10 12" aria-hidden="true">'
-			+ '<polygon points="5,1 9,5 1,5" fill="currentColor" opacity="0.6"/>'
-			+ '<polygon points="5,11 1,7 9,7" fill="currentColor" opacity="0.6"/>'
-			+ '</svg>';
-	},
-
 	/**
 	 * Sort variables within a single category and re-render that category's list.
 	 * Client-side only — does not call the server or modify v.order.
@@ -2377,7 +2318,7 @@
 			var btnCol = btn.getAttribute('data-sort-col');
 			var btnDir = (btnCol === field) ? dir : 'none';
 			btn.setAttribute('data-sort-dir', btnDir);
-			btn.innerHTML = self._sortBtnSVG(btnDir);
+			btn.innerHTML = AFF.Icons.sortBtnSVG(btnDir);
 		}
 	},
 
@@ -2738,8 +2679,8 @@
 			var dragged = null;
 			var target  = null;
 			for (var i = 0; i < AFF.state.variables.length; i++) {
-				if (self._rowKey(AFF.state.variables[i]) === draggedId) { dragged = AFF.state.variables[i]; }
-				if (self._rowKey(AFF.state.variables[i]) === targetId)  { target  = AFF.state.variables[i]; }
+				if (AFF.Utils.rowKey(AFF.state.variables[i]) === draggedId) { dragged = AFF.state.variables[i]; }
+				if (AFF.Utils.rowKey(AFF.state.variables[i]) === targetId)  { target  = AFF.state.variables[i]; }
 			}
 			// Special case: drop into an empty category (no target variable row exists).
 		if (targetId === '__empty-cat__' && dragged && targetCatBlock) {
@@ -2750,7 +2691,7 @@
 				if (ecCats[ei].id === emptyCatId) { emptyCatName = ecCats[ei].name; break; }
 			}
 			for (var ek = 0; ek < AFF.state.variables.length; ek++) {
-				if (self._rowKey(AFF.state.variables[ek]) === draggedId) {
+				if (AFF.Utils.rowKey(AFF.state.variables[ek]) === draggedId) {
 					AFF.state.variables[ek].category    = emptyCatName;
 					AFF.state.variables[ek].category_id = emptyCatId;
 					AFF.state.variables[ek].order       = 0;
@@ -2787,12 +2728,12 @@
 
 			var catVars = self._getVarsForCategory(targetCatObj);
 			// Remove dragged from the list (handles cross-category and same-cat).
-			catVars = catVars.filter(function (v) { return self._rowKey(v) !== draggedId; });
+			catVars = catVars.filter(function (v) { return AFF.Utils.rowKey(v) !== draggedId; });
 
 			// Find insertion index.
 			var insertIdx = catVars.length;
 			for (var vi = 0; vi < catVars.length; vi++) {
-				if (self._rowKey(catVars[vi]) === targetId) {
+				if (AFF.Utils.rowKey(catVars[vi]) === targetId) {
 					insertIdx = insertBefore ? vi : vi + 1;
 					break;
 				}
@@ -2818,7 +2759,7 @@
 			// If dragged changed category, also update its category in state.
 			if (dragged.category_id !== newCatId) {
 				for (var dk = 0; dk < AFF.state.variables.length; dk++) {
-					if (self._rowKey(AFF.state.variables[dk]) === draggedId) {
+					if (AFF.Utils.rowKey(AFF.state.variables[dk]) === draggedId) {
 						AFF.state.variables[dk].category    = newCatName;
 						AFF.state.variables[dk].category_id = newCatId;
 						break;
@@ -2848,7 +2789,7 @@
 		 */
 		_moveVarToCategory: function (varId, newCatId) {
 			var self = this;
-			var v    = self._findVarByKey(varId);
+			var v    = AFF.Utils.findVarByKey(varId);
 			if (!v || !newCatId || newCatId === v.category_id) { return; }
 
 			var cats   = (AFF.state.config && AFF.state.config.categories) || [];
@@ -2933,7 +2874,7 @@
 		 */
 		_generateChildren: function (varId, panel) {
 			var self  = this;
-			var v     = self._findVarByKey(varId);
+			var v     = AFF.Utils.findVarByKey(varId);
 
 			if (!AFF.state.currentFile) {
 				self._noFileModal();
@@ -3086,13 +3027,13 @@
 					toggleBtn.setAttribute('aria-label', 'Expand all categories');
 					toggleBtn.setAttribute('data-aff-tooltip', 'Expand all categories');
 					toggleBtn.setAttribute('data-toggle-state', 'collapsed');
-					toggleBtn.innerHTML = this._expandAllSVG();
+					toggleBtn.innerHTML = AFF.Icons.expandAllSVG();
 				} else {
 					toggleBtn.setAttribute('title', 'Collapse all categories');
 					toggleBtn.setAttribute('aria-label', 'Collapse all categories');
 					toggleBtn.setAttribute('data-aff-tooltip', 'Collapse all categories');
 					toggleBtn.setAttribute('data-toggle-state', 'expanded');
-					toggleBtn.innerHTML = this._collapseAllSVG();
+					toggleBtn.innerHTML = AFF.Icons.collapseAllSVG();
 				}
 			}
 		},
@@ -3230,7 +3171,7 @@
 					// Update category on every selected variable in state.
 					for (var vi = 0; vi < AFF.state.variables.length; vi++) {
 						var v  = AFF.state.variables[vi];
-						var rk = self._rowKey(v);
+						var rk = AFF.Utils.rowKey(v);
 						if (_selectedKeys[rk]) {
 							AFF.state.variables[vi].category    = catName;
 							AFF.state.variables[vi].category_id = catId;
@@ -3307,7 +3248,7 @@
 					// Remove selected vars from state; collect saved IDs for server delete.
 					var savedIds = [];
 					AFF.state.variables = AFF.state.variables.filter(function (v) {
-						var rk = self._rowKey(v);
+						var rk = AFF.Utils.rowKey(v);
 						if (!_selectedKeys[rk]) { return true; }  // keep
 						if (v.id) { savedIds.push(v.id); }         // mark for server delete
 						return false;                               // remove from state
@@ -3425,18 +3366,6 @@
 		},
 
 		/**
-		 * Get variables that belong to a given category ID.
-		 *
-		 * @param {string} catId
-		 * @returns {Array}
-		 */
-		_getVarsForCategoryId: function (catId) {
-			return (AFF.state.variables || []).filter(function (v) {
-				return v.category_id === catId && v.status !== 'deleted';
-			});
-		},
-
-		/**
 		 * Get child variables (parent_id matches the given ID).
 		 *
 		 * @param {string} parentId
@@ -3446,56 +3375,6 @@
 			return (AFF.state.variables || []).filter(function (v) {
 				return v.parent_id === parentId;
 			});
-		},
-
-		/**
-		 * Find a variable by ID.
-		 *
-		 * @param {string} id Variable UUID.
-		 * @returns {Object|null}
-		 */
-		_findVarById: function (id) {
-			var vars = AFF.state.variables || [];
-			for (var i = 0; i < vars.length; i++) {
-				if (vars[i].id === id) { return vars[i]; }
-			}
-			return null;
-		},
-
-		/**
-		 * Compute a unique row key for a variable.
-		 * Uses v.id when available; falls back to a synthetic key from v.name
-		 * so that synced variables (id:'') can still open expand panels.
-		 *
-		 * @param {Object} v Variable object.
-		 * @returns {string}
-		 */
-		_rowKey: function (v) {
-			return (v.id) ? v.id : ('__n_' + v.name);
-		},
-
-		/**
-		 * Find a variable by its row key (v.id or synthetic __n_name key).
-		 *
-		 * @param {string} key Row key from data-var-id attribute.
-		 * @returns {Object|null}
-		 */
-		_findVarByKey: function (key) {
-			var self = this;
-			var vars = AFF.state.variables || [];
-			for (var i = 0; i < vars.length; i++) {
-				if (self._rowKey(vars[i]) === key) { return vars[i]; }
-			}
-			// Fallback: __n_name keys become stale once the server assigns a UUID
-			// (ajaxSaveColor updates state but does not re-render the DOM). Search
-			// by name so expand/edit/delete still work without a full re-render.
-			if (key.indexOf('__n_') === 0) {
-				var name = key.slice(4);
-				for (var j = 0; j < vars.length; j++) {
-					if (vars[j].name === name) { return vars[j]; }
-				}
-			}
-			return null;
 		},
 
 		// -----------------------------------------------------------------------
@@ -3611,7 +3490,7 @@
 		 */
 		_refreshModalPalettes: function (modal, varId) {
 			var self  = this;
-			var vv    = self._findVarByKey(varId);
+			var vv    = AFF.Utils.findVarByKey(varId);
 			if (!vv || !modal) { return; }
 			var rgba2     = self._parseToRgba(vv.value || '');
 			var hsl2      = rgba2 ? self._rgbToHsl(rgba2.r, rgba2.g, rgba2.b) : null;
@@ -3663,39 +3542,6 @@
 				return 'hsla(' + h + ', ' + s + '%, ' + l + '%, ' + a2 + ')';
 			}
 			return '';
-		},
-
-		_showFieldError: function (input, message) {
-			this._clearFieldError(input);
-			var el  = document.createElement('div');
-			el.className = 'aff-inline-error';
-			el.textContent = message;
-			var rect   = input.getBoundingClientRect();
-			el.style.left = rect.left + 'px';
-			el.style.top  = (rect.bottom + 4) + 'px';
-			document.body.appendChild(el);
-			input._effError = el;
-			var timer = setTimeout(function () {
-				if (el.parentNode) { el.parentNode.removeChild(el); }
-				if (input._effError === el) { input._effError = null; }
-			}, 3500);
-			input._effErrorTimer = timer;
-		},
-
-		/**
-		 * Remove any visible field error tooltip for an input.
-		 *
-		 * @param {HTMLElement} input
-		 */
-		_clearFieldError: function (input) {
-			if (input._effError) {
-				if (input._effError.parentNode) { input._effError.parentNode.removeChild(input._effError); }
-				input._effError = null;
-			}
-			if (input._effErrorTimer) {
-				clearTimeout(input._effErrorTimer);
-				input._effErrorTimer = null;
-			}
 		},
 
 		// -----------------------------------------------------------------------
@@ -3754,36 +3600,6 @@
 		// -----------------------------------------------------------------------
 		// COLOR UTILITIES
 		// -----------------------------------------------------------------------
-
-		/**
-		 * Return the CSS color string for a status enum value.
-		 *
-		 * @param {string} status
-		 * @returns {string} CSS color string.
-		 */
-		_statusLongTooltip: function (status) {
-			var map = {
-				synced:   'Synced \u2014 This variable matches the value in the Elementor kit.',
-				modified: 'Modified \u2014 Value changed since last sync. Commit to push to Elementor.',
-				new:      'New \u2014 Variable not yet in the Elementor kit. Commit to add it.',
-				deleted:  'Deleted \u2014 Marked for deletion. Commit to remove from Elementor.',
-				conflict: 'Conflict \u2014 Value changed both here and in Elementor since last sync.',
-				orphaned: 'Orphaned \u2014 Exists in AFFbut not found in Elementor kit. Commit to add it.',
-			};
-			return map[status] || ('Status: ' + status);
-		},
-
-		_statusColor: function (status) {
-			var map = {
-				synced:   'var(--aff-status-synced)',
-				modified: 'var(--aff-status-modified)',
-				conflict: 'var(--aff-status-conflict)',
-				orphaned: 'var(--aff-status-orphaned)',
-				new:      'var(--aff-status-new)',
-				deleted:  'var(--aff-status-deleted)',
-			};
-			return map[status] || 'var(--aff-status-synced)';
-		},
 
 		/**
 		 * Extract a 6-character hex string from a CSS color value.
@@ -3960,112 +3776,6 @@
 				}
 			}
 			return null;
-		},
-
-		// -----------------------------------------------------------------------
-		// SVG ICONS (inline, no external dependencies)
-		// -----------------------------------------------------------------------
-
-		/** Chevron-down (expand row / collapse-category direction indicator). */
-		_chevronSVG: function () {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
-				+ ' fill="none" stroke="currentColor" stroke-width="2"'
-				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-				+ '<polyline points="6 9 12 15 18 9"></polyline>'
-				+ '</svg>';
-		},
-
-		/** × close / back button. */
-		_closeSVG: function () {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
-				+ ' fill="none" stroke="currentColor" stroke-width="2"'
-				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-				+ '<line x1="18" y1="6" x2="6" y2="18"></line>'
-				+ '<line x1="6" y1="6" x2="18" y2="18"></line>'
-				+ '</svg>';
-		},
-
-		/** Double-chevron up — collapse-all icon, shown when any category is expanded. */
-		_collapseAllSVG: function () {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
-				+ ' fill="none" stroke="currentColor" stroke-width="2"'
-				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-				+ '<polyline points="18 11 12 5 6 11"></polyline>'
-				+ '<polyline points="18 19 12 13 6 19"></polyline>'
-				+ '</svg>';
-		},
-
-		/** Double-chevron down — expand-all icon, shown when all categories are collapsed. */
-		_expandAllSVG: function () {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
-				+ ' fill="none" stroke="currentColor" stroke-width="2"'
-				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-				+ '<polyline points="6 5 12 11 18 5"></polyline>'
-				+ '<polyline points="6 13 12 19 18 13"></polyline>'
-				+ '</svg>';
-		},
-
-		/** Plus inside a circle (add variable / add category). */
-		_plusCircleSVG: function () {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
-				+ ' fill="none" stroke="currentColor" stroke-width="2"'
-				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-				+ '<circle cx="12" cy="12" r="10"></circle>'
-				+ '<line x1="12" y1="8" x2="12" y2="16"></line>'
-				+ '<line x1="8" y1="12" x2="16" y2="12"></line>'
-				+ '</svg>';
-		},
-
-		/** Plain plus sign — no surrounding circle (used for add-var button whose border IS the circle). */
-		_plusSVG: function () {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"'
-				+ ' fill="none" stroke="currentColor" stroke-width="2.5"'
-				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-				+ '<line x1="12" y1="5" x2="12" y2="19"></line>'
-				+ '<line x1="5" y1="12" x2="19" y2="12"></line>'
-				+ '</svg>';
-		},
-
-		/** Duplicate / copy icon. */
-		_duplicateSVG: function () {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
-				+ ' fill="none" stroke="currentColor" stroke-width="2"'
-				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-				+ '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>'
-				+ '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>'
-				+ '</svg>';
-		},
-
-		/** Arrow pointing up (move category up). */
-		_arrowUpSVG: function () {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
-				+ ' fill="none" stroke="currentColor" stroke-width="2"'
-				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-				+ '<line x1="12" y1="19" x2="12" y2="5"></line>'
-				+ '<polyline points="5 12 12 5 19 12"></polyline>'
-				+ '</svg>';
-		},
-
-		/** Arrow pointing down (move category down). */
-		_arrowDownSVG: function () {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
-				+ ' fill="none" stroke="currentColor" stroke-width="2"'
-				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-				+ '<line x1="12" y1="5" x2="12" y2="19"></line>'
-				+ '<polyline points="19 12 12 19 5 12"></polyline>'
-				+ '</svg>';
-		},
-
-		/** Trash bin (delete category). */
-		_trashSVG: function () {
-			return '<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"'
-				+ ' fill="none" stroke="currentColor" stroke-width="2"'
-				+ ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
-				+ '<polyline points="3 6 5 6 21 6"></polyline>'
-				+ '<path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path>'
-				+ '<path d="M10 11v6"></path><path d="M14 11v6"></path>'
-				+ '<path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path>'
-				+ '</svg>';
 		},
 
 	};
