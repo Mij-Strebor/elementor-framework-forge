@@ -42,34 +42,15 @@ this._bindV3ColorsBtn();
 
 ---
 
-### C-02 — Double `verify_request()` in six Phase 2 endpoints — OPEN
+### C-02 — Double `verify_request()` in six Phase 2 endpoints — FIXED
 
 **File:** `includes/class-aff-ajax-handler.php`
 
-`with_store()` calls `$this->verify_request()` as its first line (line 1539).
-Every Phase 2 endpoint that uses `with_store()` also calls `verify_request()`
-explicitly before the `with_store()` call. The nonce is checked twice per request.
-
-Affected endpoints:
-- `ajax_aff_save_category()` — line 622
-- `ajax_aff_delete_category()` — line 658
-- `ajax_aff_reorder_categories()` — line 685
-- `ajax_aff_save_color()` — line 714
-- `ajax_aff_delete_color()` — line 817
-- `ajax_aff_generate_children()` — line 851
-
-While WordPress nonces are not single-use, double-checking adds unnecessary
-overhead and contradicts the contract implied by `with_store`. It also obscures
-which layer owns the security check. A "why" comment has been added to each
-call site and to `with_store()` itself to make this visible.
-
-**Fix — two valid options:**
-
-Option A (preferred): Remove the explicit `verify_request()` call from all six
-endpoints. `with_store()` already handles it.
-
-Option B: Remove `verify_request()` from inside `with_store()` and document
-that callers are responsible. Update PATTERNS.md.
+The explicit `$this->verify_request()` call has been removed from all six
+Phase 2 endpoints. `with_store()` owns the security check and documents
+this contract in its PHPDoc. Affected endpoints were:
+`ajax_aff_save_category`, `ajax_aff_delete_category`, `ajax_aff_reorder_categories`,
+`ajax_aff_save_color`, `ajax_aff_delete_color`, `ajax_aff_generate_children`.
 
 ---
 
@@ -537,7 +518,7 @@ from `project_name`).
 | ID | Severity | Status | Category | File(s) | One-line description |
 |----|----------|--------|----------|---------|----------------------|
 | C-01 | **Critical** | STUBBED | Feature stub | `aff-panel-right.js` | V3 import button intentionally not wired — future feature |
-| C-02 | **Critical** | OPEN | Bug | `class-aff-ajax-handler.php` | Double `verify_request()` in 6 Phase 2 endpoints |
+| C-02 | **Critical** | FIXED | Bug | `class-aff-ajax-handler.php` | Double `verify_request()` removed from 6 Phase 2 endpoints |
 | C-03 | **Critical** | OPEN | Security | `aff-panel-right.js` | `_escHtml` missing `"` and `'` — weaker than `AFF.Utils.escHtml` |
 | C-04 | **Critical** | OPEN | Bug | `aff-app.js` | Font-size sentinel `16` mismatches PHP default `14` |
 | C-05 | **Critical** | OPEN | Bug | `aff-colors.js`, `aff-panel-top.js` | `.eff.json` still generated in active code paths |
@@ -575,8 +556,7 @@ These can be done independently in any order, but this sequence minimises risk:
 
 1. **C-06** — Fix three missing spaces in sync dialog strings (2-min, no logic change)
 2. **C-05** — Replace all `.eff.json` generation with `.aff.json`; fix L-07/L-08 doc comments in the same pass
-3. **C-02** — Remove double `verify_request()` calls (mechanical, one-liner each)
-4. **DP-02** — Hoist format-unit map to module level (5 min, low risk)
+3. **DP-02** — Hoist format-unit map to module level (5 min, low risk)
 5. **DP-01** / **C-03** — Consolidate escape functions; delete `_escHtml`, `_escAttr`
 6. **D-01** — Delete `_patch_panel_right.js`
 7. **DP-05** — Merge the two `aff_get_settings` calls

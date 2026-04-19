@@ -624,9 +624,6 @@ class AFF_Ajax_Handler
 	 */
 	public function ajax_aff_save_category(): void
 	{
-		// Tech debt C-02: verify_request() is also called inside with_store() below.
-		// This explicit call is redundant — one of the two should be removed.
-		$this->verify_request();
 		$subgroup     = $this->get_subgroup_param();
 		$category_raw = isset($_POST['category']) ? wp_unslash($_POST['category']) : '';
 		$category     = $this->safe_json_decode($category_raw, __('Invalid category data.', 'atomic-framework-forge-for-elementor'));
@@ -662,8 +659,6 @@ class AFF_Ajax_Handler
 	 */
 	public function ajax_aff_delete_category(): void
 	{
-		// Tech debt C-02: verify_request() is also called inside with_store() below.
-		$this->verify_request();
 		$subgroup    = $this->get_subgroup_param();
 		$category_id = $this->post_param('category_id');
 
@@ -690,8 +685,6 @@ class AFF_Ajax_Handler
 	 */
 	public function ajax_aff_reorder_categories(): void
 	{
-		// Tech debt C-02: verify_request() is also called inside with_store() below.
-		$this->verify_request();
 		$subgroup    = $this->get_subgroup_param();
 		$ids_raw     = isset($_POST['ordered_ids']) ? wp_unslash($_POST['ordered_ids']) : '[]';
 		$ordered_ids = $this->safe_json_decode($ids_raw, __('Invalid ordered IDs format.', 'atomic-framework-forge-for-elementor'));
@@ -720,8 +713,6 @@ class AFF_Ajax_Handler
 	 */
 	public function ajax_aff_save_color(): void
 	{
-		// Tech debt C-02: verify_request() is also called inside with_store() below.
-		$this->verify_request();
 		$variable_raw = isset($_POST['variable']) ? wp_unslash($_POST['variable']) : '';
 		$variable     = $this->safe_json_decode($variable_raw, __('Invalid variable data.', 'atomic-framework-forge-for-elementor'));
 
@@ -824,8 +815,6 @@ class AFF_Ajax_Handler
 	 */
 	public function ajax_aff_delete_color(): void
 	{
-		// Tech debt C-02: verify_request() is also called inside with_store() below.
-		$this->verify_request();
 		$variable_id     = $this->post_param('variable_id');
 		$delete_children = isset($_POST['delete_children'])
 			&& $_POST['delete_children'] !== '0'
@@ -859,8 +848,6 @@ class AFF_Ajax_Handler
 	 */
 	public function ajax_aff_generate_children(): void
 	{
-		// Tech debt C-02: verify_request() is also called inside with_store() below.
-		$this->verify_request();
 		$parent_id   = $this->post_param('parent_id');
 		$tint_steps  = max(0, min(10, isset($_POST['tints'])   ? (int) $_POST['tints']   : 0));
 		$shade_steps = max(0, min(10, isset($_POST['shades'])  ? (int) $_POST['shades']  : 0));
@@ -1541,10 +1528,8 @@ class AFF_Ajax_Handler
 	/**
 	 * Verify the request, load the store, run $callback, save, and send JSON success.
 	 *
-	 * verify_request() IS CALLED INSIDE THIS METHOD. Callers must NOT call it again
-	 * beforehand — doing so checks the nonce twice and obscures which layer owns
-	 * the security check (tech debt C-02). The contract: if you use with_store(),
-	 * security is fully handled here and the caller owes nothing extra.
+	 * Handles nonce verification and capability check internally — callers must NOT
+	 * call verify_request() before with_store(). Security is owned here.
 	 *
 	 * The callback receives the AFF_Data_Store instance and must return the array
 	 * to pass to wp_send_json_success(). Throw an \Exception to send an error instead.
