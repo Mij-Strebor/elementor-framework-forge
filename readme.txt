@@ -4,7 +4,7 @@ Tags:              elementor, css variables, design system, developer tools, ato
 Requires at least: 5.8
 Tested up to:      6.9
 Requires PHP:      8.2
-Stable tag:        0.4.1-beta
+Stable tag:        0.4.2-beta
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -72,6 +72,20 @@ In your WordPress uploads directory under `/uploads/aff/`.
 Elementor v4+ (atomic widget architecture) and Elementor Pro.
 
 == Changelog ==
+
+= 0.4.2-beta =
+* Added: Elementor commit now writes to _elementor_global_variables post meta as the primary target; CSS file patch applied as secondary for immediate visual preview.
+* Fixed: CSS variable names normalized to -- prefix on Elementor commit; bare identifiers (sp-s) are now written as valid custom properties (--sp-s).
+* Fixed: AFF now stores bare identifiers internally, preventing double-prefix on round-trip commit/import.
+* Fixed: Elementor V4 import preserves labels unchanged; strips only one -- prefix per name.
+* Fixed: Renaming a category no longer causes its variables to disappear from the edit view.
+* Fixed: Add Category works correctly in Fonts and Numbers panels; modal handler now removed on close.
+* Fixed: Deleting a project clears the active display; native confirm() replaced with modal dialog.
+* Fixed: Project file auto-saved after Clear and Replace sync operations.
+* Fixed: Left panel category count badges now match by category_id in addition to category name.
+* Fixed: Take-a-look sign image converted to true PNG with transparent background.
+* Changed: Duplicate utility methods extracted into shared AFF.Utils and AFF.Icons (Phase 1, ~520 lines removed).
+* Changed: Six category-management methods consolidated into AFF.CatMixin applied to both Colors and Variables (Phase 2, ~290 lines removed).
 
 = 0.4.1-beta =
 * Fixed placeholder sign background: transparent PNG areas now render against the page theme colour instead of showing a checkerboard pattern.

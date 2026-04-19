@@ -1,5 +1,5 @@
 # AFF Quick Start Guide
-## Atomic Framework Forge for Elementor — Beta 0.4.1
+## Atomic Framework Forge for Elementor — Beta 0.4.2
 
 > This guide gets you from zero to your first organized variable set in about ten minutes.
 >

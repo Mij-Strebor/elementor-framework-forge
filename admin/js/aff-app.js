@@ -42,6 +42,10 @@
 		config:                   {},
 		usageCounts:              {}, // { '--varname': count } — populated by fetchUsageCounts()
 		settings:                 {}, // cached from aff_get_settings on startup
+		// NOTE: metadata is intentionally absent here. It is added dynamically by
+		// _loadFile() and _autoLoadFile() when a project file loads. All code that
+		// reads it guards with: AFF.state.metadata && ...
+		// Tech debt A-03: add metadata: {} here for consistency with all other fields.
 	};
 
 	// -----------------------------------------------------------------------
@@ -402,6 +406,331 @@
 				+ '</svg>';
 		},
 	};
+
+	// -----------------------------------------------------------------------
+	// SHARED CATEGORY-MANAGEMENT MIXIN
+	// -----------------------------------------------------------------------
+	//
+	// Applied to AFF.Colors and AFF.Variables._proto via Object.assign at the
+	// end of each module's IIFE.
+	//
+	// Each target must expose:
+	//   this._cfg            { catKey: string, setName: string }
+	//   this._collapsedIds   {}
+	//   this._rerenderView() — re-renders the current view
+	//   this._noFileModal()  — shows the "no file loaded" modal
+	//   this._getVarsForCategory(cat) — returns variables for a category
+
+	AFF.CatMixin = {
+
+		/** Scroll to and expand a category block in the current view. */
+		_jumpToCategory: function (catId, container) {
+			var block = container.querySelector('.aff-category-block[data-category-id="' + catId + '"]');
+			if (!block) { return; }
+			block.setAttribute('data-collapsed', 'false');
+			this._collapsedIds[catId] = false;
+		},
+
+		/** Open the "Add Category" modal and persist the new category via AJAX. */
+		_addCategory: function () {
+			var self = this;
+			if (!AFF.state.currentFile) { self._noFileModal(); return; }
+
+			AFF.Modal.open({
+				title: 'New Category',
+				body:  '<p style="margin-bottom:10px">Enter a name for the new category.</p>'
+					+ '<input type="text" class="aff-field-input" id="aff-modal-cat-name"'
+					+ ' placeholder="Category name" autocomplete="off" style="width:100%">',
+				footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
+					+ '<button class="aff-btn aff-btn--secondary" id="aff-modal-cat-cancel">Cancel</button>'
+					+ '<button class="aff-btn" id="aff-modal-cat-ok">Add Category</button>'
+					+ '</div>',
+				onClose: function () { document.removeEventListener('click', handleClick); },
+			});
+			setTimeout(function () {
+				var inp = document.getElementById('aff-modal-cat-name');
+				if (inp) { inp.focus(); }
+			}, 50);
+
+			function handleClick(e) {
+				if (e.target.id === 'aff-modal-cat-cancel') {
+					AFF.Modal.close();
+					document.removeEventListener('click', handleClick);
+				} else if (e.target.id === 'aff-modal-cat-ok') {
+					var inp  = document.getElementById('aff-modal-cat-name');
+					var name = inp ? inp.value.trim() : '';
+					AFF.Modal.close();
+					document.removeEventListener('click', handleClick);
+					if (!name) { return; }
+
+					AFF.App.ajax('aff_save_category', {
+						filename: AFF.state.currentFile,
+						subgroup: self._cfg.setName,
+						category: JSON.stringify({ name: name }),
+					}).then(function (res) {
+						if (res.success && res.data) {
+							if (!AFF.state.config) { AFF.state.config = {}; }
+							// Use in-memory list as authoritative base; only append the
+							// newly created category from the server response. This
+							// preserves any unsaved reorder/drag state in local memory.
+							var existing = (AFF.state.config[self._cfg.catKey] || []).slice();
+							var newId    = res.data.id;
+							var alreadyPresent = existing.some(function (c) { return c.id === newId; });
+							if (!alreadyPresent) {
+								var _serverCats = res.data.categories || [];
+								for (var _ki = 0; _ki < _serverCats.length; _ki++) {
+									if (_serverCats[_ki].id === newId) {
+										existing.push(_serverCats[_ki]);
+										break;
+									}
+								}
+							}
+							AFF.state.config[self._cfg.catKey] = existing;
+							if (AFF.App) { AFF.App.setDirty(true); }
+							self._rerenderView();
+							if (AFF.PanelLeft && AFF.PanelLeft.refresh) { AFF.PanelLeft.refresh(); }
+						}
+					}).catch(function () {
+						console.warn('[AFF] AJAX error: add category (' + self._cfg.setName + ')');
+					});
+				}
+			}
+			document.addEventListener('click', handleClick);
+		},
+
+		/**
+		 * Save the category name from the always-on contenteditable span.
+		 *
+		 * @param {HTMLElement} input The .aff-category-name-input element.
+		 */
+		_saveCategoryName: function (input) {
+			var self    = this;
+			var newName = input.textContent.trim();
+			var oldName = input.getAttribute('data-original') || '';
+			var catId   = input.getAttribute('data-cat-id')   || '';
+
+			if (!newName || newName === oldName) {
+				input.textContent = oldName;
+				return;
+			}
+			if (!AFF.state.currentFile) {
+				input.textContent = oldName;
+				self._noFileModal();
+				return;
+			}
+
+			AFF.App.ajax('aff_save_category', {
+				filename: AFF.state.currentFile,
+				subgroup: self._cfg.setName,
+				category: JSON.stringify({ id: catId, name: newName }),
+			}).then(function (res) {
+				if (res.success && res.data) {
+					if (!AFF.state.config) { AFF.state.config = {}; }
+					// Update only the renamed category in memory by ID — never replace
+					// the whole array. A wholesale replacement was causing all other
+					// categories to disappear when the server returned a stale list.
+					var _localCats = AFF.state.config[self._cfg.catKey];
+					if (Array.isArray(_localCats)) {
+						for (var _ri = 0; _ri < _localCats.length; _ri++) {
+							if (_localCats[_ri].id === catId) { _localCats[_ri].name = newName; break; }
+						}
+					} else {
+						AFF.state.config[self._cfg.catKey] = res.data.categories || [];
+					}
+					// Sync the cached category name on every variable in this category.
+					// _getVarsForCategory matches by v.category === cat.name as a
+					// fallback; without this sync a rename makes those variables invisible.
+					var _allVars = AFF.state.variables || [];
+					for (var _vi = 0; _vi < _allVars.length; _vi++) {
+						if (_allVars[_vi].category_id === catId || _allVars[_vi].category === oldName) {
+							_allVars[_vi].category = newName;
+						}
+					}
+					input.setAttribute('data-original', newName);
+					if (AFF.App) { AFF.App.setDirty(true); }
+					self._rerenderView();
+					if (AFF.PanelLeft && AFF.PanelLeft.refresh) { AFF.PanelLeft.refresh(); }
+				} else {
+					input.textContent = oldName;
+				}
+			}).catch(function () { input.textContent = oldName; });
+		},
+
+		/**
+		 * Delete a category with confirmation modal.
+		 *
+		 * @param {string} catId Category ID.
+		 */
+		_deleteCategory: function (catId) {
+			var self = this;
+			var vars = AFF.Utils.getVarsForCategoryId(catId);
+			if (!AFF.state.currentFile) { self._noFileModal(); return; }
+
+			var bodyText = vars.length > 0
+				? '<p>' + vars.length + ' variable(s) are in this category. Variables will be moved to Uncategorized.</p>'
+				  + '<p style="margin-top:8px">Delete the category anyway?</p>'
+				: '<p>Delete this category?</p>';
+
+			AFF.Modal.open({
+				title:  'Delete Category',
+				body:   bodyText,
+				footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
+					+ '<button class="aff-btn aff-btn--secondary" id="aff-modal-del-cancel">Cancel</button>'
+					+ '<button class="aff-btn aff-btn--danger" id="aff-modal-del-ok">Delete Category</button>'
+					+ '</div>',
+				onClose: function () { document.removeEventListener('click', handleClick); },
+			});
+
+			function handleClick(e) {
+				if (e.target.id === 'aff-modal-del-cancel') {
+					AFF.Modal.close();
+					document.removeEventListener('click', handleClick);
+				} else if (e.target.id === 'aff-modal-del-ok') {
+					AFF.Modal.close();
+					document.removeEventListener('click', handleClick);
+					// Pre-capture local list so we can filter it instead of trusting
+					// the server response (avoids potential stale-list replacement).
+					var _preDelCats = (AFF.state.config && Array.isArray(AFF.state.config[self._cfg.catKey]))
+						? AFF.state.config[self._cfg.catKey].slice() : null;
+					AFF.App.ajax('aff_delete_category', {
+						filename:    AFF.state.currentFile,
+						subgroup:    self._cfg.setName,
+						category_id: catId,
+					}).then(function (res) {
+						if (res.success && res.data) {
+							if (!AFF.state.config) { AFF.state.config = {}; }
+							AFF.state.config[self._cfg.catKey] = _preDelCats !== null
+								? _preDelCats.filter(function (c) { return c.id !== catId; })
+								: res.data.categories;
+							delete self._collapsedIds[catId];
+							if (AFF.App) { AFF.App.setDirty(true); }
+							self._rerenderView();
+							if (AFF.PanelLeft && AFF.PanelLeft.refresh) { AFF.PanelLeft.refresh(); }
+						} else if (!res.success) {
+							var errMsg = (res.data && res.data.message) ? res.data.message : 'Delete failed.';
+							AFF.Modal.open({ title: 'Delete failed', body: '<p>' + errMsg + '</p>' });
+						}
+					}).catch(function () {
+						AFF.Modal.open({ title: 'Connection error', body: '<p>Connection error during delete.</p>' });
+					});
+				}
+			}
+			document.addEventListener('click', handleClick);
+		},
+
+		/**
+		 * Duplicate a category and all its variables.
+		 *
+		 * @param {string} catId Source category ID.
+		 */
+		_duplicateCategory: function (catId) {
+			var self = this;
+			if (!AFF.state.currentFile) { self._noFileModal(); return; }
+
+			var cats = (AFF.state.config && AFF.state.config[self._cfg.catKey]) || [];
+			var cat  = null;
+			for (var i = 0; i < cats.length; i++) {
+				if (cats[i].id === catId) { cat = cats[i]; break; }
+			}
+			if (!cat) { return; }
+
+			AFF.App.ajax('aff_save_category', {
+				filename: AFF.state.currentFile,
+				subgroup: self._cfg.setName,
+				category: JSON.stringify({ name: cat.name + ' (copy)' }),
+			}).then(function (res) {
+				if (!res.success || !res.data) { return; }
+				if (!AFF.state.config) { AFF.state.config = {}; }
+				// Merge: append new duplicate category to local state by ID rather
+				// than replacing the whole array from the server response.
+				var _dupCat = null;
+				var _dupServerCats = res.data.categories || [];
+				for (var _di = 0; _di < _dupServerCats.length; _di++) {
+					if (_dupServerCats[_di].id === res.data.id) { _dupCat = _dupServerCats[_di]; break; }
+				}
+				if (_dupCat) {
+					if (!Array.isArray(AFF.state.config[self._cfg.catKey])) {
+						AFF.state.config[self._cfg.catKey] = [];
+					}
+					AFF.state.config[self._cfg.catKey].push(_dupCat);
+				} else {
+					AFF.state.config[self._cfg.catKey] = _dupServerCats;
+				}
+				var newCatId = res.data.id;
+				var vars     = self._getVarsForCategory(cat);
+				var chain    = Promise.resolve();
+				vars.forEach(function (v) {
+					var dupVar = {
+						name:        v.name + '-copy',
+						value:       v.value,
+						format:      v.format  || '',
+						subgroup:    self._cfg.setName,
+						category:    _dupCat ? _dupCat.name : cat.name + ' (copy)',
+						category_id: newCatId,
+						order:       (v.order || 0),
+					};
+					(function (dv) {
+						chain = chain.then(function () {
+							return AFF.App.ajax('aff_save_color', {
+								filename: AFF.state.currentFile,
+								variable: JSON.stringify(dv),
+							}).then(function (r) {
+								if (r.success && r.data && r.data.data) {
+									AFF.state.variables = r.data.data.variables;
+								}
+							});
+						});
+					}(dupVar));
+				});
+				chain.then(function () {
+					if (AFF.App) { AFF.App.setDirty(true); AFF.App.refreshCounts(); }
+					self._rerenderView();
+					if (AFF.PanelLeft && AFF.PanelLeft.refresh) { AFF.PanelLeft.refresh(); }
+				}).catch(function () {});
+			}).catch(function () {});
+		},
+
+		/**
+		 * Apply a category reorder locally and persist via AJAX if a file is loaded.
+		 *
+		 * @param {string[]} orderedIds Category IDs in desired order.
+		 */
+		_ajaxReorderCategories: function (orderedIds) {
+			var self   = this;
+			var catKey = self._cfg.catKey;
+
+			// Apply locally so the re-render shows the new order instantly.
+			if (AFF.state.config && AFF.state.config[catKey]) {
+				var cats = AFF.state.config[catKey];
+				for (var i = 0; i < orderedIds.length; i++) {
+					for (var j = 0; j < cats.length; j++) {
+						if (cats[j].id === orderedIds[i]) { cats[j].order = i; break; }
+					}
+				}
+			}
+			self._rerenderView();
+
+			if (!AFF.state.currentFile) { return; }
+			if (AFF.App) { AFF.App.setDirty(true); }
+
+			AFF.App.ajax('aff_reorder_categories', {
+				filename:    AFF.state.currentFile,
+				subgroup:    self._cfg.setName,
+				ordered_ids: JSON.stringify(orderedIds),
+			}).then(function (res) {
+				if (res.success) {
+					// Order already applied locally; no state overwrite needed.
+					self._rerenderView();
+				}
+			}).catch(function () {});
+		},
+
+	};
+
+	// aff-colors.js and aff-variables.js load before aff-app.js, so their
+	// module objects are already defined by the time this runs.
+	Object.assign(AFF.Colors, AFF.CatMixin);
+	Object.assign(AFF.Variables._proto, AFF.CatMixin);
 
 	// -----------------------------------------------------------------------
 	// UNIFIED VARIABLE DRAG-AND-DROP
@@ -854,7 +1183,12 @@
 			var app = document.getElementById('aff-app');
 			if (!app || !settings) { return; }
 
-			// Font size (attribute absent = default 16px)
+			// Font size: treat absent attribute as the default size. The sentinel value
+			// here is 16 — but the PHP default in AFF_Settings::$defaults is 14, not 16.
+			// On a fresh install fs=14, 14!==16 is always true, so data-aff-font-size="14"
+			// is always set and the "absent = use CSS default" branch never fires.
+			// Tech debt C-04: align the sentinel — either change PHP default to 16, or
+			// change this check to fs !== 14.
 			var fs = parseInt(settings.ui_font_size, 10) || 16;
 			if (fs !== 16) {
 				app.setAttribute('data-aff-font-size', String(fs));
@@ -954,6 +1288,12 @@
 						}
 
 						AFF.state.config = cfg;
+						// globalConfig and config point to the same object reference here. config is
+						// replaced when _loadFile() assigns res.data.data.config, so after a project
+						// loads the two fields diverge. globalConfig is used as an immutable baseline
+						// to backfill missing category arrays on older project files.
+						// Risk (tech debt A-02): any mutation of AFF.state.config before a file loads
+						// also mutates globalConfig — fix by deep-cloning: JSON.parse(JSON.stringify(cfg)).
 						AFF.state.globalConfig = cfg;
 						if (cfg.projectName) {
 							AFF.state.projectName = cfg.projectName;
@@ -1120,6 +1460,10 @@
 			}
 
 			// Auto-load last used file and cache settings.
+			// Tech debt DP-05: AFF.PanelTop.init() (called above) also fires aff_get_settings
+			// to load tooltip preferences. Two identical HTTP requests go to admin-ajax.php
+			// within ~100ms of each other on every page load. Fix: make one call here, then
+			// pass the settings object to AFF.PanelTop._applyTooltipSettings(settings).
 			AFF.App.ajax('aff_get_settings', {}).then(function (res) {
 				if (res.success && res.data && res.data.settings) {
 					AFF.state.settings = res.data.settings;
