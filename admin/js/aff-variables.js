@@ -215,7 +215,7 @@
 				+ ' id="aff-' + setLower + '-add-category"'
 				+ ' data-aff-tooltip="Add category"'
 				+ ' aria-label="Add category">'
-				+ AFF.Icons.plusCircleSVG()
+				+ AFF.Icons.plusSVG()
 				+ '</button>'
 				+ '</div>'
 				+ '</div>'; // filter bar
@@ -466,9 +466,12 @@
 				});
 			}
 
-			// ---- Delegated events — bound only once per container ----
-			if (container._effVarsEventsBound) { return; }
-			container._effVarsEventsBound = true;
+			// ---- Delegated events — bound only once per container, per set ----
+			// Each set (Fonts, Numbers) needs its own flag so the second set to load
+			// doesn't skip binding because the first set already set the shared flag.
+			var _boundFlag = '_effVarsEventsBound_' + setLower;
+			if (container[_boundFlag]) { return; }
+			container[_boundFlag] = true;
 
 			self._initDrag(container);
 			self._initCatDrag(container);
@@ -499,6 +502,9 @@
 							var isColl = block.getAttribute('data-collapsed') === 'true';
 							block.setAttribute('data-collapsed', String(!isColl));
 							self._collapsedIds[catId] = !isColl;
+							if (isColl) {
+								block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+							}
 						}
 						break;
 				}
@@ -1455,7 +1461,34 @@
 		 * @returns {Array}
 		 */
 		_getVarsForCategory: function (cat) {
+			var self    = this;
 			var setVars = this._getVarsForSet();
+
+			if (cat.name === 'Uncategorized') {
+				// Catch-all: build a set of IDs/names for all live non-Uncategorized cats.
+				var knownIds   = {};
+				var knownNames = {};
+				var liveCats = self._getCatsForSet();
+				for (var i = 0; i < liveCats.length; i++) {
+					if (liveCats[i].name !== 'Uncategorized') {
+						if (liveCats[i].id)   { knownIds[liveCats[i].id]     = true; }
+						if (liveCats[i].name) { knownNames[liveCats[i].name] = true; }
+					}
+				}
+				var matched = setVars.filter(function (v) {
+					// Explicitly assigned here by ID or name.
+					if (cat.id && v.category_id && v.category_id === cat.id) { return true; }
+					if (v.category === 'Uncategorized') { return true; }
+					// Empty category reference — result of "Save to Uncategorized" delete.
+					if (!v.category_id && !v.category) { return true; }
+					// Orphaned: points to a category that no longer exists.
+					if (v.category_id && !knownIds[v.category_id])   { return true; }
+					if (v.category    && !knownNames[v.category])    { return true; }
+					return false;
+				});
+				return matched.sort(function (a, b) { return (a.order || 0) - (b.order || 0); });
+			}
+
 			var matched = setVars.filter(function (v) {
 				if (cat.id && v.category_id && v.category_id === cat.id) { return true; }
 				if (v.category === cat.name) { return true; }

@@ -68,6 +68,20 @@ container.addEventListener('click', function (e) { /* ... */ });
 destroying and recreating the container node — that would re-enable duplicate binding
 on the very next render.
 
+**Multi-instance modules (Variables factory):** Each instance of `AFF.Variables._proto`
+(Fonts, Numbers) binds to the same `#aff-edit-content` container. Use an instance-specific
+flag so the second set to load doesn't skip binding because the first set already set a
+shared flag:
+
+```js
+var _boundFlag = '_effVarsEventsBound_' + setLower;  // e.g. _effVarsEventsBound_fonts
+if (container[_boundFlag]) { return; }
+container[_boundFlag] = true;
+```
+
+Each listener is still safe to have duplicates because it guards with the view-presence
+check (`.aff-fonts-view`, `.aff-numbers-view`) before doing anything.
+
 ---
 
 ## 3. Stable Row Identity — `_rowKey` and `_findVarByKey`
