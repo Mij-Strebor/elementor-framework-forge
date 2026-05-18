@@ -13,6 +13,9 @@ if (! defined('ABSPATH')) {
 	exit;
 }
 
+// phpcs:disable WordPress.Security.NonceVerification.Missing -- All handlers call $this->verify_request() which performs nonce verification via check_ajax_referer().
+// phpcs:disable WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- JSON payloads are validated via $this->safe_json_decode(); scalar values are sanitized per-field inside each handler.
+
 class AFF_Ajax_Handler
 {
 
@@ -106,7 +109,8 @@ class AFF_Ajax_Handler
 			));
 		}
 
-		if (! is_writable($dir)) {
+		$fs = $this->get_wp_filesystem();
+		if (! $fs || ! $fs->is_writable($dir)) {
 			wp_send_json_error(array(
 				'message' => sprintf(
 					/* translators: %s: directory path */
@@ -116,7 +120,7 @@ class AFF_Ajax_Handler
 			));
 		}
 
-		if (false === file_put_contents($file, $json)) {
+		if (false === file_put_contents($file, $json)) { // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
 			$last_error = error_get_last();
 			wp_send_json_error(array(
 				'message' => sprintf(

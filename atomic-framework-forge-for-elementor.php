@@ -5,7 +5,7 @@
  * Description:       Professional management interface for Elementor Version 4 (atomic widget architecture) assets — Variables, Classes, and Components.
  * Version:           0.4.3-beta
  * Requires at least: 5.8
- * Requires PHP:      7.4
+ * Requires PHP:      8.2
  * Author:            Jim Roberts
  * Author URI:        https://jimrforge.com
  * License:           GPL-2.0-or-later

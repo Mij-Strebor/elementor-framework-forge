@@ -1,0 +1,8 @@
+.claude/
+.distignore
+.gitignore
+CLAUDE.md
+PATTERNS.md
+QUICK-START.md
+USER-MANUAL.md
+docs/
