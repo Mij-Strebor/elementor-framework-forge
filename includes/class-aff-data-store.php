@@ -419,11 +419,13 @@ class AFF_Data_Store
 	 *
 	 * Refuses to delete locked categories (e.g., Uncategorized).
 	 *
-	 * @param string $subgroup Subgroup name.
-	 * @param string $id       Category UUID.
+	 * @param string $subgroup    Subgroup name.
+	 * @param string $id          Category UUID.
+	 * @param bool   $delete_vars True = delete variables in this category;
+	 *                            false = clear their category reference (move to Uncategorized).
 	 * @return bool True if found and deleted.
 	 */
-	public function delete_category_for_subgroup(string $subgroup, string $id): bool
+	public function delete_category_for_subgroup(string $subgroup, string $id, bool $delete_vars = true): bool
 	{
 		$key = $this->subgroup_to_cat_key($subgroup);
 
@@ -441,8 +443,27 @@ class AFF_Data_Store
 		}
 
 		array_splice($this->data['config'][$key], $k, 1);
-		$this->dirty = true;
 
+		// Handle variables that belong to this category.
+		if ($delete_vars) {
+			$this->data['variables'] = array_values(array_filter(
+				$this->data['variables'],
+				static function (array $v) use ($id): bool {
+					return ($v['category_id'] ?? '') !== $id;
+				}
+			));
+		} else {
+			// Clear the category reference so variables appear in Uncategorized.
+			foreach ($this->data['variables'] as &$v) {
+				if (($v['category_id'] ?? '') === $id) {
+					$v['category_id'] = '';
+					$v['category']    = '';
+				}
+			}
+			unset($v);
+		}
+
+		$this->dirty = true;
 		return true;
 	}
 

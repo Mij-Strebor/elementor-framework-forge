@@ -661,17 +661,19 @@ class AFF_Ajax_Handler
 	{
 		$subgroup    = $this->get_subgroup_param();
 		$category_id = $this->post_param('category_id');
+		$delete_vars = $this->post_param('delete_vars') !== '0';
 
 		if (empty($category_id)) {
 			wp_send_json_error(array('message' => __('Category ID is required.', 'atomic-framework-forge-for-elementor')));
 		}
 
-		$this->with_store(function ($store) use ($subgroup, $category_id) {
-			if (! $store->delete_category_for_subgroup($subgroup, $category_id)) {
+		$this->with_store(function ($store) use ($subgroup, $category_id, $delete_vars) {
+			if (! $store->delete_category_for_subgroup($subgroup, $category_id, $delete_vars)) {
 				throw new \Exception(__('Category not found or cannot be deleted.', 'atomic-framework-forge-for-elementor')); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
 			}
 			return array(
 				'categories' => $store->get_categories_for_subgroup($subgroup),
+				'variables'  => $store->get_variables(),
 				'message'    => __('Category deleted.', 'atomic-framework-forge-for-elementor'),
 			);
 		});
