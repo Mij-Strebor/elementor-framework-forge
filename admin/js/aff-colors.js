@@ -4202,7 +4202,7 @@
       var body =
         "<p>No project file is loaded. Enter a filename to save the current data as a project file — then retry your action.</p>" +
         '<input type="text" id="aff-nfl-filename" class="aff-text-input"' +
-        ' value="elementor-variables.eff.json"' +
+        ' value="elementor-variables.aff.json"' +
         ' style="width:100%;margin-top:12px;" />';
 
       var footer =
@@ -4221,8 +4221,8 @@
         if (!filename) {
           return;
         }
-        if (!/\.eff\.json$/.test(filename)) {
-          filename += ".eff.json";
+        if (!/\.aff\.json$/.test(filename)) {
+          filename += ".aff.json";
         }
 
         var saveData = {
