@@ -77,6 +77,8 @@
     _tooltip: null,
     /** @type {number|null} */
     _tooltipTimer: null,
+    /** @type {number|null} */
+    _tooltipDismissTimer: null,
 
     /**
      * Initialize all top bar interactions.
@@ -235,6 +237,12 @@
         self._tooltip.style.top = topPos + "px";
 
         self._tooltip.classList.add("is-visible");
+
+        // Auto-dismiss after 4 s so tooltips never linger indefinitely.
+        clearTimeout(self._tooltipDismissTimer);
+        self._tooltipDismissTimer = setTimeout(function () {
+          self._hideTooltip();
+        }, 4000);
       }, 300);
     },
 
@@ -244,6 +252,7 @@
      */
     _hideTooltip: function () {
       clearTimeout(this._tooltipTimer);
+      clearTimeout(this._tooltipDismissTimer);
 
       if (this._tooltip) {
         this._tooltip.classList.remove("is-visible");
