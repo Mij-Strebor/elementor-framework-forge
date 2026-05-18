@@ -851,6 +851,12 @@
           "</div>";
       }
 
+      html +=
+        '<div class="aff-modal-gen-actions">' +
+        '<button class="aff-btn aff-btn--secondary aff-gen-cancel-btn">Cancel</button>' +
+        '<button class="aff-btn aff-btn--primary aff-gen-save-btn">Save</button>' +
+        "</div>";
+
       html += "</div>"; // .aff-modal-body
       return html;
     },
@@ -1570,6 +1576,21 @@
         });
       }
 
+      // Save/Cancel buttons for tints-shades-transparencies palette.
+      var saveBtn = modal.querySelector(".aff-gen-save-btn");
+      if (saveBtn) {
+        saveBtn.addEventListener("click", function () {
+          self._generateChildren(varId, modal);
+          self._closeExpandPanel(container, false);
+        });
+      }
+      var cancelBtn = modal.querySelector(".aff-gen-cancel-btn");
+      if (cancelBtn) {
+        cancelBtn.addEventListener("click", function () {
+          self._closeExpandPanel(container, false);
+        });
+      }
+
       // Name input — save on blur / Enter.
       var nameInput = modal.querySelector(".aff-color-name-input");
       if (nameInput) {
@@ -1722,7 +1743,7 @@
         }
       }
 
-      // Tints number — select all on focus; live preview on input.
+      // Tints number — select all on focus; live preview on input (no auto-save).
       var tintsNum = modal.querySelector(".aff-gen-tints-num");
       if (tintsNum) {
         tintsNum.addEventListener("focus", function () {
@@ -1730,27 +1751,18 @@
         });
         tintsNum.addEventListener("input", function () {
           var steps = parseInt(tintsNum.value, 10) || 0;
-          if (steps < 0) {
-            steps = 0;
-          }
-          if (steps > 10) {
-            steps = 10;
-          }
-          tintsNum.value = steps; // clamp displayed value
+          if (steps < 0) { steps = 0; }
+          if (steps > 10) { steps = 10; }
+          tintsNum.value = steps;
           var palette = modal.querySelector(".aff-tints-palette");
           var vv = AFF.Utils.findVarByKey(varId);
           var rgba2 = vv ? self._parseToRgba(vv.value || "") : null;
           var hsl2 = rgba2 ? self._rgbToHsl(rgba2.r, rgba2.g, rgba2.b) : null;
-          if (palette) {
-            palette.innerHTML = self._buildTintsBars(hsl2, steps);
-          }
-          if (vv) {
-            self._debounceGenerate(varId, modal);
-          }
+          if (palette) { palette.innerHTML = self._buildTintsBars(hsl2, steps); }
         });
       }
 
-      // Shades number — select all on focus; live preview on input.
+      // Shades number — select all on focus; live preview on input (no auto-save).
       var shadesNum = modal.querySelector(".aff-gen-shades-num");
       if (shadesNum) {
         shadesNum.addEventListener("focus", function () {
@@ -1758,27 +1770,18 @@
         });
         shadesNum.addEventListener("input", function () {
           var steps = parseInt(shadesNum.value, 10) || 0;
-          if (steps < 0) {
-            steps = 0;
-          }
-          if (steps > 10) {
-            steps = 10;
-          }
-          shadesNum.value = steps; // clamp displayed value
+          if (steps < 0) { steps = 0; }
+          if (steps > 10) { steps = 10; }
+          shadesNum.value = steps;
           var palette = modal.querySelector(".aff-shades-palette");
           var vv = AFF.Utils.findVarByKey(varId);
           var rgba2 = vv ? self._parseToRgba(vv.value || "") : null;
           var hsl2 = rgba2 ? self._rgbToHsl(rgba2.r, rgba2.g, rgba2.b) : null;
-          if (palette) {
-            palette.innerHTML = self._buildShadesBars(hsl2, steps);
-          }
-          if (vv) {
-            self._debounceGenerate(varId, modal);
-          }
+          if (palette) { palette.innerHTML = self._buildShadesBars(hsl2, steps); }
         });
       }
 
-      // Transparencies toggle — live preview.
+      // Transparencies toggle — live preview (no auto-save).
       var transChk = modal.querySelector(".aff-gen-trans-toggle");
       if (transChk) {
         transChk.addEventListener("change", function () {
@@ -1786,12 +1789,7 @@
           var palette = modal.querySelector(".aff-trans-palette");
           var vv = AFF.Utils.findVarByKey(varId);
           var rgba2 = vv ? self._parseToRgba(vv.value || "") : null;
-          if (palette) {
-            palette.innerHTML = isOn ? self._buildTransBars(rgba2) : "";
-          }
-          if (vv) {
-            self._debounceGenerate(varId, modal);
-          }
+          if (palette) { palette.innerHTML = isOn ? self._buildTransBars(rgba2) : ""; }
         });
       }
 
@@ -4154,7 +4152,6 @@
           ? self._buildTransBars(rgba2)
           : "";
       }
-      self._debounceGenerate(varId, modal);
     },
 
     _pickrColorToString: function (color, format) {

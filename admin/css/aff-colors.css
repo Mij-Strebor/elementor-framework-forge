@@ -776,6 +776,15 @@ button.aff-pickr-btn:focus-visible {
 	gap: 0;
 }
 
+/* Save / Cancel action bar at the bottom of the expand modal */
+.aff-modal-gen-actions {
+	display:         flex;
+	justify-content: flex-end;
+	gap:             var(--sp-3);
+	padding:         var(--sp-3) var(--sp-4);
+	border-top:      1px solid var(--aff-clr-border);
+}
+
 /* Delete Category — variable count + iOS toggle row */
 .aff-del-cat-vars {
 	display:     flex;
