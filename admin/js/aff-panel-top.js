@@ -77,6 +77,8 @@
     _tooltip: null,
     /** @type {number|null} */
     _tooltipTimer: null,
+    /** @type {number|null} */
+    _tooltipDismissTimer: null,
 
     /**
      * Initialize all top bar interactions.
@@ -235,6 +237,12 @@
         self._tooltip.style.top = topPos + "px";
 
         self._tooltip.classList.add("is-visible");
+
+        // Auto-dismiss after 4 s so tooltips never linger indefinitely.
+        clearTimeout(self._tooltipDismissTimer);
+        self._tooltipDismissTimer = setTimeout(function () {
+          self._hideTooltip();
+        }, 4000);
       }, 300);
     },
 
@@ -244,6 +252,7 @@
      */
     _hideTooltip: function () {
       clearTimeout(this._tooltipTimer);
+      clearTimeout(this._tooltipDismissTimer);
 
       if (this._tooltip) {
         this._tooltip.classList.remove("is-visible");
@@ -1018,7 +1027,7 @@
                 !AFF.state.currentFile ||
                 AFF.state.currentFile === "aff-temp.aff.json"
               ) {
-                AFF.state.currentFile = slugged + ".eff.json";
+                AFF.state.currentFile = slugged + ".aff.json";
               }
             }
             AFF.PanelLeft.refresh();
@@ -1639,7 +1648,7 @@
         exportName
           .toLowerCase()
           .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "") + ".eff.json";
+          .replace(/^-+|-+$/g, "") + ".aff.json";
 
       var payload = {
         version: "1.0",
@@ -1733,7 +1742,7 @@
         // Fallback for browsers without File System Access API.
         var body =
           '<p style="margin-bottom:12px;color:var(--aff-clr-secondary);line-height:1.6">' +
-          "Select a <code>.eff.json</code> file exported from AFF.</p>" +
+          "Select a <code>.aff.json</code> file exported from AFF.</p>" +
           '<input type="file" id="aff-import-file" accept=".json" ' +
           'style="display:block;width:100%;padding:8px 0;cursor:pointer">' +
           '<div id="aff-import-status" style="font-size:12px;color:var(--aff-clr-muted);margin-top:8px;min-height:18px"></div>';

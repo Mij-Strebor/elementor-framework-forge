@@ -851,6 +851,12 @@
           "</div>";
       }
 
+      html +=
+        '<div class="aff-modal-gen-actions">' +
+        '<button class="aff-btn aff-btn--secondary aff-gen-cancel-btn">Cancel</button>' +
+        '<button class="aff-btn aff-btn--primary aff-gen-save-btn">Save</button>' +
+        "</div>";
+
       html += "</div>"; // .aff-modal-body
       return html;
     },
@@ -1107,9 +1113,15 @@
               if (catId) {
                 self._collapsedIds[catId] = newCollapsed;
               }
-              // Close any open expand panel when the user collapses a category.
               if (newCollapsed) {
+                // Close any open expand panel when the user collapses a category.
                 self._closeExpandPanel(container, true);
+              } else {
+                // Scroll the newly expanded block into view.
+                var _expBlock = block;
+                setTimeout(function () {
+                  _expBlock.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }, 50);
               }
             }
             break;
@@ -1570,6 +1582,21 @@
         });
       }
 
+      // Save/Cancel buttons for tints-shades-transparencies palette.
+      var saveBtn = modal.querySelector(".aff-gen-save-btn");
+      if (saveBtn) {
+        saveBtn.addEventListener("click", function () {
+          self._generateChildren(varId, modal);
+          self._closeExpandPanel(container, false);
+        });
+      }
+      var cancelBtn = modal.querySelector(".aff-gen-cancel-btn");
+      if (cancelBtn) {
+        cancelBtn.addEventListener("click", function () {
+          self._closeExpandPanel(container, false);
+        });
+      }
+
       // Name input — save on blur / Enter.
       var nameInput = modal.querySelector(".aff-color-name-input");
       if (nameInput) {
@@ -1722,7 +1749,7 @@
         }
       }
 
-      // Tints number — select all on focus; live preview on input.
+      // Tints number — select all on focus; live preview on input (no auto-save).
       var tintsNum = modal.querySelector(".aff-gen-tints-num");
       if (tintsNum) {
         tintsNum.addEventListener("focus", function () {
@@ -1730,27 +1757,18 @@
         });
         tintsNum.addEventListener("input", function () {
           var steps = parseInt(tintsNum.value, 10) || 0;
-          if (steps < 0) {
-            steps = 0;
-          }
-          if (steps > 10) {
-            steps = 10;
-          }
-          tintsNum.value = steps; // clamp displayed value
+          if (steps < 0) { steps = 0; }
+          if (steps > 10) { steps = 10; }
+          tintsNum.value = steps;
           var palette = modal.querySelector(".aff-tints-palette");
           var vv = AFF.Utils.findVarByKey(varId);
           var rgba2 = vv ? self._parseToRgba(vv.value || "") : null;
           var hsl2 = rgba2 ? self._rgbToHsl(rgba2.r, rgba2.g, rgba2.b) : null;
-          if (palette) {
-            palette.innerHTML = self._buildTintsBars(hsl2, steps);
-          }
-          if (vv) {
-            self._debounceGenerate(varId, modal);
-          }
+          if (palette) { palette.innerHTML = self._buildTintsBars(hsl2, steps); }
         });
       }
 
-      // Shades number — select all on focus; live preview on input.
+      // Shades number — select all on focus; live preview on input (no auto-save).
       var shadesNum = modal.querySelector(".aff-gen-shades-num");
       if (shadesNum) {
         shadesNum.addEventListener("focus", function () {
@@ -1758,27 +1776,18 @@
         });
         shadesNum.addEventListener("input", function () {
           var steps = parseInt(shadesNum.value, 10) || 0;
-          if (steps < 0) {
-            steps = 0;
-          }
-          if (steps > 10) {
-            steps = 10;
-          }
-          shadesNum.value = steps; // clamp displayed value
+          if (steps < 0) { steps = 0; }
+          if (steps > 10) { steps = 10; }
+          shadesNum.value = steps;
           var palette = modal.querySelector(".aff-shades-palette");
           var vv = AFF.Utils.findVarByKey(varId);
           var rgba2 = vv ? self._parseToRgba(vv.value || "") : null;
           var hsl2 = rgba2 ? self._rgbToHsl(rgba2.r, rgba2.g, rgba2.b) : null;
-          if (palette) {
-            palette.innerHTML = self._buildShadesBars(hsl2, steps);
-          }
-          if (vv) {
-            self._debounceGenerate(varId, modal);
-          }
+          if (palette) { palette.innerHTML = self._buildShadesBars(hsl2, steps); }
         });
       }
 
-      // Transparencies toggle — live preview.
+      // Transparencies toggle — live preview (no auto-save).
       var transChk = modal.querySelector(".aff-gen-trans-toggle");
       if (transChk) {
         transChk.addEventListener("change", function () {
@@ -1786,12 +1795,7 @@
           var palette = modal.querySelector(".aff-trans-palette");
           var vv = AFF.Utils.findVarByKey(varId);
           var rgba2 = vv ? self._parseToRgba(vv.value || "") : null;
-          if (palette) {
-            palette.innerHTML = isOn ? self._buildTransBars(rgba2) : "";
-          }
-          if (vv) {
-            self._debounceGenerate(varId, modal);
-          }
+          if (palette) { palette.innerHTML = isOn ? self._buildTransBars(rgba2) : ""; }
         });
       }
 
@@ -2432,17 +2436,52 @@
           '<p><button id="aff-del-var-confirm" class="aff-btn aff-btn--danger">Delete</button> ' +
           '<button id="aff-del-var-cancel" class="aff-btn">Cancel</button></p>';
 
+      var delVarBtnIds = hasChildren
+        ? ["aff-del-var-cancel", "aff-del-var-only", "aff-del-var-with-children"]
+        : ["aff-del-var-cancel", "aff-del-var-confirm"];
+
       AFF.Modal.open({
         title: "Delete variable",
         body: body,
         onClose: function () {
           document.removeEventListener("click", handleDelClick);
+          document.removeEventListener("keydown", handleDelVarKey);
         },
       });
+
+      // Focus the primary action button on open.
+      setTimeout(function () {
+        var firstBtn = document.getElementById(delVarBtnIds[delVarBtnIds.length - 1]);
+        if (firstBtn) { firstBtn.focus(); }
+      }, 50);
+
+      function handleDelVarKey(e) {
+        var isTab   = e.key === "Tab";
+        var isRight = e.key === "ArrowRight";
+        var isLeft  = e.key === "ArrowLeft";
+        if (!isTab && !isRight && !isLeft) { return; }
+        var focused = document.activeElement;
+        var idx = delVarBtnIds.indexOf(focused ? focused.id : "");
+        if (isTab) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        } else {
+          if (idx === -1) { return; }
+          e.preventDefault();
+        }
+        var backward = (isTab && e.shiftKey) || isLeft;
+        var next = idx === -1
+          ? (backward ? delVarBtnIds.length - 1 : 0)
+          : (backward ? (idx - 1 + delVarBtnIds.length) % delVarBtnIds.length : (idx + 1) % delVarBtnIds.length);
+        var nextBtn = document.getElementById(delVarBtnIds[next]);
+        if (nextBtn) { nextBtn.focus(); }
+      }
+      document.addEventListener("keydown", handleDelVarKey);
 
       function doDelete(deleteChildren) {
         AFF.Modal.close();
         document.removeEventListener("click", handleDelClick);
+        document.removeEventListener("keydown", handleDelVarKey);
 
         // Variables imported from Elementor (id:'') exist only in memory —
         // no server record to delete.  Remove them from state directly.
@@ -2500,6 +2539,7 @@
         if (t.id === "aff-del-var-cancel") {
           AFF.Modal.close();
           document.removeEventListener("click", handleDelClick);
+          document.removeEventListener("keydown", handleDelVarKey);
         } else if (t.id === "aff-del-var-with-children") {
           doDelete(true);
         } else if (
@@ -4154,7 +4194,6 @@
           ? self._buildTransBars(rgba2)
           : "";
       }
-      self._debounceGenerate(varId, modal);
     },
 
     _pickrColorToString: function (color, format) {
@@ -4202,7 +4241,7 @@
       var body =
         "<p>No project file is loaded. Enter a filename to save the current data as a project file — then retry your action.</p>" +
         '<input type="text" id="aff-nfl-filename" class="aff-text-input"' +
-        ' value="elementor-variables.eff.json"' +
+        ' value="elementor-variables.aff.json"' +
         ' style="width:100%;margin-top:12px;" />';
 
       var footer =
@@ -4221,8 +4260,8 @@
         if (!filename) {
           return;
         }
-        if (!/\.eff\.json$/.test(filename)) {
-          filename += ".eff.json";
+        if (!/\.aff\.json$/.test(filename)) {
+          filename += ".aff.json";
         }
 
         var saveData = {

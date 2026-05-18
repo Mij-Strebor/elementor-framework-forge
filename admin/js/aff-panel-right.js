@@ -197,7 +197,7 @@
      * Silently load a file on startup (no dirty flag, no modal on failure).
      * Used for auto-loading the last opened file.
      *
-     * @param {string} filename  Stored .eff.json filename (not a project name).
+     * @param {string} filename  Stored .aff.json filename (not a project name).
      */
     _autoLoadFile: function (filename) {
       var self = this;

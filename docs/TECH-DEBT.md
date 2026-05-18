@@ -42,34 +42,15 @@ this._bindV3ColorsBtn();
 
 ---
 
-### C-02 — Double `verify_request()` in six Phase 2 endpoints — OPEN
+### C-02 — Double `verify_request()` in six Phase 2 endpoints — FIXED
 
 **File:** `includes/class-aff-ajax-handler.php`
 
-`with_store()` calls `$this->verify_request()` as its first line (line 1539).
-Every Phase 2 endpoint that uses `with_store()` also calls `verify_request()`
-explicitly before the `with_store()` call. The nonce is checked twice per request.
-
-Affected endpoints:
-- `ajax_aff_save_category()` — line 622
-- `ajax_aff_delete_category()` — line 658
-- `ajax_aff_reorder_categories()` — line 685
-- `ajax_aff_save_color()` — line 714
-- `ajax_aff_delete_color()` — line 817
-- `ajax_aff_generate_children()` — line 851
-
-While WordPress nonces are not single-use, double-checking adds unnecessary
-overhead and contradicts the contract implied by `with_store`. It also obscures
-which layer owns the security check. A "why" comment has been added to each
-call site and to `with_store()` itself to make this visible.
-
-**Fix — two valid options:**
-
-Option A (preferred): Remove the explicit `verify_request()` call from all six
-endpoints. `with_store()` already handles it.
-
-Option B: Remove `verify_request()` from inside `with_store()` and document
-that callers are responsible. Update PATTERNS.md.
+The explicit `$this->verify_request()` call has been removed from all six
+Phase 2 endpoints. `with_store()` owns the security check and documents
+this contract in its PHPDoc. Affected endpoints were:
+`ajax_aff_save_category`, `ajax_aff_delete_category`, `ajax_aff_reorder_categories`,
+`ajax_aff_save_color`, `ajax_aff_delete_color`, `ajax_aff_generate_children`.
 
 ---
 
@@ -119,29 +100,11 @@ added at the call site to document this mismatch.
 
 ---
 
-### C-05 — `.eff.json` extension still generated in active code paths — OPEN
+### C-05 — `.eff.json` extension still generated in active code paths — FIXED
 
-**Files:** `aff-colors.js`, `aff-panel-top.js`
-
-The project migrated from `.eff.json` to `.aff.json`. Backward-compat regex
-strips both extensions (fine). But some paths still **generate** `.eff.json`
-names:
-
-| File | Line | Code |
-|------|------|------|
-| `aff-colors.js` | 4205 | Default export filename: `elementor-variables.eff.json` |
-| `aff-colors.js` | 4224 | `if (!/\.eff\.json$/.test(filename)) { filename += '.eff.json'; }` |
-| `aff-panel-top.js` | 1021 | `AFF.state.currentFile = slugged + '.eff.json';` |
-| `aff-panel-top.js` | 1642 | Builds export filename ending in `.eff.json` |
-
-Files exported from the Export dialog, and the `currentFile` set after a
-top-panel action, will still carry the old extension. The server strips it, so
-functionality is not broken, but generated filenames displayed to the user are
-wrong. (Note: `aff-panel-right.js` no longer generates `.eff.json` — D-03 was fixed.)
-
-**Fix:** Replace all `'.eff.json'` generation with `'.aff.json'`. Keep the
-backward-compat strip regexes `(?:\.aff|\.eff)+(?:\.json)?` in place so old
-files still load.
+**Status: FIXED.** All generation sites updated to `.aff.json`. Backward-compat
+strip regexes `(?:\.aff|\.eff)+(?:\.json)?` left in place so old files still
+load. L-07 and L-08 doc comments fixed in the same pass.
 
 ---
 
@@ -509,26 +472,18 @@ old `_eff` project prefix. The project prefix is `aff`. Migration artifact.
 
 ---
 
-### L-07 — Stale `.eff.json` references in doc comments — OPEN
+### L-07 — Stale `.eff.json` references in doc comments — FIXED
 
-**File:** `admin/js/aff-panel-right.js` lines 93, 196
-
-Two JSDoc comments still reference `.eff.json` file paths:
-- `_loadFile` (line 93): `"path can be a relative backup path (slug/slug_date.eff.json)"`
-- `_autoLoadFile` (line 196): `"Stored .eff.json filename (not a project name)."`
-
-These should be updated to `.aff.json` when C-05 is addressed.
+**Status: FIXED.** `_autoLoadFile` param updated to `.aff.json`. The `_loadFile`
+comment at line 93 intentionally retains `.eff.json` in its example path — it
+describes a legacy file that can still be read (backward compat).
 
 ---
 
-### L-08 — Stale `_getFilename()` reference in `_saveFile` doc comment — OPEN
+### L-08 — Stale `_getFilename()` reference in `_saveFile` doc comment — FIXED
 
-**File:** `admin/js/aff-panel-right.js` line 296
-
-The `_saveFile` JSDoc says _"Derives the filename from the human name via
-`_getFilename()`"_ — but `_getFilename` was deleted as part of D-03. The comment
-should be updated to describe the actual behavior (server derives the filename
-from `project_name`).
+**Status: FIXED.** `_saveFile` JSDoc now describes the actual behavior: strips
+`.aff`/`.eff` extensions and path prefixes from the name before saving.
 
 ---
 
@@ -537,14 +492,14 @@ from `project_name`).
 | ID | Severity | Status | Category | File(s) | One-line description |
 |----|----------|--------|----------|---------|----------------------|
 | C-01 | **Critical** | STUBBED | Feature stub | `aff-panel-right.js` | V3 import button intentionally not wired — future feature |
-| C-02 | **Critical** | OPEN | Bug | `class-aff-ajax-handler.php` | Double `verify_request()` in 6 Phase 2 endpoints |
+| C-02 | **Critical** | FIXED | Bug | `class-aff-ajax-handler.php` | Double `verify_request()` removed from 6 Phase 2 endpoints |
 | C-03 | **Critical** | OPEN | Security | `aff-panel-right.js` | `_escHtml` missing `"` and `'` — weaker than `AFF.Utils.escHtml` |
 | C-04 | **Critical** | OPEN | Bug | `aff-app.js` | Font-size sentinel `16` mismatches PHP default `14` |
-| C-05 | **Critical** | OPEN | Bug | `aff-colors.js`, `aff-panel-top.js` | `.eff.json` still generated in active code paths |
+| C-05 | **Critical** | FIXED | Bug | `aff-colors.js`, `aff-panel-top.js` | `.eff.json` generation replaced with `.aff.json` |
 | C-06 | **Critical** | OPEN | Bug | `aff-panel-right.js` | Missing spaces: "AFFshould", "AFFvalues", "AFFedits" in sync dialog |
 | D-01 | **High** | OPEN | Dead code | `_patch_panel_right.js` | Node.js patch script committed to plugin repo |
 | D-02 | **High** | FIXED | Dead code | `class-aff-data-store.php` | `list_projects()` v1 removed; v2 renamed to `list_projects` |
-| D-03 | **High** | FIXED | Dead code | `aff-panel-right.js` | `_getFilename()` deleted; stale doc comment remains (L-08) |
+| D-03 | **High** | FIXED | Dead code | `aff-panel-right.js` | `_getFilename()` deleted; stale doc comment fixed (L-08) |
 | D-04 | **High** | STUBBED | Feature stub | `aff-panel-right.js` | `_bindV3ColorsBtn()` dormant — intentional V3 feature stub |
 | DP-01 | **High** | OPEN | Duplication | `aff-app.js`, `aff-panel-right.js` | Four escape implementations with different coverage |
 | DP-02 | **High** | OPEN | Duplication | `aff-panel-right.js` | Format-unit map defined twice with different names |
@@ -564,8 +519,8 @@ from `project_name`).
 | L-04 | Low | OPEN | Naming | `aff-app.js`, CLAUDE.md | `hasUnsavedChanges` / `isDirty` / `dirty` — three names for one concept |
 | L-05 | Low | OPEN | Naming | Multiple JS files | `/* global AFFData */` comment inconsistently applied |
 | L-06 | Low | OPEN | Naming | `aff-panel-top.js` | `_eff` prefix on IndexedDB helpers — should be `_aff` |
-| L-07 | Low | OPEN | Naming | `aff-panel-right.js` | Stale `.eff.json` references in doc comments (lines 93, 196) |
-| L-08 | Low | OPEN | Naming | `aff-panel-right.js` | `_saveFile` doc comment references deleted `_getFilename()` |
+| L-07 | Low | FIXED | Naming | `aff-panel-right.js` | Stale `.eff.json` references in doc comments updated |
+| L-08 | Low | FIXED | Naming | `aff-panel-right.js` | `_saveFile` doc comment updated; `_getFilename()` reference removed |
 
 ---
 
@@ -574,9 +529,8 @@ from `project_name`).
 These can be done independently in any order, but this sequence minimises risk:
 
 1. **C-06** — Fix three missing spaces in sync dialog strings (2-min, no logic change)
-2. **C-05** — Replace all `.eff.json` generation with `.aff.json`; fix L-07/L-08 doc comments in the same pass
-3. **C-02** — Remove double `verify_request()` calls (mechanical, one-liner each)
-4. **DP-02** — Hoist format-unit map to module level (5 min, low risk)
+2. ~~**C-05**~~ — FIXED
+3. **DP-02** — Hoist format-unit map to module level (5 min, low risk)
 5. **DP-01** / **C-03** — Consolidate escape functions; delete `_escHtml`, `_escAttr`
 6. **D-01** — Delete `_patch_panel_right.js`
 7. **DP-05** — Merge the two `aff_get_settings` calls

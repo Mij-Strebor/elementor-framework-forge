@@ -429,6 +429,9 @@
 			if (!block) { return; }
 			block.setAttribute('data-collapsed', 'false');
 			this._collapsedIds[catId] = false;
+			setTimeout(function () {
+				block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}, 50);
 		},
 
 		/** Open the "Add Category" modal and persist the new category via AJAX. */
@@ -566,53 +569,126 @@
 			var vars = AFF.Utils.getVarsForCategoryId(catId);
 			if (!AFF.state.currentFile) { self._noFileModal(); return; }
 
-			var bodyText = vars.length > 0
-				? '<p>' + vars.length + ' variable(s) are in this category. Variables will be moved to Uncategorized.</p>'
-				  + '<p style="margin-top:8px">Delete the category anyway?</p>'
-				: '<p>Delete this category?</p>';
+			var cats = (AFF.state.config && Array.isArray(AFF.state.config[self._cfg.catKey]))
+				? AFF.state.config[self._cfg.catKey] : [];
+			var catObj = cats.find(function (c) { return c.id === catId; });
+			var catLabel = catObj ? '‘' + catObj.name + '’' : 'this category';
+
+			// deleteVars: true = delete vars with category; false = move to Uncategorized.
+			// Toggle represents "Save to Uncategorized" — off by default (vars are deleted).
+			var deleteVars = true;
+
+			var bodyText = '<p>Delete category ' + catLabel + '?</p>';
+			if (vars.length > 0) {
+				bodyText += '<p style="margin-top:var(--sp-2)">This category has ' + vars.length
+					+ ' variable(s). You may save them to Uncategorized if you wish.</p>'
+					+ '<div class="aff-del-cat-vars">'
+					+ '<span class="aff-del-cat-action-label">Save variables to Uncategorized:</span>'
+					+ '<label class="aff-ios-toggle" for="aff-del-cat-check">'
+					+ '<input type="checkbox" id="aff-del-cat-check">'
+					+ '<span class="aff-ios-track"><span class="aff-ios-thumb"></span></span>'
+					+ '</label>'
+					+ '</div>';
+			}
 
 			AFF.Modal.open({
-				title:  'Delete Category',
-				body:   bodyText,
-				footer: '<div style="display:flex;justify-content:flex-end;gap:8px">'
+				title:   'Delete Category',
+				body:    bodyText,
+				footer:  '<div style="display:flex;justify-content:flex-end;gap:8px">'
 					+ '<button class="aff-btn aff-btn--secondary" id="aff-modal-del-cancel">Cancel</button>'
-					+ '<button class="aff-btn aff-btn--danger" id="aff-modal-del-ok">Delete Category</button>'
+					+ '<button class="aff-btn aff-btn--danger" id="aff-modal-del-ok">Delete</button>'
 					+ '</div>',
-				onClose: function () { document.removeEventListener('click', handleClick); },
+				onClose: function () {
+					document.removeEventListener('click', handleClick);
+					document.removeEventListener('keydown', handleDelCatKey);
+				},
 			});
+
+			// Wire up iOS toggle after modal renders.
+			// Checked = save to Uncategorized (deleteVars = false); unchecked = delete (deleteVars = true).
+			if (vars.length > 0) {
+				setTimeout(function () {
+					var chk = document.getElementById('aff-del-cat-check');
+					if (chk) {
+						chk.addEventListener('change', function () {
+							deleteVars = !chk.checked;
+						});
+					}
+				}, 0);
+			}
+
+			// Focus Delete button on open.
+			setTimeout(function () {
+				var btn = document.getElementById('aff-modal-del-ok');
+				if (btn) { btn.focus(); }
+			}, 50);
+
+			function handleDelCatKey(e) {
+				var isTab   = e.key === 'Tab';
+				var isRight = e.key === 'ArrowRight';
+				var isLeft  = e.key === 'ArrowLeft';
+				if (!isTab && !isRight && !isLeft) { return; }
+				var ids = ['aff-modal-del-cancel', 'aff-modal-del-ok'];
+				var focused = document.activeElement;
+				var idx = ids.indexOf(focused ? focused.id : '');
+				if (isTab) {
+					e.preventDefault();
+					e.stopImmediatePropagation();
+				} else {
+					if (idx === -1) { return; }
+					e.preventDefault();
+				}
+				var backward = (isTab && e.shiftKey) || isLeft;
+				var next = idx === -1
+					? (backward ? ids.length - 1 : 0)
+					: (backward ? (idx - 1 + ids.length) % ids.length : (idx + 1) % ids.length);
+				var nextBtn = document.getElementById(ids[next]);
+				if (nextBtn) { nextBtn.focus(); }
+			}
+			document.addEventListener('keydown', handleDelCatKey);
+
+			function doDeleteCategory(dv) {
+				AFF.Modal.close();
+				document.removeEventListener('click', handleClick);
+				document.removeEventListener('keydown', handleDelCatKey);
+				// Pre-capture local list so we can filter it instead of trusting
+				// the server response (avoids potential stale-list replacement).
+				var _preDelCats = (AFF.state.config && Array.isArray(AFF.state.config[self._cfg.catKey]))
+					? AFF.state.config[self._cfg.catKey].slice() : null;
+				AFF.App.ajax('aff_delete_category', {
+					filename:    AFF.state.currentFile,
+					subgroup:    self._cfg.setName,
+					category_id: catId,
+					delete_vars: dv ? '1' : '0',
+				}).then(function (res) {
+					if (res.success && res.data) {
+						if (!AFF.state.config) { AFF.state.config = {}; }
+						AFF.state.config[self._cfg.catKey] = _preDelCats !== null
+							? _preDelCats.filter(function (c) { return c.id !== catId; })
+							: res.data.categories;
+						if (res.data.variables) {
+							AFF.state.variables = res.data.variables;
+						}
+						delete self._collapsedIds[catId];
+						if (AFF.App) { AFF.App.setDirty(true); }
+						self._rerenderView();
+						if (AFF.PanelLeft && AFF.PanelLeft.refresh) { AFF.PanelLeft.refresh(); }
+					} else if (!res.success) {
+						var errMsg = (res.data && res.data.message) ? res.data.message : 'Delete failed.';
+						AFF.Modal.open({ title: 'Delete failed', body: '<p>' + errMsg + '</p>' });
+					}
+				}).catch(function () {
+					AFF.Modal.open({ title: 'Connection error', body: '<p>Connection error during delete.</p>' });
+				});
+			}
 
 			function handleClick(e) {
 				if (e.target.id === 'aff-modal-del-cancel') {
 					AFF.Modal.close();
 					document.removeEventListener('click', handleClick);
+					document.removeEventListener('keydown', handleDelCatKey);
 				} else if (e.target.id === 'aff-modal-del-ok') {
-					AFF.Modal.close();
-					document.removeEventListener('click', handleClick);
-					// Pre-capture local list so we can filter it instead of trusting
-					// the server response (avoids potential stale-list replacement).
-					var _preDelCats = (AFF.state.config && Array.isArray(AFF.state.config[self._cfg.catKey]))
-						? AFF.state.config[self._cfg.catKey].slice() : null;
-					AFF.App.ajax('aff_delete_category', {
-						filename:    AFF.state.currentFile,
-						subgroup:    self._cfg.setName,
-						category_id: catId,
-					}).then(function (res) {
-						if (res.success && res.data) {
-							if (!AFF.state.config) { AFF.state.config = {}; }
-							AFF.state.config[self._cfg.catKey] = _preDelCats !== null
-								? _preDelCats.filter(function (c) { return c.id !== catId; })
-								: res.data.categories;
-							delete self._collapsedIds[catId];
-							if (AFF.App) { AFF.App.setDirty(true); }
-							self._rerenderView();
-							if (AFF.PanelLeft && AFF.PanelLeft.refresh) { AFF.PanelLeft.refresh(); }
-						} else if (!res.success) {
-							var errMsg = (res.data && res.data.message) ? res.data.message : 'Delete failed.';
-							AFF.Modal.open({ title: 'Delete failed', body: '<p>' + errMsg + '</p>' });
-						}
-					}).catch(function () {
-						AFF.Modal.open({ title: 'Connection error', body: '<p>Connection error during delete.</p>' });
-					});
+					doDeleteCategory(deleteVars);
 				}
 			}
 			document.addEventListener('click', handleClick);
