@@ -1,6 +1,6 @@
 # AFF Technical Debt Report
-# Atomic Framework Forge for Elementor — v0.4.2-beta
-# Reviewed: 2026-04-19
+# Atomic Framework Forge for Elementor — v0.4.3-beta
+# Reviewed: 2026-05-18
 
 > **Scope:** All PHP and JS source files. CSS and SVG assets excluded.
 > Issues are graded **Critical / High / Medium / Low**. Critical = active bug or

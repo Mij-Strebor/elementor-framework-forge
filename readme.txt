@@ -4,7 +4,7 @@ Tags:              elementor, css variables, design system, developer tools, ato
 Requires at least: 5.8
 Tested up to:      6.9
 Requires PHP:      8.2
-Stable tag:        0.4.2-beta
+Stable tag:        0.4.3-beta
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 

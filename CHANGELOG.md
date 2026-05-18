@@ -7,6 +7,26 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.4.3-beta] — 2026-05-18
+
+### Added
+
+- **Delete Category — Save to Uncategorized** — Delete category modal now shows variable count and an iOS-style toggle (gold) to move variables to Uncategorized instead of deleting them. Toggle defaults OFF (delete); opt in to save.
+- **Tints/Shades Save/Cancel** — Expand modal for color variable generation now has explicit Save and Cancel buttons. Palette previews update live on input; generation only fires on Save.
+- **Delete Variable Keyboard Nav** — Tab, Shift-Tab, Left, and Right arrow keys cycle focus between buttons in the delete variable modal, matching the delete category modal behaviour.
+- **scrollIntoView on Category Expand** — Expanding a category (via toggle or left-panel nav jump) now smoothly scrolls the block into view.
+- **Tooltip Auto-Dismiss** — Tooltips automatically hide after 4 seconds if the pointer remains still, preventing them from lingering indefinitely.
+
+### Fixed
+
+- **`.aff.json` Filename** — All export, import, and dialog references updated from `.eff.json` to `.aff.json` (C-05).
+
+### Changed
+
+- **Version** — Bumped to 0.4.3-beta.
+
+---
+
 ## [0.4.2-beta] — 2026-04-18
 
 ### Added
