@@ -2430,17 +2430,52 @@
           '<p><button id="aff-del-var-confirm" class="aff-btn aff-btn--danger">Delete</button> ' +
           '<button id="aff-del-var-cancel" class="aff-btn">Cancel</button></p>';
 
+      var delVarBtnIds = hasChildren
+        ? ["aff-del-var-cancel", "aff-del-var-only", "aff-del-var-with-children"]
+        : ["aff-del-var-cancel", "aff-del-var-confirm"];
+
       AFF.Modal.open({
         title: "Delete variable",
         body: body,
         onClose: function () {
           document.removeEventListener("click", handleDelClick);
+          document.removeEventListener("keydown", handleDelVarKey);
         },
       });
+
+      // Focus the primary action button on open.
+      setTimeout(function () {
+        var firstBtn = document.getElementById(delVarBtnIds[delVarBtnIds.length - 1]);
+        if (firstBtn) { firstBtn.focus(); }
+      }, 50);
+
+      function handleDelVarKey(e) {
+        var isTab   = e.key === "Tab";
+        var isRight = e.key === "ArrowRight";
+        var isLeft  = e.key === "ArrowLeft";
+        if (!isTab && !isRight && !isLeft) { return; }
+        var focused = document.activeElement;
+        var idx = delVarBtnIds.indexOf(focused ? focused.id : "");
+        if (isTab) {
+          e.preventDefault();
+          e.stopImmediatePropagation();
+        } else {
+          if (idx === -1) { return; }
+          e.preventDefault();
+        }
+        var backward = (isTab && e.shiftKey) || isLeft;
+        var next = idx === -1
+          ? (backward ? delVarBtnIds.length - 1 : 0)
+          : (backward ? (idx - 1 + delVarBtnIds.length) % delVarBtnIds.length : (idx + 1) % delVarBtnIds.length);
+        var nextBtn = document.getElementById(delVarBtnIds[next]);
+        if (nextBtn) { nextBtn.focus(); }
+      }
+      document.addEventListener("keydown", handleDelVarKey);
 
       function doDelete(deleteChildren) {
         AFF.Modal.close();
         document.removeEventListener("click", handleDelClick);
+        document.removeEventListener("keydown", handleDelVarKey);
 
         // Variables imported from Elementor (id:'') exist only in memory —
         // no server record to delete.  Remove them from state directly.
@@ -2498,6 +2533,7 @@
         if (t.id === "aff-del-var-cancel") {
           AFF.Modal.close();
           document.removeEventListener("click", handleDelClick);
+          document.removeEventListener("keydown", handleDelVarKey);
         } else if (t.id === "aff-del-var-with-children") {
           doDelete(true);
         } else if (
