@@ -429,6 +429,9 @@
 			if (!block) { return; }
 			block.setAttribute('data-collapsed', 'false');
 			this._collapsedIds[catId] = false;
+			setTimeout(function () {
+				block.scrollIntoView({ behavior: 'smooth', block: 'start' });
+			}, 50);
 		},
 
 		/** Open the "Add Category" modal and persist the new category via AJAX. */

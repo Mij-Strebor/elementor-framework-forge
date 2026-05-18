@@ -1113,9 +1113,15 @@
               if (catId) {
                 self._collapsedIds[catId] = newCollapsed;
               }
-              // Close any open expand panel when the user collapses a category.
               if (newCollapsed) {
+                // Close any open expand panel when the user collapses a category.
                 self._closeExpandPanel(container, true);
+              } else {
+                // Scroll the newly expanded block into view.
+                var _expBlock = block;
+                setTimeout(function () {
+                  _expBlock.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                }, 50);
               }
             }
             break;
