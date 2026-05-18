@@ -1,5 +1,5 @@
 === Atomic Framework Forge for Elementor ===
-Contributors:      jimrforge
+Contributors:      mijstrebor
 Tags:              elementor, css variables, design system, developer tools, atomic widgets
 Requires at least: 5.8
 Tested up to:      6.9
@@ -32,7 +32,7 @@ Every write is user-triggered (no background or automatic writes, ever), precede
 
 **Use on staging or a local development environment only.** A corrupted write could damage your Elementor kit's variable data. Always export a project backup before writing to Elementor.
 
-=== Key Features (Beta 0.4.1) ===
+=== Key Features ===
 
 * **Sync from Elementor** — Reads the Elementor V4 kit CSS file and imports CSS variables automatically. Sync options dialog: "Sync by name" or "Clear and replace".
 * **Versioned backup system** — Every Save Project creates a timestamped snapshot; restore any backup from the two-level project/backup picker. Up to 50 backups per project (configurable).
@@ -153,6 +153,9 @@ Elementor v4+ (atomic widget architecture) and Elementor Pro.
 * Initial release — Variables (Colors, Fonts, Numbers), Sync, Organize, Save, Commit, Dark Mode.
 
 == Upgrade Notice ==
+
+= 1.0.0 =
+First stable release. Resolves all WordPress Plugin Check errors and warnings. Safe to install fresh.
 
 = 0.3.4-beta =
 Plugin renamed EFF → AFF for WordPress.org compatibility. Sync improved: reads Elementor kit meta directly. Bug fixes for category defaults and AJAX action names.
