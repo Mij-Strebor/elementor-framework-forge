@@ -7,6 +7,19 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [1.0.0] — 2026-05-18
+
+### Fixed
+
+- **Plugin Check** — Resolved all WordPress Plugin Check errors: `is_writable()` replaced with WP_Filesystem, `Requires PHP` header aligned to `8.2`, hidden `.gitkeep` removed, specification filename with spaces renamed. False-positive nonce/sanitization warnings suppressed with `phpcs:disable` (nonces verified centrally via `verify_request()`). Added `.distignore` to exclude dev markdown files from Plugin Check and distribution.
+
+### Changed
+
+- **Elementor version constants** — Updated `AFF_DEV_ELEMENTOR_VERSION` to 4.0.8 and `AFF_DEV_ELEMENTOR_PRO_VERSION` to 4.0.4.
+- **Version** — Bumped to 1.0.0 — first stable release.
+
+---
+
 ## [0.4.3-beta] — 2026-05-18
 
 ### Added

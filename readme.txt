@@ -4,7 +4,7 @@ Tags:              elementor, css variables, design system, developer tools, ato
 Requires at least: 5.8
 Tested up to:      6.9
 Requires PHP:      8.2
-Stable tag:        0.4.3-beta
+Stable tag:        1.0.0
 License:           GPL-2.0-or-later
 License URI:       https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -72,6 +72,11 @@ In your WordPress uploads directory under `/uploads/aff/`.
 Elementor v4+ (atomic widget architecture) and Elementor Pro.
 
 == Changelog ==
+
+= 1.0.0 =
+* Fixed: Plugin Check errors resolved — is_writable() replaced with WP_Filesystem, Requires PHP header aligned, hidden .gitkeep removed, filename with spaces renamed.
+* Fixed: False-positive nonce/sanitization warnings suppressed (nonces verified centrally via verify_request()).
+* Changed: Elementor dev version constants updated to 4.0.8 / 4.0.4.
 
 = 0.4.2-beta =
 * Added: Elementor commit now writes to _elementor_global_variables post meta as the primary target; CSS file patch applied as secondary for immediate visual preview.
