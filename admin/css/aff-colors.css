@@ -404,7 +404,7 @@
 
 .aff-color-list-header {
 	display:               grid;
-	grid-template-columns: 24px 8px 60px 1fr 22% 12% 28px;
+	grid-template-columns: 24px 8px 120px 1fr 22% 12% 28px;
 	column-gap:    10px;
 	align-items:   center;
 	padding:       var(--sp-1) var(--sp-3) var(--sp-1) var(--sp-4);
@@ -421,7 +421,7 @@
 /* Single color variable row */
 .aff-color-row {
 	display:               grid;
-	grid-template-columns: 24px 8px 60px 1fr 22% 12% 28px;
+	grid-template-columns: 24px 8px 120px 1fr 22% 12% 28px;
 	column-gap:    10px;
 	align-items:   center;
 	padding:       6px var(--sp-3) 6px var(--sp-4);
@@ -671,7 +671,7 @@ button.aff-pickr-btn:focus-visible {
  */
 .aff-modal-header {
 	display:               grid;
-	grid-template-columns: 24px 8px 60px 1fr 22% 12% 28px;
+	grid-template-columns: 24px 8px 120px 1fr 22% 12% 28px;
 	column-gap:            10px;
 	align-items:           center;
 	padding:               var(--sp-3) var(--sp-3) var(--sp-3) var(--sp-4);
@@ -1019,7 +1019,7 @@ button.aff-pickr-btn:focus-visible {
 @media (max-width: 600px) {
 	.aff-color-list-header,
 	.aff-color-row {
-		grid-template-columns: 24px 8px 44px 1fr 20% 0 28px;
+		grid-template-columns: 24px 8px 80px 1fr 20% 0 28px;
 		column-gap: 6px;
 		padding-right: var(--sp-2);
 	}
@@ -1065,7 +1065,7 @@ button.aff-pickr-btn:focus-visible {
 /* Eighth column: 28px delete button — added to row and header grids */
 .aff-color-list-header,
 .aff-color-row {
-	grid-template-columns: 24px 8px 60px 1fr 22% 12% 28px 28px;
+	grid-template-columns: 24px 8px 120px 1fr 22% 12% 28px 28px;
 }
 
 /* Delete button — trash icon, danger variant on hover */

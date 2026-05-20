@@ -165,8 +165,13 @@ class AFF_CSS_Parser {
 				// CSS, so removing one -- recovers the label the user originally typed:
 				//   --purple    → purple   (user typed 'purple')
 				//   ----purple  → --purple (user typed '--purple')
+				// A second strip removes any user-typed leading -- so labels are always
+				// stored without a -- prefix regardless of how the user entered them.
 				foreach ( $user_vars as &$v ) {
 					$v['name'] = substr( $v['name'], 2 );
+					if ( str_starts_with( $v['name'], '--' ) ) {
+						$v['name'] = substr( $v['name'], 2 );
+					}
 				}
 				unset( $v );
 				return $user_vars;
@@ -312,6 +317,9 @@ class AFF_CSS_Parser {
 			}
 
 			$label = sanitize_text_field( $variable['label'] ?? '' );
+			if ( str_starts_with( $label, '--' ) ) {
+				$label = substr( $label, 2 );
+			}
 			if ( '' === $label ) {
 				continue;
 			}

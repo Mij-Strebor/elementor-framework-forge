@@ -973,7 +973,7 @@
 			var drag = {
 				active: false, varId: null,
 				ghost: null, indicator: null,
-				startY: 0, scrollTimer: null,
+				startY: 0, startScroll: 0, scrollTimer: null,
 				_forceAfter: false,
 			};
 
@@ -992,6 +992,9 @@
 
 				drag.active = true;
 				drag.startY = e.clientY;
+
+				var _es = document.getElementById('aff-edit-space');
+				drag.startScroll = _es ? _es.scrollTop : 0;
 
 				var ghost   = row.cloneNode(true);
 				var rowRect = row.getBoundingClientRect();
@@ -1137,10 +1140,18 @@
 
 				if (!targetVarId || !drag.varId) { drag.varId = null; return; }
 
-				var draggedVarId = drag.varId;
+				var draggedVarId  = drag.varId;
+				var savedScroll   = drag.startScroll;
 				drag.varId = null;
 
 				onDrop(draggedVarId, targetVarId, insertBefore, targetCatBlock);
+
+				// Restore scroll to where it was before the drag started,
+				// but only if it actually moved during the drag.
+				var _es = document.getElementById('aff-edit-space');
+				if (_es && _es.scrollTop !== savedScroll) {
+					_es.scrollTop = savedScroll;
+				}
 			});
 		},
 
@@ -1422,7 +1433,7 @@
 	/**
 	 * Fonts variable-set configuration.
 	 *
-	 * Col 3: "Aa" font-preview cell rendered in the variable's own font-family.
+	 * Col 3: "ABCabc" font-preview cell rendered in the variable's own font-family.
 	 * Value input also renders its content in its own font-family (live preview).
 	 * Format: System | Custom (informational only — no conversion).
 	 */
@@ -1437,7 +1448,7 @@
 			return '<span class="aff-font-preview"'
 				+ ' style="font-family:' + _varEsc(v.value) + '"'
 				+ ' aria-hidden="true"'
-				+ ' data-aff-tooltip="Font preview">Aa</span>';
+				+ ' data-aff-tooltip="Font preview">ABCabc</span>';
 		},
 
 		renderValueCell: function (v) {
@@ -1518,6 +1529,9 @@
 		}
 
 		// 5. Top bar (buttons + tooltips — needs Modal to be ready)
+		if (AFF.Print) {
+			AFF.Print.init();
+		}
 		if (AFF.PanelTop) {
 			AFF.PanelTop.init();
 			// Auto-sync from Elementor on page load (silent — no modal, no dirty flag).

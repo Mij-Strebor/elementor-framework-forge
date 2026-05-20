@@ -89,6 +89,18 @@ class AFF_Admin {
 			$this->asset_version( 'admin/css/aff-preferences.css' )
 		);
 
+		// Inline grid overrides — guarantees correct column widths regardless of browser
+		// cache state on the static CSS files (cache-busting via filemtime is env-dependent).
+		wp_add_inline_style( 'aff-preferences', $this->get_grid_override_css() );
+
+		// Print CSS: modal selection + @media print document styles.
+		wp_enqueue_style(
+			'aff-print',
+			AFF_PLUGIN_URL . 'admin/css/aff-print.css',
+			array( 'aff-preferences' ),
+			$this->asset_version( 'admin/css/aff-print.css' )
+		);
+
 		// Pickr color picker — local vendor copy (no CDN dependency).
 		wp_enqueue_style(
 			'pickr-classic',
@@ -116,6 +128,7 @@ class AFF_Admin {
 			'aff-colors'      => 'admin/js/aff-colors.js',     // Phase 2 — must load before aff-app.
 			'aff-variables'   => 'admin/js/aff-variables.js',  // Phase 3 — must load before aff-app.
 			'aff-app'         => 'admin/js/aff-app.js',
+			'aff-print'       => 'admin/js/aff-print.js',    // Print / PDF — must load after aff-app.
 		);
 
 		$deps = array();
@@ -145,6 +158,7 @@ class AFF_Admin {
 				'version'   => AFF_VERSION,
 				'uploadUrl' => $this->get_aff_upload_dir_url(),
 				'pluginUrl' => AFF_PLUGIN_URL,
+				'siteName'  => get_bloginfo( 'name' ),
 				// Elementor version data for runtime safety check.
 				'elVersion'       => defined( 'ELEMENTOR_VERSION' )     ? ELEMENTOR_VERSION     : null,
 				'elProVersion'    => defined( 'ELEMENTOR_PRO_VERSION' ) ? ELEMENTOR_PRO_VERSION : null,
@@ -199,10 +213,48 @@ class AFF_Admin {
 	 */
 	private function asset_version( string $relative_path ): string {
 		if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
-			$abs = AFF_PLUGIN_DIR . $relative_path;
-			return file_exists( $abs ) ? (string) filemtime( $abs ) : AFF_VERSION;
+			$mtime = @filemtime( AFF_PLUGIN_DIR . $relative_path );
+			return $mtime ? (string) $mtime : AFF_VERSION;
 		}
 		return AFF_VERSION;
+	}
+
+	/**
+	 * Return inline CSS that enforces the correct grid column widths for Colors,
+	 * Fonts, and Numbers rows. Injected via wp_add_inline_style() so it lands
+	 * directly in the HTML <style> block and is never affected by browser caching
+	 * of the static CSS files.
+	 *
+	 * @return string CSS string.
+	 */
+	private function get_grid_override_css(): string {
+		return '
+.aff-color-list-header,
+.aff-color-row {
+	grid-template-columns: 24px 8px 120px 1fr 22% 12% 28px;
+}
+.aff-fonts-view .aff-color-row {
+	grid-template-columns: 24px 8px 120px 1fr 22% 12% 28px;
+	column-gap: 10px;
+}
+.aff-numbers-view .aff-color-row,
+.aff-numbers-view .aff-color-list-header {
+	grid-template-columns: 24px 8px 1fr calc(28% + 120px) 12% 28px;
+	column-gap: 16px;
+}
+@media (max-width: 600px) {
+	.aff-color-list-header,
+	.aff-color-row {
+		grid-template-columns: 24px 8px 80px 1fr 20% 0 28px;
+	}
+	.aff-fonts-view .aff-color-row {
+		grid-template-columns: 24px 8px 80px 1fr 20% 0 28px;
+	}
+	.aff-numbers-view .aff-color-row,
+	.aff-numbers-view .aff-color-list-header {
+		grid-template-columns: 24px 8px 1fr calc(24% + 80px) 0 28px;
+	}
+}';
 	}
 
 	/**

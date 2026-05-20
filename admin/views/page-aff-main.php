@@ -97,6 +97,12 @@ function aff_icon( string $name ): string {
 		        data-aff-tooltip-long="<?php esc_attr_e( 'Search — find variables, classes, and components by name or value', 'atomic-framework-forge-for-elementor' ); ?>">
 				<?php echo aff_icon( 'search' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
 			</button>
+			<button class="aff-icon-btn" id="aff-btn-print"
+			        aria-label="<?php esc_attr_e( 'Print / PDF', 'atomic-framework-forge-for-elementor' ); ?>"
+			        data-aff-tooltip="<?php esc_attr_e( 'Print / PDF', 'atomic-framework-forge-for-elementor' ); ?>"
+			        data-aff-tooltip-long="<?php esc_attr_e( 'Print / PDF — print or save variables as a PDF reference sheet', 'atomic-framework-forge-for-elementor' ); ?>">
+				<?php echo aff_icon( 'print' ); // phpcs:ignore WordPress.Security.EscapeOutput ?>
+			</button>
 			<button class="aff-icon-btn" id="aff-btn-help"
 			        aria-label="<?php esc_attr_e( 'Help', 'atomic-framework-forge-for-elementor' ); ?>"
 			        data-aff-tooltip="<?php esc_attr_e( 'Help', 'atomic-framework-forge-for-elementor' ); ?>">

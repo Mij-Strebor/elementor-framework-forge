@@ -1,0 +1,54 @@
+/**
+ * AFF Print CSS — Print Selection Modal (screen only)
+ *
+ * Styles for the print/PDF selection modal. The actual print document
+ * is rendered in a new window using aff-print-page.css.
+ *
+ * @package AtomicFrameworkForge
+ */
+
+/* ==========================================================================
+   PRINT SELECTION MODAL
+   ========================================================================== */
+
+.aff-print-select {
+	padding: var(--sp-2) 0;
+}
+
+.aff-print-select__hint {
+	margin: 0 0 var(--sp-3);
+	font-size: var(--fs-sm);
+	color: var(--aff-clr-secondary);
+}
+
+.aff-print-chk-row {
+	display:     flex;
+	align-items: center;
+	gap:         var(--sp-2);
+	padding:     var(--sp-2) 0;
+	font-size:   var(--fs-sm);
+	color:       var(--aff-clr-primary);
+	cursor:      pointer;
+}
+
+.aff-print-chk-row input[type="checkbox"] {
+	width:  16px;
+	height: 16px;
+	cursor: pointer;
+}
+
+.aff-print-chk-row--disabled {
+	opacity: 0.45;
+	cursor:  not-allowed;
+}
+
+.aff-print-chk-count {
+	color:     var(--aff-clr-muted);
+	font-size: var(--fs-xs);
+}
+
+.aff-print-chk-empty {
+	color:      var(--aff-clr-muted);
+	font-size:  var(--fs-xs);
+	font-style: italic;
+}
